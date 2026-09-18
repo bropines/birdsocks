@@ -177,16 +177,17 @@ func registerMachineWithAuthKey(ctx context.Context, opt *StartOptions) {
 
 	if opt.AuthKey != "" {
 		slog.Info("LocalAPI: authenticating with auth key")
-		// Preferences go through PATCH /prefs, which is a masked partial update.
-		// Passing them as Start's UpdatePrefs would replace the whole prefs
-		// object and silently drop everything not listed here — exit node,
-		// advertised routes and tags among them.
-		applyStartupPrefs(opt)
+		payload, _ := json.Marshal(map[string]interface{}{"AuthKey": opt.AuthKey})
+		if err := StartDaemon(string(payload)); err != nil {
+			slog.Error("Auth-key login failed", "err", err)
+			return
+		}
 		if ctx.Err() != nil {
 			return
 		}
-		payload, _ := json.Marshal(map[string]interface{}{"AuthKey": opt.AuthKey})
-		_ = StartDaemon(string(payload))
+		// Apply preferences only after the auth-key Start request so
+		// WantRunning cannot race the control client into NeedsLogin first.
+		applyStartupPrefs(opt)
 		return
 	}
 
