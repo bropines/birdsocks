@@ -298,20 +298,18 @@ func Login(authKey string) string {
 	opt := lastOptions
 	stateMu.Unlock()
 
-	// Preferences are pushed through the masked PATCH /prefs endpoint, never
-	// through Start's UpdatePrefs: the daemon replaces the entire prefs object
-	// with whatever UpdatePrefs contains, so sending a partial set here silently
-	// dropped the hostname, accepted routes, exit node, advertised routes and
-	// services. ForceRefresh reaches this on every app resume.
-	if opt != nil {
-		applyStartupPrefs(opt)
-	}
-
 	data, _ := json.Marshal(map[string]interface{}{"AuthKey": authKey})
 
 	_, err := doLocalRequest("POST", "/localapi/v0/start", strings.NewReader(string(data)))
 	if err != nil {
 		return "Error: " + err.Error()
+	}
+
+	// Preferences are pushed through the masked PATCH /prefs endpoint, never
+	// through Start's UpdatePrefs. Do this after the auth-key Start request so
+	// WantRunning cannot race the control client into NeedsLogin first.
+	if opt != nil {
+		applyStartupPrefs(opt)
 	}
 
 	if authKey == "" {
