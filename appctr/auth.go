@@ -1,3 +1,4 @@
+// CI trigger: auth-key startup ordering test
 package appctr
 
 import (
