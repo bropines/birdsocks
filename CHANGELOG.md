@@ -2,6 +2,12 @@
 
 All notable changes to the TailSocks project will be documented in this file. This project follows the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) standard.
 
+## [Unreleased]
+
+### Fixed
+
+- Login with an auth key: a profile that had never registered stayed unauthenticated — the key reached the daemon, the request to log in did not.
+
 ## [4.2.3] - 2026-09-12
 
 ### Fixed
