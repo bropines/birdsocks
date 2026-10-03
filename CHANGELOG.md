@@ -12,7 +12,8 @@ TailSocks' history is in its own repository.
 - Peers with search, filters and connection details; Networks with route selection.
 - Settings: device name, logout, proxy port, credentials and LAN sharing, NetBird's profile switches, force relay, log level.
 - Quick Settings tile, start on boot, `birdsocks://` links to screens.
-- The proxy asks for a username and password when they are set.
+- The proxy listens on 127.0.0.1:48125 and asks for a username and password when they are set.
 - Names resolve through NetBird's DNS; destinations no peer routes go out directly.
 - The dashboard shows the device as Android with its model and version.
 - Interfaces are listed the way Android 11+ allows, so direct connections can form.
+- The proxy comes back after a reconnect or a profile switch.

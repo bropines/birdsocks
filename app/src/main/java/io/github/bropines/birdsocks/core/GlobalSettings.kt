@@ -12,7 +12,7 @@ import android.provider.Settings
 object GlobalSettings {
     private const val PREFS_NAME = "global_settings"
 
-    const val DEFAULT_SOCKS_PORT = 1080
+    const val DEFAULT_SOCKS_PORT = 48125
     const val CLOUD_MANAGEMENT_URL = "https://api.netbird.io:443"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

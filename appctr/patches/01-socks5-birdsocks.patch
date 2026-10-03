@@ -26,7 +26,20 @@
 +}
 --- netbird_orig/client/iface/netstack/proxy.go
 +++ netbird_src/client/iface/netstack/proxy.go
-@@ -20,10 +20,15 @@
+@@ -2,6 +2,7 @@
+ 
+ import (
+ 	"net"
++	"sync"
+ 
+ 	"github.com/things-go/go-socks5"
+ 
+@@ -16,14 +17,20 @@
+ type Proxy struct {
+ 	server *socks5.Server
+ 
++	mu       sync.Mutex
+ 	listener net.Listener
  	closed   bool
  }
  
@@ -46,6 +59,45 @@
  
  	return &Proxy{
  		server: server,
+@@ -36,12 +43,23 @@
+ 		log.Errorf("failed to create listener for socks5 proxy: %s", err)
+ 		return err
+ 	}
++	// BirdSocks: Close may have run before the listener existed — the
++	// engine stopped while this goroutine was starting — and must win.
++	s.mu.Lock()
++	if s.closed {
++		s.mu.Unlock()
++		return listener.Close()
++	}
+ 	s.listener = listener
++	s.mu.Unlock()
+ 
+ 	for {
+ 		conn, err := listener.Accept()
+ 		if err != nil {
+-			if s.closed {
++			s.mu.Lock()
++			closed := s.closed
++			s.mu.Unlock()
++			if closed {
+ 				return nil
+ 			}
+ 			return err
+@@ -56,10 +74,11 @@
+ }
+ 
+ func (s *Proxy) Close() error {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	s.closed = true
+ 	if s.listener == nil {
+ 		return nil
+ 	}
+-
+-	s.closed = true
+ 	return s.listener.Close()
+ }
 --- netbird_orig/client/iface/netstack/tun.go
 +++ netbird_src/client/iface/netstack/tun.go
 @@ -53,7 +53,7 @@
@@ -57,6 +109,28 @@
  	if err != nil {
  		_ = t.tundev.Close()
  		return nil, nil, err
+@@ -69,6 +69,21 @@
+ 	return t.tundev, tunNet, nil
+ }
+ 
++// CloseProxy stops the SOCKS5 proxy alone. BirdSocks: the device's Close
++// takes the tun device down through WireGuard but never reached the proxy,
++// so its listener outlived the engine — the next engine (a reconnect, a
++// profile switch) could not bind the port, and the old proxy went on
++// answering from a dead netstack with "network is unreachable". Close
++// cannot be used there: it would close the tun device a second time.
++func (t *NetStackTun) CloseProxy() error {
++	if t.proxy == nil {
++		return nil
++	}
++	err := t.proxy.Close()
++	t.proxy = nil
++	return err
++}
++
+ func (t *NetStackTun) Close() error {
+ 	var err error
+ 	if t.proxy != nil {
 --- netbird_orig/client/iface/netstack/dialer.go
 +++ netbird_src/client/iface/netstack/dialer.go
 @@ -22,9 +22,19 @@
@@ -274,3 +348,15 @@
  	t.configurer = configurer.NewUSPConfigurerNoUAPI(t.device, t.name, t.bind.ActivityRecorder())
  	err = t.configurer.ConfigureInterface(t.key, t.port)
  	if err != nil {
+@@ -125,6 +129,11 @@
+ }
+ 
+ func (t *TunNetstackDevice) Close() error {
++	if t.nsTun != nil {
++		if err := t.nsTun.CloseProxy(); err != nil {
++			log.Warnf("close socks5 proxy: %v", err)
++		}
++	}
+ 	if t.configurer != nil {
+ 		t.configurer.Close()
+ 	}

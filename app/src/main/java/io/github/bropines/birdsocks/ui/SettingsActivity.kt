@@ -176,7 +176,7 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 var user by remember { mutableStateOf(GlobalSettings.getSocksUser(context)) }
                 var pass by remember { mutableStateOf(GlobalSettings.getSocksPass(context)) }
                 var lan by remember { mutableStateOf(GlobalSettings.isSocksLanShared(context)) }
-                SettingsEditItem(stringResource(R.string.nb_settings_socks_port), port, Icons.Default.SettingsEthernet, placeholder = "1080") { v ->
+                SettingsEditItem(stringResource(R.string.nb_settings_socks_port), port, Icons.Default.SettingsEthernet, placeholder = GlobalSettings.DEFAULT_SOCKS_PORT.toString()) { v ->
                     val p = v.trim().toIntOrNull()
                     if (p == null || p !in 1..65535) {
                         Toast.makeText(context, context.getString(R.string.nb_settings_bad_port), Toast.LENGTH_SHORT).show()
