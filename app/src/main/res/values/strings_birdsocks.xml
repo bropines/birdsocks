@@ -86,6 +86,10 @@
     <string name="nb_settings_socks_auth_desc">Any app on this phone can find a proxy on localhost. With a username and a password only the apps you give them to can use it. Set both or neither.</string>
     <string name="nb_settings_socks_lan">Share on the local network</string>
     <string name="nb_settings_socks_lan_desc">Listen on every interface, so other devices on the Wi-Fi can use the proxy. Set a password first.</string>
+    <string name="nb_settings_dns_proxy">DNS proxy</string>
+    <string name="nb_settings_dns_proxy_desc">Answers plain DNS on this address: NetBird names first, everything else through the network\'s resolvers. Point AdGuard or another app\'s DNS here.</string>
+    <string name="nb_settings_dns_proxy_address">Address</string>
+    <string name="nb_settings_bad_address">An address is host:port, such as 127.0.0.1:48153</string>
     <string name="nb_settings_netbird">NetBird</string>
     <string name="nb_settings_netbird_off">Start BirdSocks to change these: they live in NetBird\'s profile.</string>
     <string name="nb_settings_rosenpass_desc">Post-quantum keys on top of WireGuard. Both peers need it on.</string>

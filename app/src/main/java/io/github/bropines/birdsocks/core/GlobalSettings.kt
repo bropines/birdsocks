@@ -43,6 +43,13 @@ object GlobalSettings {
     fun isSocksLanShared(context: Context): Boolean = getBoolean(context, "socks_lan", false)
     fun setSocksLanShared(context: Context, shared: Boolean) = setBoolean(context, "socks_lan", shared)
 
+    // --- The DNS proxy: NetBird's resolver first, the network's after ---
+    const val DEFAULT_DNS_PROXY = "127.0.0.1:48153"
+    fun isDnsProxyEnabled(context: Context): Boolean = getBoolean(context, "dns_proxy_enabled", true)
+    fun setDnsProxyEnabled(context: Context, enabled: Boolean) = setBoolean(context, "dns_proxy_enabled", enabled)
+    fun getDnsProxyAddress(context: Context): String = getString(context, "dns_proxy", DEFAULT_DNS_PROXY).ifBlank { DEFAULT_DNS_PROXY }
+    fun setDnsProxyAddress(context: Context, address: String) = setString(context, "dns_proxy", address.trim())
+
     // --- The daemon ---
     fun getLogLevel(context: Context): String = getString(context, "log_level", "info")
     fun setLogLevel(context: Context, level: String) = setString(context, "log_level", level)

@@ -55,6 +55,9 @@ type StartOptions struct {
 	// AndroidSdk is the API level: from 30 on, interfaces are listed the
 	// way an app is allowed to (patch 03).
 	AndroidSdk int
+	// DNSProxy is where the daemon serves plain DNS (NetBird's resolver
+	// first, the network's after), host:port; empty for none.
+	DNSProxy string
 	// LogLevel is NetBird's: panic, fatal, error, warn, info, debug, trace.
 	LogLevel string
 	// Env is extra NAME=value lines, one per line, for the daemon (NB_*
@@ -224,6 +227,9 @@ func daemonEnv(opt *StartOptions, state string) []string {
 			env = append(env, k+"="+v)
 		}
 	}
+	if opt.DNSProxy != "" {
+		env = append(env, "NB_DNS_PROXY_ADDRESS="+opt.DNSProxy)
+	}
 	if opt.SocksHost != "" {
 		env = append(env, "NB_SOCKS5_LISTENER_ADDRESS="+opt.SocksHost)
 	}
@@ -257,6 +263,22 @@ func Stop() {
 		slog.Warn("NetBird daemon did not exit, killing it")
 		_ = cmd.Process.Kill()
 		<-done
+	}
+}
+
+// NetworkChanged tells the daemon the default network switched or came
+// back (SIGUSR1): its connections redial on the new one at once.
+func NetworkChanged() { signalDaemon(syscall.SIGUSR1) }
+
+// NetworkLost tells the daemon there is no network at all (SIGUSR2).
+func NetworkLost() { signalDaemon(syscall.SIGUSR2) }
+
+func signalDaemon(sig syscall.Signal) {
+	stateMu.Lock()
+	cmd := daemon
+	stateMu.Unlock()
+	if cmd != nil {
+		_ = cmd.Process.Signal(sig)
 	}
 }
 

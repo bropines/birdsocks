@@ -503,7 +503,12 @@ private fun SocksCard() {
     val pass = GlobalSettings.getSocksPass(context)
     val creds = if (user.isNotEmpty() && pass.isNotEmpty()) "${Uri.encode(user)}:${Uri.encode(pass)}@" else ""
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        CopyRow(Icons.Default.SettingsEthernet, stringResource(R.string.nb_socks_title), "socks5://${creds}127.0.0.1:$port", shown = "socks5://127.0.0.1:$port")
+        Column {
+            CopyRow(Icons.Default.SettingsEthernet, stringResource(R.string.nb_socks_title), "socks5://${creds}127.0.0.1:$port", shown = "socks5://127.0.0.1:$port")
+            if (GlobalSettings.isDnsProxyEnabled(context)) {
+                CopyRow(Icons.Default.Dns, stringResource(R.string.nb_settings_dns_proxy), GlobalSettings.getDnsProxyAddress(context))
+            }
+        }
     }
 }
 

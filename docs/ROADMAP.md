@@ -10,12 +10,6 @@ roughly in order.
 - Wi-Fi ↔ mobile switches (see the network monitor below).
 
 ## Next
-- **Network changes.** NetBird's network monitor is off in netstack mode, so a
-  switch of the default network is noticed only when connections fail. Wire the
-  app's network callback to the engine (a patch: a signal or an RPC that triggers
-  NetBird's own network-change handling), as TailSocks did with SIGUSR1.
-- **DNS proxy.** A local DNS server that forwards to NetBird's resolver, for apps
-  and ad-blockers that take a DNS address rather than a proxy.
 - **TUN mode** through `hev-socks5-tunnel` on top of the SOCKS5 proxy (TailSocks'
   shipped design), with per-app exclusions.
 - **Control-plane proxy and DPI bypass.** NetBird's dialers have no proxy support;

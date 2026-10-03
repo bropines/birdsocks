@@ -20,6 +20,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/netbirdio/netbird/client/iface/netstack"
 )
 
 // fallbackDNS is asked when the app has written no servers yet.
@@ -75,9 +77,11 @@ func readDNSServers(path string) []string {
 }
 
 // installResolver points Go's resolver, for this whole process, at the
-// servers in path.
+// servers in path, and hands the same servers to the DNS proxy as its
+// fallback.
 func installResolver(path string) {
 	f := &dnsFile{path: path}
+	netstack.SetFallbackDNS(f.current)
 	var next uint32
 	var nextMu sync.Mutex
 	net.DefaultResolver = &net.Resolver{

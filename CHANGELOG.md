@@ -17,3 +17,5 @@ TailSocks' history is in its own repository.
 - The dashboard shows the device as Android with its model and version.
 - Interfaces are listed the way Android 11+ allows, so direct connections can form.
 - The proxy comes back after a reconnect or a profile switch.
+- A DNS proxy on 127.0.0.1:48153: NetBird names first, everything else through the network's resolvers.
+- A network switch or loss reaches the daemon, so its connections redial at once.

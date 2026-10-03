@@ -1,0 +1,66 @@
+--- netbird_orig/client/server/server.go
++++ netbird_src/client/server/server.go
+@@ -35,6 +35,7 @@
+ 	"github.com/netbirdio/netbird/shared/management/domain"
+ 
+ 	"github.com/netbirdio/netbird/client/internal"
++	"github.com/netbirdio/netbird/client/netevents"
+ 	"github.com/netbirdio/netbird/client/internal/peer"
+ 	"github.com/netbirdio/netbird/client/internal/statemanager"
+ 	"github.com/netbirdio/netbird/client/internal/updater"
+@@ -68,6 +69,10 @@
+ 
+ // Server for service control.
+ type Server struct {
++	// netEvents carries the OS network events the app reports (BirdSocks):
++	// a switch of the default network, or losing every network.
++	netEvents *netevents.Manager
++
+ 	rootCtx   context.Context
+ 	actCancel context.CancelFunc
+ 
+@@ -176,11 +181,13 @@
+ 
+ // New server instance constructor.
+ func New(ctx context.Context, logFile string, configFile string, profilesDisabled bool, updateSettingsDisabled bool, captureEnabled bool, networksDisabled bool) *Server {
++	recorder := peer.NewRecorder("")
+ 	s := &Server{
+ 		rootCtx:                ctx,
+ 		logFile:                logFile,
+ 		persistSyncResponse:    true,
+-		statusRecorder:         peer.NewRecorder(""),
++		statusRecorder:         recorder,
++		netEvents:              netevents.NewManager(recorder),
+ 		profileManager:         profilemanager.NewServiceManager(configFile),
+ 		profilesDisabled:       profilesDisabled,
+ 		updateSettingsDisabled: updateSettingsDisabled,
+@@ -2517,7 +2524,9 @@
+ 
+ func (s *Server) connect(ctx context.Context, config *profilemanager.Config, statusRecorder *peer.Status, runningChan chan struct{}) error {
+ 	log.Tracef("running client connection")
+-	client := internal.NewConnectClient(ctx, config, statusRecorder)
++	// BirdSocks: the OS network events the mobile bindings feed; the app
++	// reports them to this daemon (NotifyNetworkChange, SetNetworkAvailable).
++	client := internal.NewConnectClient(ctx, config, statusRecorder, internal.WithNetEvents(s.netEvents))
+ 	client.SetUpdateManager(s.updateManager)
+ 	client.SetSyncResponsePersistence(s.persistSyncResponse)
+ 
+@@ -2772,3 +2781,18 @@
+ 	}
+ 	return found
+ }
++
++// NotifyNetworkChange tells the client that the OS switched networks: the
++// management, signal and relay connections are marked stale and redial on
++// the new one, as NetBird's own mobile bindings do. BirdSocks: netstack mode
++// has no network monitor, so the app reports the change.
++func (s *Server) NotifyNetworkChange() {
++	s.netEvents.SetNetworkAvailable(true)
++	s.netEvents.NotifyNetworkChange()
++}
++
++// SetNetworkAvailable records whether the OS has any network: while it has
++// none, the reconnection loops wait instead of burning their backoff.
++func (s *Server) SetNetworkAvailable(available bool) {
++	s.netEvents.SetNetworkAvailable(available)
++}

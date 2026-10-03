@@ -100,6 +100,23 @@ func main() {
 	}
 	proto.RegisterDaemonServiceServer(srv, s)
 
+	// The app's network callback: SIGUSR1 when the default network changed
+	// (or came back), SIGUSR2 when there is none. Netstack mode has no
+	// network monitor of its own.
+	netSig := make(chan os.Signal, 4)
+	signal.Notify(netSig, syscall.SIGUSR1, syscall.SIGUSR2)
+	go func() {
+		for sig := range netSig {
+			if sig == syscall.SIGUSR2 {
+				log.Info("network: none available")
+				s.SetNetworkAvailable(false)
+				continue
+			}
+			log.Info("network: changed")
+			s.NotifyNetworkChange()
+		}
+	}()
+
 	go func() {
 		<-ctx.Done()
 		log.Info("stopping")

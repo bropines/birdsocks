@@ -195,6 +195,23 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 }
             }
 
+            // --- The DNS proxy ---
+            SettingsCard(stringResource(R.string.nb_settings_dns_proxy)) {
+                var enabled by remember { mutableStateOf(GlobalSettings.isDnsProxyEnabled(context)) }
+                var address by remember { mutableStateOf(GlobalSettings.getDnsProxyAddress(context)) }
+                SettingsSwitchItem(stringResource(R.string.nb_settings_dns_proxy), stringResource(R.string.nb_settings_dns_proxy_desc), Icons.Default.Dns, enabled) {
+                    startSetting { GlobalSettings.setDnsProxyEnabled(context, it); enabled = it }
+                }
+                SettingsEditItem(stringResource(R.string.nb_settings_dns_proxy_address), address, Icons.Default.SettingsEthernet,
+                    placeholder = GlobalSettings.DEFAULT_DNS_PROXY, enabled = enabled
+                ) { v ->
+                    val port = v.substringAfterLast(':', "").toIntOrNull()
+                    if (':' !in v || port == null || port !in 1..65535 || v.substringBeforeLast(':').isBlank()) {
+                        Toast.makeText(context, context.getString(R.string.nb_settings_bad_address), Toast.LENGTH_SHORT).show()
+                    } else startSetting { GlobalSettings.setDnsProxyAddress(context, v); address = GlobalSettings.getDnsProxyAddress(context) }
+                }
+            }
+
             // --- NetBird's own settings, in the profile ---
             SettingsCard(stringResource(R.string.nb_settings_netbird)) {
                 val cfg = config

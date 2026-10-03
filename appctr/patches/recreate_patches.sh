@@ -25,8 +25,9 @@ make_patch() {
 }
 
 # The SOCKS5 proxy of netstack mode, made fit for an Android app: a password,
-# NetBird names resolvable through it, and the internet reached directly when
-# no peer carries the destination.
+# NetBird names resolvable through it, the internet reached directly when no
+# peer carries the destination, a DNS proxy beside it, and both closed with
+# the engine.
 make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/env.go \
     client/iface/netstack/proxy.go \
@@ -34,6 +35,7 @@ make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/dialer.go \
     client/iface/netstack/route.go \
     client/iface/netstack/route_test.go \
+    client/iface/netstack/dnsproxy.go \
     client/iface/device/device_netstack.go
 
 # The device as the dashboard shows it: Android, its version and model, which
@@ -54,3 +56,9 @@ make_patch 03-android-interfaces.patch \
     client/firewall/uspfilter/localip.go \
     client/system/network_addr.go \
     client/internal/engine.go
+
+# Network events in the daemon: NetBird's mobile bindings report network
+# switches to the client, the daemon had no way to receive them, and netstack
+# mode runs no monitor. The app signals birdsocksd, which calls these.
+make_patch 04-daemon-network-events.patch \
+    client/server/server.go

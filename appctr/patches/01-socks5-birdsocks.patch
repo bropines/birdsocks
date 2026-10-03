@@ -100,7 +100,19 @@
  }
 --- netbird_orig/client/iface/netstack/tun.go
 +++ netbird_src/client/iface/netstack/tun.go
-@@ -53,7 +53,7 @@
+@@ -18,8 +18,9 @@
+ 	mtu           int
+ 	listenAddress string
+ 
+-	proxy  *Proxy
+-	tundev tun.Device
++	proxy    *Proxy
++	tundev   tun.Device
++	dnsProxy *dnsProxy
+ }
+ 
+ func NewNetStackTun(listenAddress string, addresses []netip.Addr, dnsAddress netip.Addr, mtu int) *NetStackTun {
+@@ -53,7 +54,7 @@
  	}
  
  	dialer := NewNSDialer(tunNet)
@@ -109,7 +121,20 @@
  	if err != nil {
  		_ = t.tundev.Close()
  		return nil, nil, err
-@@ -69,6 +69,21 @@
+@@ -66,17 +67,43 @@
+ 		}
+ 	}()
+ 
++	// BirdSocks: the DNS proxy, when the app asks for one, lives and dies
++	// with the SOCKS5 proxy.
++	if addr := os.Getenv(EnvDNSProxyAddress); addr != "" {
++		if dp, err := startDNSProxy(addr, tunNet, t.dnsAddress); err != nil {
++			log.Errorf("DNS proxy on %s: %v", addr, err)
++		} else {
++			t.dnsProxy = dp
++		}
++	}
++
  	return t.tundev, tunNet, nil
  }
  
@@ -120,6 +145,10 @@
 +// answering from a dead netstack with "network is unreachable". Close
 +// cannot be used there: it would close the tun device a second time.
 +func (t *NetStackTun) CloseProxy() error {
++	if t.dnsProxy != nil {
++		_ = t.dnsProxy.Close()
++		t.dnsProxy = nil
++	}
 +	if t.proxy == nil {
 +		return nil
 +	}
@@ -130,7 +159,18 @@
 +
  func (t *NetStackTun) Close() error {
  	var err error
- 	if t.proxy != nil {
+-	if t.proxy != nil {
+-		pErr := t.proxy.Close()
+-		if pErr != nil {
+-			log.Errorf("failed to close socks5 proxy: %s", pErr)
+-			err = pErr
+-		}
++	if pErr := t.CloseProxy(); pErr != nil {
++		log.Errorf("failed to close socks5 proxy: %s", pErr)
++		err = pErr
+ 	}
+ 
+ 	if t.tundev != nil {
 --- netbird_orig/client/iface/netstack/dialer.go
 +++ netbird_src/client/iface/netstack/dialer.go
 @@ -22,9 +22,19 @@
@@ -333,6 +373,167 @@
 +	SetRouteSource(netip.Prefix{}, nil)
 +	if !overlayDestination("1.1.1.1:443") {
 +		t.Error("without a route source everything goes through the tunnel, as upstream")
++	}
++}
+--- netbird_orig/client/iface/netstack/dnsproxy.go
++++ netbird_src/client/iface/netstack/dnsproxy.go
+@@ -0,0 +1,158 @@
++package netstack
++
++// dnsproxy.go — BirdSocks: a plain DNS server on the host side of the
++// daemon, for apps and ad-blockers that take a DNS address rather than a
++// proxy. A query goes to NetBird's own resolver first, through the netstack
++// (peer names, the account's zones and nameserver groups are only there);
++// what NetBird has no handler for (REFUSED) or cannot answer (SERVFAIL) goes
++// to the network's resolvers.
++
++import (
++	"net"
++	"net/netip"
++	"sync"
++	"sync/atomic"
++	"time"
++
++	log "github.com/sirupsen/logrus"
++	"golang.zx2c4.com/wireguard/tun/netstack"
++)
++
++// EnvDNSProxyAddress is where the DNS proxy listens, host:port; unset, there
++// is none.
++const EnvDNSProxyAddress = "NB_DNS_PROXY_ADDRESS"
++
++const dnsTimeout = 3 * time.Second
++
++var fallbackDNS struct {
++	sync.RWMutex
++	servers func() []string
++}
++
++// SetFallbackDNS supplies the network's resolvers ("ip:port" each), asked for
++// what NetBird does not answer. The daemon's entry point owns them.
++func SetFallbackDNS(f func() []string) {
++	fallbackDNS.Lock()
++	fallbackDNS.servers = f
++	fallbackDNS.Unlock()
++}
++
++func fallbackServers() []string {
++	fallbackDNS.RLock()
++	defer fallbackDNS.RUnlock()
++	if fallbackDNS.servers == nil {
++		return []string{"8.8.8.8:53", "1.1.1.1:53"}
++	}
++	return fallbackDNS.servers()
++}
++
++type dnsProxy struct {
++	pc     net.PacketConn
++	tunNet *netstack.Net
++	nbDNS  netip.AddrPort
++	closed atomic.Bool
++}
++
++func startDNSProxy(addr string, tunNet *netstack.Net, dnsAddr netip.Addr) (*dnsProxy, error) {
++	network := "udp"
++	if ap, err := netip.ParseAddrPort(addr); err == nil && ap.Addr().Is4() {
++		network = "udp4"
++	}
++	pc, err := net.ListenPacket(network, addr)
++	if err != nil {
++		return nil, err
++	}
++	p := &dnsProxy{pc: pc, tunNet: tunNet, nbDNS: netip.AddrPortFrom(dnsAddr, 53)}
++	log.Infof("DNS proxy listening on %s, NetBird's resolver %s first", addr, p.nbDNS)
++	go p.serve()
++	return p, nil
++}
++
++func (p *dnsProxy) Close() error {
++	p.closed.Store(true)
++	return p.pc.Close()
++}
++
++func (p *dnsProxy) serve() {
++	buf := make([]byte, 65535)
++	for {
++		n, from, err := p.pc.ReadFrom(buf)
++		if err != nil {
++			if !p.closed.Load() {
++				log.Errorf("DNS proxy: %v", err)
++			}
++			return
++		}
++		if n < 12 {
++			continue
++		}
++		q := make([]byte, n)
++		copy(q, buf[:n])
++		go func() {
++			if resp := p.resolve(q); resp != nil {
++				_, _ = p.pc.WriteTo(resp, from)
++			}
++		}()
++	}
++}
++
++// resolve answers one query: NetBird's resolver, then the network's.
++func (p *dnsProxy) resolve(q []byte) []byte {
++	nb, err := p.askNetBird(q)
++	if err == nil && !retryable(nb) {
++		return nb
++	}
++	for _, s := range fallbackServers() {
++		if resp, err := askUDP(q, s); err == nil {
++			return resp
++		}
++	}
++	// Nothing better: NetBird's own answer, SERVFAIL or REFUSED as it is.
++	return nb
++}
++
++// retryable is a response someone else may answer: no handler for the name
++// (REFUSED) or no upstream reachable (SERVFAIL).
++func retryable(resp []byte) bool {
++	if len(resp) < 4 {
++		return true
++	}
++	rcode := resp[3] & 0x0f
++	return rcode == 2 || rcode == 5
++}
++
++func (p *dnsProxy) askNetBird(q []byte) ([]byte, error) {
++	conn, err := p.tunNet.DialUDPAddrPort(netip.AddrPort{}, p.nbDNS)
++	if err != nil {
++		return nil, err
++	}
++	defer conn.Close()
++	return exchange(conn, q)
++}
++
++func askUDP(q []byte, server string) ([]byte, error) {
++	conn, err := net.DialTimeout("udp", server, dnsTimeout)
++	if err != nil {
++		return nil, err
++	}
++	defer conn.Close()
++	return exchange(conn, q)
++}
++
++// exchange sends q on conn and reads the response with q's id.
++func exchange(conn net.Conn, q []byte) ([]byte, error) {
++	_ = conn.SetDeadline(time.Now().Add(dnsTimeout))
++	if _, err := conn.Write(q); err != nil {
++		return nil, err
++	}
++	buf := make([]byte, 65535)
++	for {
++		n, err := conn.Read(buf)
++		if err != nil {
++			return nil, err
++		}
++		if n >= 12 && buf[0] == q[0] && buf[1] == q[1] {
++			return append([]byte(nil), buf[:n]...), nil
++		}
 +	}
 +}
 --- netbird_orig/client/iface/device/device_netstack.go

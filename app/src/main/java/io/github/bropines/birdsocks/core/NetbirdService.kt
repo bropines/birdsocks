@@ -81,12 +81,46 @@ class NetbirdService : Service() {
     @Volatile private var stopping = false
     private var shownText: String? = null
 
+    /** The default network last seen; a different one is a switch the daemon must hear about. */
+    @Volatile private var defaultNetwork: Network? = null
+    private var lostJob: Job? = null
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) = writeDnsServers(lp)
         override fun onAvailable(network: Network) {
             connectivity.getLinkProperties(network)?.let(::writeDnsServers)
+            lostJob?.cancel()
+            val previous = defaultNetwork
+            defaultNetwork = network
+            // NetBird's netstack mode watches no network: without this a
+            // Wi-Fi ↔ mobile switch is noticed only when the old sockets time
+            // out. The first network after registering is no switch.
+            if (previous != null && previous != network) {
+                Appctr.logAndroid("INFO", "CORE", "Default network changed: telling the daemon")
+                Appctr.networkChanged()
+            } else if (previous == null && networkWasLost) {
+                networkWasLost = false
+                Appctr.logAndroid("INFO", "CORE", "A network is back: telling the daemon")
+                Appctr.networkChanged()
+            }
+        }
+        override fun onLost(network: Network) {
+            if (network != defaultNetwork) return
+            defaultNetwork = null
+            // A switch reports the old network lost just before the new one
+            // arrives; only a loss that stays is "no network".
+            lostJob?.cancel()
+            lostJob = scope.launch {
+                kotlinx.coroutines.delay(2000)
+                if (defaultNetwork == null) {
+                    networkWasLost = true
+                    Appctr.logAndroid("INFO", "CORE", "No network: telling the daemon")
+                    Appctr.networkLost()
+                }
+            }
         }
     }
+    @Volatile private var networkWasLost = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -146,6 +180,7 @@ class NetbirdService : Service() {
         socksUser = GlobalSettings.getSocksUser(this@NetbirdService)
         socksPass = GlobalSettings.getSocksPass(this@NetbirdService)
         logLevel = GlobalSettings.getLogLevel(this@NetbirdService)
+        dnsProxy = if (GlobalSettings.isDnsProxyEnabled(this@NetbirdService)) GlobalSettings.getDnsProxyAddress(this@NetbirdService) else ""
         hostname = GlobalSettings.getDeviceName(this@NetbirdService)
         androidVersion = Build.VERSION.RELEASE
         model = Build.MODEL

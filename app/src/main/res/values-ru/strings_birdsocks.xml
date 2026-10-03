@@ -78,6 +78,10 @@
     <string name="nb_settings_socks_auth_desc">Прокси на localhost найдёт любое приложение на телефоне. С именем и паролем им пользуются только те, кому вы их дали. Задайте оба или ни одного.</string>
     <string name="nb_settings_socks_lan">Раздавать в локальную сеть</string>
     <string name="nb_settings_socks_lan_desc">Слушать на всех интерфейсах, чтобы прокси пользовались другие устройства в Wi-Fi. Сначала задайте пароль.</string>
+    <string name="nb_settings_dns_proxy">DNS-прокси</string>
+    <string name="nb_settings_dns_proxy_desc">Отвечает на обычный DNS по этому адресу: сначала имена NetBird, остальное — через DNS сети. Укажите его в AdGuard или другом приложении.</string>
+    <string name="nb_settings_dns_proxy_address">Адрес</string>
+    <string name="nb_settings_bad_address">Адрес — это host:port, например 127.0.0.1:48153</string>
     <string name="nb_settings_netbird">NetBird</string>
     <string name="nb_settings_netbird_off">Запустите BirdSocks, чтобы их менять: они хранятся в профиле NetBird.</string>
     <string name="nb_settings_rosenpass_desc">Постквантовые ключи поверх WireGuard. Нужен на обоих узлах.</string>
