@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	// Android has no /usr/share/zoneinfo for a Linux binary; TZ comes from the app.
 	_ "time/tzdata"
 
@@ -123,7 +124,17 @@ func main() {
 		if _, err := s.Down(context.Background(), &proto.DownRequest{}); err != nil {
 			log.Debugf("down: %v", err)
 		}
-		srv.GracefulStop()
+		// GracefulStop waits for every open call, and a client that keeps
+		// one open (a status stream not yet torn down) held the process for
+		// the app's whole 10 s grace before it was killed.
+		stopped := make(chan struct{})
+		go func() { srv.GracefulStop(); close(stopped) }()
+		select {
+		case <-stopped:
+		case <-time.After(3 * time.Second):
+			log.Warn("open calls did not finish, stopping the API now")
+			srv.Stop()
+		}
 	}()
 
 	log.Infof("birdsocksd serving the daemon API on %s", *socket)
