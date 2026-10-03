@@ -22,6 +22,9 @@ class BirdSocksApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // The log ring, mirrored to a file anyone debugging can read with
+        // `adb shell run-as <package> cat files/logs/birdsocks.log`.
+        runCatching { Appctr.setLogFile(java.io.File(filesDir, "logs/birdsocks.log").absolutePath) }
         // Go cannot find the device's zone on its own, and the log stamps it
         // writes would be UTC; kept current when the user travels.
         applyTimeZone()

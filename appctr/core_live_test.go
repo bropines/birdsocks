@@ -2,6 +2,7 @@ package appctr
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -9,7 +10,9 @@ import (
 
 // TestDaemonLive runs a real daemon: BIRDSOCKS_LIVE_LIB is a directory holding
 // a libnetbird.so built for this host. With BIRDSOCKS_LIVE_SETUP_KEY it also
-// logs in and brings the tunnel up.
+// logs in (to BIRDSOCKS_LIVE_MGMT, NetBird Cloud by default) and brings the
+// tunnel up; BIRDSOCKS_LIVE_HOLD=<seconds> then keeps it running, its SOCKS5
+// proxy on 127.0.0.1:21081 (BIRDSOCKS_LIVE_SOCKS), for checks from outside.
 func TestDaemonLive(t *testing.T) {
 	lib := os.Getenv("BIRDSOCKS_LIVE_LIB")
 	if lib == "" {
@@ -19,7 +22,11 @@ func TestDaemonLive(t *testing.T) {
 	if err := SetDNSServers(dir, "1.1.1.1\n"); err != nil {
 		t.Fatal(err)
 	}
-	if err := Start(&StartOptions{NativeLibDir: lib, DataDir: dir, SocksPort: 21080, LogLevel: "debug"}); err != nil {
+	port := 21081 // 21080 is often an adb forward to a phone's proxy
+	if p, err := strconv.Atoi(os.Getenv("BIRDSOCKS_LIVE_SOCKS")); err == nil {
+		port = p
+	}
+	if err := Start(&StartOptions{NativeLibDir: lib, DataDir: dir, SocksPort: port, LogLevel: "debug"}); err != nil {
 		t.Fatal(err)
 	}
 	defer Stop()
@@ -48,9 +55,13 @@ func TestDaemonLive(t *testing.T) {
 		t.Logf("SSO login: %s %v", out, err)
 		return
 	}
-	out, err := Call("Login", `{"setupKey":"`+key+`","hostname":"birdsocks-live","username":"android"}`, 30000)
+	mgmt := ""
+	if u := os.Getenv("BIRDSOCKS_LIVE_MGMT"); u != "" {
+		mgmt = `,"managementUrl":"` + u + `"`
+	}
+	out, err := Call("Login", `{"setupKey":"`+key+`","hostname":"birdsocks-live"`+mgmt+`}`, 30000)
 	t.Logf("login: %s %v", out, err)
-	out, err = Call("Up", `{"username":"android"}`, 60000)
+	out, err = Call("Up", `{"async":true}`, 60000)
 	t.Logf("up: %s %v", out, err)
 	deadline := time.After(40 * time.Second)
 	for {
@@ -58,6 +69,10 @@ func TestDaemonLive(t *testing.T) {
 		case s := <-statuses:
 			if strings.Contains(s, `"status":"Connected"`) {
 				t.Logf("connected: %.600s", s)
+				if hold, _ := strconv.Atoi(os.Getenv("BIRDSOCKS_LIVE_HOLD")); hold > 0 {
+					t.Logf("holding %ds", hold)
+					time.Sleep(time.Duration(hold) * time.Second)
+				}
 				return
 			}
 		case <-deadline:

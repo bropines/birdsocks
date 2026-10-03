@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -43,6 +44,71 @@ func (lm *LogManager) AddLog(entry LogEntry) {
 	}
 	lm.logs = append(lm.logs, entry)
 	lm.mu.Unlock()
+	logFile.write(entry)
+}
+
+// logFile mirrors the ring into a file, so the log can be read without the
+// Logs screen — `adb shell run-as <package> cat files/logs/birdsocks.log` on
+// a debug build. It rolls over to .1 at logFileMax.
+var logFile = &rollingLog{}
+
+const logFileMax = 2 << 20
+
+type rollingLog struct {
+	mu   sync.Mutex
+	path string
+	f    *os.File
+	size int64
+}
+
+// SetLogFile starts mirroring every log entry into path ("" stops it).
+func SetLogFile(path string) error {
+	logFile.mu.Lock()
+	defer logFile.mu.Unlock()
+	if logFile.f != nil {
+		logFile.f.Close()
+		logFile.f = nil
+	}
+	logFile.path = path
+	if path == "" {
+		return nil
+	}
+	return logFile.open()
+}
+
+func (r *rollingLog) open() error {
+	if err := os.MkdirAll(filepath.Dir(r.path), 0o700); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(r.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return err
+	}
+	st, _ := f.Stat()
+	r.f, r.size = f, 0
+	if st != nil {
+		r.size = st.Size()
+	}
+	return nil
+}
+
+func (r *rollingLog) write(e LogEntry) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.f == nil {
+		return
+	}
+	line := fmt.Sprintf("%s %-5s %-7s %s\n", time.UnixMilli(e.Unix).Format("2006-01-02 15:04:05.000"), e.Level, e.Category, e.Message)
+	if r.size+int64(len(line)) > logFileMax {
+		r.f.Close()
+		r.f = nil
+		_ = os.Rename(r.path, r.path+".1")
+		if r.open() != nil {
+			return
+		}
+	}
+	n, _ := r.f.WriteString(line)
+	r.size += int64(n)
 }
 
 // GetLogsJSON returns the log buffer as a clean JSON array for Android.

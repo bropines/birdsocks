@@ -27,6 +27,7 @@
     <string name="nb_login_action_browser">Войти через браузер</string>
     <string name="nb_login_action_key">Зарегистрировать по ключу</string>
     <string name="nb_login_browser_desc">Завершите вход в браузере. Если страница спросит код — вот он.</string>
+    <string name="nb_login_browser_pkce_desc">Завершите вход в браузере и вернитесь сюда.</string>
     <string name="nb_login_waiting">Ждём браузер…</string>
     <string name="nb_login_open_again">Открыть снова</string>
 

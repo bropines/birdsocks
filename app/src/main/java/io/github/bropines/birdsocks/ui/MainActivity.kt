@@ -367,6 +367,14 @@ private fun LoginCard(login: LoginFlow.State) {
     val context = LocalContext.current
     var selfHosted by rememberSaveable { mutableStateOf(false) }
     var server by rememberSaveable { mutableStateOf("") }
+    // The server the profile already points at: a re-login is to that one.
+    LaunchedEffect(Unit) {
+        val url = runCatching { Netbird.config().managementUrl }.getOrNull()?.trimEnd('/') ?: return@LaunchedEffect
+        if (server.isEmpty() && url.isNotEmpty() && !url.startsWith(GlobalSettings.CLOUD_MANAGEMENT_URL.substringBeforeLast(':'))) {
+            selfHosted = true
+            server = url.removeSuffix(":443")
+        }
+    }
     var setupKey by rememberSaveable { mutableStateOf("") }
     var useKey by rememberSaveable { mutableStateOf(false) }
     val busy = login is LoginFlow.State.Working || login is LoginFlow.State.Browser
@@ -385,13 +393,17 @@ private fun LoginCard(login: LoginFlow.State) {
             Text(stringResource(R.string.nb_login_title), style = MaterialTheme.typography.titleMedium)
             when (login) {
                 is LoginFlow.State.Browser -> {
-                    HelpText(stringResource(R.string.nb_login_browser_desc))
-                    Text(
-                        login.userCode,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
+                    if (login.userCode.isNotEmpty()) {
+                        HelpText(stringResource(R.string.nb_login_browser_desc))
+                        Text(
+                            login.userCode,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    } else {
+                        HelpText(stringResource(R.string.nb_login_browser_pkce_desc))
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Text(stringResource(R.string.nb_login_waiting), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)

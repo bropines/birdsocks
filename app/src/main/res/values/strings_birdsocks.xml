@@ -31,6 +31,7 @@
     <string name="nb_login_action_browser">Sign in with the browser</string>
     <string name="nb_login_action_key">Register with the key</string>
     <string name="nb_login_browser_desc">Finish signing in in the browser. If the page asks for a code, it is this one.</string>
+    <string name="nb_login_browser_pkce_desc">Finish signing in in the browser, then come back here.</string>
     <string name="nb_login_waiting">Waiting for the browser…</string>
     <string name="nb_login_open_again">Open again</string>
 

@@ -182,12 +182,32 @@ func Start(opt *StartOptions) error {
 func daemonEnv(opt *StartOptions, state string) []string {
 	var env []string
 	for _, kv := range os.Environ() {
-		if !strings.HasPrefix(kv, "NB_") {
+		if !strings.HasPrefix(kv, "NB_") && !strings.HasPrefix(kv, "USER=") {
 			env = append(env, kv)
 		}
 	}
 	env = append(env,
 		"HOME="+opt.DataDir,
+		// os/user without cgo reads /etc/passwd, which Android does not have,
+		// and falls back to $USER — which an app's environment lacks. NetBird
+		// asks for the user on every management and signal dial (to choose
+		// its root-only dialer) and fails the dial without one.
+		"USER=birdsocks",
+	)
+	// Go's TLS roots on Linux are /etc/ssl/certs and friends; Android keeps
+	// them in the Conscrypt APEX (Android 14+) and in /system. Without this
+	// every TLS handshake — management, signal, relay — fails with "unknown
+	// authority".
+	var caDirs []string
+	for _, d := range []string{"/apex/com.android.conscrypt/cacerts", "/system/etc/security/cacerts"} {
+		if st, err := os.Stat(d); err == nil && st.IsDir() {
+			caDirs = append(caDirs, d)
+		}
+	}
+	if len(caDirs) > 0 {
+		env = append(env, "SSL_CERT_DIR="+strings.Join(caDirs, ":"))
+	}
+	env = append(env,
 		"NB_STATE_DIR="+state,
 		// A userspace netstack instead of a kernel TUN: no VPN slot, apps
 		// reach the network through the proxy below.

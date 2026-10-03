@@ -92,7 +92,9 @@ func main() {
 	}
 	srv := grpc.NewServer(opts...)
 
-	s := server.New(ctx, *logFile, *config, false, false, false, false)
+	// Packet capture (`netbird debug capture`) on: the socket is the app's
+	// alone (0600, same UID), and it is how a tunnel problem is seen.
+	s := server.New(ctx, *logFile, *config, false, false, true, false)
 	if err := s.Start(); err != nil {
 		log.Fatalf("start daemon: %v", err)
 	}

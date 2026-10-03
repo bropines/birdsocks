@@ -49,6 +49,12 @@ object Netbird {
             if (!setupKey.isNullOrBlank()) put("setupKey", setupKey.trim())
             if (!managementUrl.isNullOrBlank()) put("managementUrl", managementUrl.trim())
             put("hostname", hostname)
+            // PKCE, the way desktop clients and NetBird's own app sign in: the
+            // browser comes back to the daemon on localhost. Without it a Linux
+            // daemon uses the device code flow, whose polling breaks behind
+            // reverse proxies that rewrite 4xx bodies; the daemon still falls
+            // back to it when the server offers no PKCE.
+            put("isUnixDesktopClient", true)
         }.toString(), 60_000)
 
     /** Blocks until the user finishes signing in in the browser; the daemon gives up after its own timeout. */
@@ -137,7 +143,7 @@ object LoginFlow {
     sealed interface State {
         data object Idle : State
         data object Working : State
-        /** The browser has to finish it: [url] opens the page, [userCode] is what it asks for. */
+        /** The browser has to finish it: [url] opens the page; [userCode], empty for PKCE, is what a device-code page asks for. */
         data class Browser(val url: String, val userCode: String) : State
         data class Failed(val message: String) : State
     }
