@@ -41,7 +41,6 @@ import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.models.NbConfig
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
 import io.github.bropines.birdsocks.ui.theme.findActivity
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.put
@@ -135,11 +134,7 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                         Text(stringResource(R.string.nb_settings_restart_needed), Modifier.weight(1f))
                         FilledTonalButton(onClick = {
                             restartNeeded = false
-                            scope.launch {
-                                NetbirdService.stop(context)
-                                NetbirdState.daemon.collectFirst { it == NetbirdState.Daemon.Stopped }
-                                NetbirdService.start(context)
-                            }
+                            NetbirdService.restart(context)
                         }) { Text(stringResource(R.string.nb_settings_restart)) }
                     }
                 }
@@ -311,9 +306,6 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
     }
 }
 
-private suspend fun <T> kotlinx.coroutines.flow.Flow<T>.collectFirst(predicate: (T) -> Boolean) {
-    first(predicate)
-}
 
 @Composable
 private fun AppearanceCard(a: Appearance) {

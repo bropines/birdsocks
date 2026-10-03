@@ -46,6 +46,7 @@ class NetbirdService : Service() {
         private const val TAG = "NetbirdService"
         const val ACTION_START = "START_ACTION"
         const val ACTION_STOP = "STOP_ACTION"
+        const val ACTION_RESTART = "RESTART_ACTION"
         private const val NOTIF_ID = 1
         private const val CHANNEL_ID = "status"
 
@@ -62,6 +63,16 @@ class NetbirdService : Service() {
             GlobalSettings.setWasRunning(context, false)
             if (NetbirdState.daemonFlow.value == NetbirdState.Daemon.Stopped) return
             context.startService(Intent(context, NetbirdService::class.java).setAction(ACTION_STOP))
+        }
+
+        /**
+         * Restarts the daemon inside the running service, for settings it reads at
+         * start. A stop and a start from outside raced: the new daemon could start
+         * in the service instance that was being destroyed, and its onDestroy killed it.
+         */
+        fun restart(context: Context) {
+            if (NetbirdState.daemonFlow.value == NetbirdState.Daemon.Stopped) return start(context)
+            ContextCompat.startForegroundService(context, Intent(context, NetbirdService::class.java).setAction(ACTION_RESTART))
         }
 
         /** Starts the service unless it runs, and waits up to 20 s for the daemon to answer. */
@@ -137,12 +148,17 @@ class NetbirdService : Service() {
         })
     }
 
+    /** The newest start; stopping for an older one must not end a service asked to run since. */
+    @Volatile private var lastStartId = 0
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         // Foreground first: Android kills a foreground-service start that has
         // not called startForeground within a few seconds, whatever it does next.
         goForeground(getString(R.string.nb_notif_starting))
         when (intent?.action) {
             ACTION_STOP -> stopDaemon()
+            ACTION_RESTART -> restartDaemon()
             // A null intent is the system restarting a killed service: bring the
             // daemon back only if the user had it on.
             null -> if (GlobalSettings.wasRunning(this)) startDaemon() else stopDaemon()
@@ -201,6 +217,11 @@ class NetbirdService : Service() {
             "SubscribeStatus", """{"getFullPeerStatus":true}""",
             onMessage = { json ->
                 val status = runCatching { AppJson.decodeFromString<NbStatus>(json) }.getOrNull() ?: return@subscribe
+                // The active profile can change under the app (a CLI, a switch
+                // that half failed): re-read it whenever the connection state moves.
+                if (status.status != NetbirdState.statusFlow.value?.status) {
+                    scope.launch { runCatching { Netbird.activeProfile() }.onSuccess { NetbirdState.profileFlow.value = it } }
+                }
                 NetbirdState.statusFlow.value = status
                 updateNotification(status)
             },
@@ -211,6 +232,20 @@ class NetbirdService : Service() {
                 }
             }
         )
+    }
+
+    private fun restartDaemon() {
+        stopping = true
+        NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopping
+        scope.launch {
+            startJob?.cancel()
+            statusSub?.cancel()
+            statusSub = null
+            runCatching { Appctr.stop() }
+            NetbirdState.statusFlow.value = null
+            NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopped
+            startDaemon()
+        }
     }
 
     private fun stopDaemon() {
@@ -257,8 +292,9 @@ class NetbirdService : Service() {
         statusSub = null
         NetbirdState.statusFlow.value = null
         NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopped
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        // Only if no start came in since: then onDestroy, which kills the
+        // daemon, cannot run under a daemon that start just launched.
+        if (stopSelfResult(lastStartId)) stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     override fun onDestroy() {
