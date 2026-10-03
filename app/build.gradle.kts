@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.screenshot)
 }
@@ -255,18 +254,11 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
     
-    // Jetpack AppFunctions API (Gemini On-Device Integration)
-    implementation(libs.androidx.appfunctions)
-    ksp(libs.androidx.appfunctions.compiler)
     
     implementation(libs.androidx.material3.adaptive)
     debugImplementation(libs.androidx.ui.tooling)
     screenshotTestImplementation(libs.screenshot.validation.api)
     screenshotTestImplementation(libs.androidx.ui.tooling)
-}
-
-ksp {
-    arg("appfunctions:aggregateAppFunctions", "true")
 }
 
 // Bundle the repository's CHANGELOG.md into the APK as assets/CHANGELOG.md so the
@@ -291,13 +283,10 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.con
     dependsOn(copyChangelogAsset)
 }
 
-// AGP's AAR-metadata check is disabled, and here is the reason it was missing:
-// androidx.appfunctions:appfunctions:1.0.0-alpha10 declares it requires Android
-// Gradle plugin 9.1.0 while this project builds on 8.13.2, so the check fails the
-// release even though the library works — the app ships fourteen AppFunctions
-// built against it. Re-enable this the moment AGP moves to 9.1.0 or the library
-// relaxes the requirement; until then, know that nothing is verifying the
-// metadata of any other dependency either.
+// AGP's AAR-metadata check is disabled: Compose material3 1.5 alphas and
+// adaptive 1.3 declare they need Android Gradle plugin 9.1.0 while this project
+// builds on 8.13.2, and the libraries work. Re-enable it when AGP moves to 9.1.0;
+// until then nothing verifies any dependency's metadata.
 tasks.matching { it.name.contains("AarMetadata") }.configureEach {
     enabled = false
 }

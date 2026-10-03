@@ -37,11 +37,20 @@ type StartOptions struct {
 	// DataDir is the app's files directory: the socket, NetBird's state and
 	// profiles live under it.
 	DataDir string
-	// SocksPort, SocksUser, SocksPass: the local SOCKS5 proxy the daemon's
-	// netstack serves on 127.0.0.1. Both credentials or neither.
+	// SocksHost, SocksPort, SocksUser, SocksPass: the SOCKS5 proxy the
+	// daemon's netstack serves; 127.0.0.1 unless the user shares it on the
+	// LAN. Both credentials or neither.
+	SocksHost string
 	SocksPort int
 	SocksUser string
 	SocksPass string
+	// Hostname is the device name the peer registers and reports.
+	Hostname string
+	// AndroidVersion, Model, Manufacturer: what the dashboard shows for the
+	// device (patch 02).
+	AndroidVersion string
+	Model          string
+	Manufacturer   string
 	// LogLevel is NetBird's: panic, fatal, error, warn, info, debug, trace.
 	LogLevel string
 	// Env is extra NAME=value lines, one per line, for the daemon (NB_*
@@ -49,9 +58,16 @@ type StartOptions struct {
 	Env string
 }
 
+// DaemonListener hears about the daemon process ending, whether it was
+// stopped or died: err is empty for a clean exit.
+type DaemonListener interface {
+	OnExit(err string)
+}
+
 var (
-	stateMu sync.Mutex
-	daemon  *exec.Cmd
+	stateMu  sync.Mutex
+	listener DaemonListener
+	daemon   *exec.Cmd
 	// daemonDone is closed when the running daemon exits.
 	daemonDone chan struct{}
 	dataDir    string
@@ -72,6 +88,13 @@ func SetDNSServers(dir, servers string) error {
 		return err
 	}
 	return os.Rename(tmp, dnsFilePath(dir))
+}
+
+// SetDaemonListener replaces the listener told when the daemon exits.
+func SetDaemonListener(l DaemonListener) {
+	stateMu.Lock()
+	listener = l
+	stateMu.Unlock()
 }
 
 // SocketPath is where the daemon serves its API, for the app's diagnostics.
@@ -110,6 +133,7 @@ func Start(opt *StartOptions) error {
 		"-log-file", "console",
 		"-log-level", level,
 		"-dns-file", dnsFilePath(opt.DataDir),
+		"-hostname", opt.Hostname,
 	)
 	cmd.Dir = opt.DataDir
 	cmd.Env = daemonEnv(opt, state)
@@ -133,9 +157,17 @@ func Start(opt *StartOptions) error {
 		if daemon == cmd {
 			daemon = nil
 		}
+		l := listener
 		stateMu.Unlock()
 		closeClient()
 		close(done)
+		if l != nil {
+			msg := ""
+			if err != nil {
+				msg = err.Error()
+			}
+			l.OnExit(msg)
+		}
 	}()
 	return nil
 }
@@ -157,8 +189,19 @@ func daemonEnv(opt *StartOptions, state string) []string {
 		// reach the network through the proxy below.
 		"NB_USE_NETSTACK_MODE=true",
 		fmt.Sprintf("NB_SOCKS5_LISTENER_PORT=%d", opt.SocksPort),
-		"NB_SOCKS5_LISTENER_ADDRESS=127.0.0.1",
 	)
+	for k, v := range map[string]string{
+		"NB_ANDROID_VERSION":      opt.AndroidVersion,
+		"NB_ANDROID_MODEL":        opt.Model,
+		"NB_ANDROID_MANUFACTURER": opt.Manufacturer,
+	} {
+		if v != "" {
+			env = append(env, k+"="+v)
+		}
+	}
+	if opt.SocksHost != "" {
+		env = append(env, "NB_SOCKS5_LISTENER_ADDRESS="+opt.SocksHost)
+	}
 	if opt.SocksUser != "" && opt.SocksPass != "" {
 		env = append(env, "NB_SOCKS5_USER="+opt.SocksUser, "NB_SOCKS5_PASS="+opt.SocksPass)
 	}

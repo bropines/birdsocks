@@ -2,7 +2,6 @@ package io.github.bropines.birdsocks.core
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.BuildConfig
 
-import io.github.bropines.birdsocks.admin.*
 import io.github.bropines.birdsocks.models.*
 import io.github.bropines.birdsocks.ui.*
 
@@ -88,26 +87,6 @@ fun safeFileName(raw: String): String? {
     val base = raw.substringAfterLast('/').substringAfterLast('\\').trim()
         .replace('\u0000', '_')
     return base.takeUnless { it.isEmpty() || it == "." || it == ".." }
-}
-
-fun logSentFile(context: Context, fileName: String, targetName: String) {
-    try {
-        val historyFile = File(context.filesDir, "sent_history.json")
-
-        val history: MutableList<SentFileEntry> = if (historyFile.exists()) {
-            val text = historyFile.readText()
-            if (text.isBlank()) mutableListOf()
-            else runCatching { AppJson.decodeFromString<List<SentFileEntry>>(text).toMutableList() }
-                .getOrDefault(mutableListOf())
-        } else {
-            mutableListOf()
-        }
-
-        history.add(0, SentFileEntry(fileName, targetName, System.currentTimeMillis()))
-        if (history.size > 50) history.removeAt(history.size - 1)
-
-        historyFile.writeText(AppJson.encodeToString<List<SentFileEntry>>(history))
-    } catch (e: Exception) {}
 }
 
 /**

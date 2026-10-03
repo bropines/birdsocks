@@ -48,12 +48,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.bropines.birdsocks.R
-import io.github.bropines.birdsocks.core.Diagnostics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URLEncoder
 
-private const val ISSUES_NEW = "https://github.com/bropines/tailsocks/issues/new"
+private const val ISSUES_NEW = "https://github.com/bropines/birdsocks/issues/new"
 
 /** GitHub takes the issue form over the URL, but a browser will not carry an unbounded one. */
 private const val BODY_LIMIT = 4000
@@ -71,7 +70,7 @@ fun IssueReportDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     var report by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        report = withContext(Dispatchers.IO) { Diagnostics.report(context) }
+        report = withContext(Dispatchers.IO) { getDebugHeader(context) }
     }
 
     val title = stringResource(R.string.issue_report_title)

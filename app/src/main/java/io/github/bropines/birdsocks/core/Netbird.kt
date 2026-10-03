@@ -1,0 +1,177 @@
+package io.github.bropines.birdsocks.core
+
+import android.content.Context
+import appctr.Appctr
+import appctr.StreamHandler
+import appctr.Subscription
+import io.github.bropines.birdsocks.models.NbConfig
+import io.github.bropines.birdsocks.models.NbLoginResponse
+import io.github.bropines.birdsocks.models.NbNetwork
+import io.github.bropines.birdsocks.models.NbNetworks
+import io.github.bropines.birdsocks.models.NbStatus
+import io.github.bropines.birdsocks.models.NbWaitSsoResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.add
+
+/**
+ * The NetBird daemon's API, as the app uses it. Every call goes through the
+ * bridge's generic Call (appctr/rpc.go): a daemon.proto method by name, its
+ * request and response as protobuf JSON. Calls block on the daemon, so they
+ * run on Dispatchers.IO; a failure throws with the daemon's own message.
+ */
+object Netbird {
+    /** The profile every call addresses; profiles beyond it come later. */
+    private const val PROFILE = "default"
+
+    suspend fun call(method: String, request: String = "", timeoutMs: Long = 15_000): String =
+        withContext(Dispatchers.IO) { Appctr.call(method, request, timeoutMs) }
+
+    private suspend inline fun <reified T> callAs(method: String, request: String = "", timeoutMs: Long = 15_000): T =
+        AppJson.decodeFromString(call(method, request, timeoutMs))
+
+    suspend fun status(): NbStatus = callAs("Status", """{"getFullPeerStatus":true}""", 5_000)
+
+    /**
+     * Registers this device: with [setupKey] it is done when this returns;
+     * without one the answer asks for an SSO login — open its URL, then [waitSso].
+     * [managementUrl] switches the profile to that server first.
+     */
+    suspend fun login(setupKey: String?, managementUrl: String?, hostname: String): NbLoginResponse =
+        callAs("Login", buildJsonObject {
+            if (!setupKey.isNullOrBlank()) put("setupKey", setupKey.trim())
+            if (!managementUrl.isNullOrBlank()) put("managementUrl", managementUrl.trim())
+            put("hostname", hostname)
+        }.toString(), 60_000)
+
+    /** Blocks until the user finishes signing in in the browser; the daemon gives up after its own timeout. */
+    suspend fun waitSso(userCode: String, hostname: String): NbWaitSsoResponse =
+        callAs("WaitSSOLogin", buildJsonObject {
+            put("userCode", userCode)
+            put("hostname", hostname)
+        }.toString(), 20 * 60_000)
+
+    /** Connects; async, so it returns before the engine is up — the status stream tells the rest. */
+    suspend fun up() { call("Up", """{"async":true}""", 30_000) }
+
+    suspend fun down() { call("Down", "", 20_000) }
+
+    /** Deregisters this peer on the server and forgets its keys. */
+    suspend fun logout() { call("Logout", "", 20_000) }
+
+    suspend fun networks(): List<NbNetwork> = callAs<NbNetworks>("ListNetworks").routes
+
+    /** Selects networks; for an exit node the daemon drops every other exit node itself. */
+    suspend fun selectNetworks(ids: List<String>, append: Boolean = true) {
+        call("SelectNetworks", buildJsonObject {
+            putJsonArray("networkIDs") { ids.forEach { add(it) } }
+            put("append", append)
+        }.toString())
+    }
+
+    suspend fun deselectNetworks(ids: List<String>) {
+        call("DeselectNetworks", buildJsonObject {
+            putJsonArray("networkIDs") { ids.forEach { add(it) } }
+        }.toString())
+    }
+
+    suspend fun config(): NbConfig = callAs("GetConfig", """{"profileName":"$PROFILE"}""")
+
+    /** Changes the profile's settings; they apply on the next connect (see [reconnect]). */
+    suspend fun setConfig(fields: JsonObjectBuilder.() -> Unit) {
+        call("SetConfig", buildJsonObject {
+            put("profileName", PROFILE)
+            fields()
+        }.toString())
+    }
+
+    /** Down and Up: what a changed setting needs to take effect. */
+    suspend fun reconnect() {
+        runCatching { down() }
+        up()
+    }
+
+    /** Opens a server stream; [onMessage] and [onEnd] run on the bridge's goroutine thread. */
+    fun subscribe(method: String, request: String, onMessage: (String) -> Unit, onEnd: (String) -> Unit): Subscription =
+        Appctr.subscribe(method, request, object : StreamHandler {
+            override fun onMessage(json: String) = onMessage(json)
+            override fun onEnd(err: String) = onEnd(err)
+        })
+}
+
+/**
+ * What the app knows about the daemon right now, for every screen and the
+ * notification. The service writes it; everything else reads.
+ */
+object NetbirdState {
+    enum class Daemon { Stopped, Starting, Running, Stopping }
+
+    internal val daemonFlow = MutableStateFlow(Daemon.Stopped)
+    val daemon: StateFlow<Daemon> = daemonFlow.asStateFlow()
+
+    internal val statusFlow = MutableStateFlow<NbStatus?>(null)
+    /** The last status the daemon streamed, null while it is not running. */
+    val status: StateFlow<NbStatus?> = statusFlow.asStateFlow()
+
+    internal val errorFlow = MutableStateFlow<String?>(null)
+    /** Why the daemon is not running when it should be: a failed start, a crash. */
+    val error: StateFlow<String?> = errorFlow.asStateFlow()
+
+    fun dismissError() { errorFlow.value = null }
+
+    val isRunning: Boolean get() = daemonFlow.value == Daemon.Running
+}
+
+/**
+ * Signing in, run in the app's scope so that leaving the screen, or the
+ * browser taking the foreground, does not cancel the wait for it.
+ */
+object LoginFlow {
+    sealed interface State {
+        data object Idle : State
+        data object Working : State
+        /** The browser has to finish it: [url] opens the page, [userCode] is what it asks for. */
+        data class Browser(val url: String, val userCode: String) : State
+        data class Failed(val message: String) : State
+    }
+
+    private val stateFlow = MutableStateFlow<State>(State.Idle)
+    val state: StateFlow<State> = stateFlow.asStateFlow()
+
+    fun reset() { stateFlow.value = State.Idle }
+
+    /**
+     * Logs in against [managementUrl] (null keeps the profile's) with [setupKey], or
+     * through the browser when there is none, then connects.
+     */
+    fun start(context: Context, managementUrl: String?, setupKey: String?) {
+        val app = context.applicationContext
+        if (stateFlow.value is State.Working || stateFlow.value is State.Browser) return
+        stateFlow.value = State.Working
+        BirdSocksApp.scope.launchIO {
+            try {
+                if (!NetbirdService.awaitRunning(app)) {
+                    stateFlow.value = State.Failed(NetbirdState.error.value ?: "The NetBird daemon did not start")
+                    return@launchIO
+                }
+                val hostname = GlobalSettings.getDeviceName(app)
+                val answer = Netbird.login(setupKey, managementUrl, hostname)
+                if (answer.needsSSOLogin) {
+                    stateFlow.value = State.Browser(answer.verificationURIComplete.ifEmpty { answer.verificationURI }, answer.userCode)
+                    Netbird.waitSso(answer.userCode, hostname)
+                }
+                Netbird.up()
+                stateFlow.value = State.Idle
+            } catch (e: Exception) {
+                stateFlow.value = State.Failed(e.message ?: e.toString())
+            }
+        }
+    }
+}

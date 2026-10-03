@@ -6,22 +6,22 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import appctr.Appctr
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.util.TimeZone
 
-/**
- * Process-wide entry point.
- *
- * Every component — activities, the foreground service, the Quick Settings tile,
- * widgets and broadcast receivers — runs in this process, and some of them (the
- * tile in particular) used to read daemon state before any of them had handed a
- * Context to [ProxyState]. Initialising it here makes the state helpers usable
- * from any entry point without each one having to remember to bootstrap them.
- */
+/** Process-wide entry point. */
 class BirdSocksApp : Application() {
+    companion object {
+        /** Work that must outlive a screen — a sign-in waiting on the browser. */
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    }
+
     override fun onCreate() {
         super.onCreate()
-        ProxyState.init(this)
-        ProfileHostinfo.migrateGlobalKey(this)
         // Go cannot find the device's zone on its own, and the log stamps it
         // writes would be UTC; kept current when the user travels.
         applyTimeZone()
@@ -34,3 +34,5 @@ class BirdSocksApp : Application() {
         runCatching { Appctr.setTimeZone(TimeZone.getDefault().id) }
     }
 }
+
+fun CoroutineScope.launchIO(block: suspend CoroutineScope.() -> Unit): Job = launch(Dispatchers.IO, block = block)

@@ -1,0 +1,27 @@
+--- netbird_orig/client/system/info_linux.go
++++ netbird_src/client/system/info_linux.go
+@@ -34,6 +34,11 @@
+ 	if osName == "" {
+ 		osName = kernelName
+ 	}
++	// BirdSocks runs this Linux binary on Android, which has no os-release;
++	// the app says what the device is.
++	if v := os.Getenv("NB_ANDROID_VERSION"); v != "" {
++		osName, osVersion = "Android", v
++	}
+ 
+ 	systemHostname, _ := os.Hostname()
+ 
+@@ -65,6 +70,12 @@
+ 		SystemManufacturer: si.SystemManufacturer,
+ 		Environment:        si.Environment,
+ 	}
++	if v := os.Getenv("NB_ANDROID_MODEL"); v != "" {
++		gio.SystemProductName = v
++	}
++	if v := os.Getenv("NB_ANDROID_MANUFACTURER"); v != "" {
++		gio.SystemManufacturer = v
++	}
+ 
+ 	return gio
+ }

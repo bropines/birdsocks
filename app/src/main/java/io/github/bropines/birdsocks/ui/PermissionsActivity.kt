@@ -89,7 +89,7 @@ object OptionalPermissions {
         answeredInThisProcess = true
         GlobalSettings.setBoolean(context, KEY_AUTOSTART_ASK_PENDING, false)
         if (neverAgain) GlobalSettings.setBoolean(context, KEY_AUTOSTART_ASK_NEVER, true)
-        ServiceWatchdog.clearRevivalRefused(context)
+
     }
 }
 
@@ -449,7 +449,7 @@ private fun PermStateIcon(state: PermState, description: String) {
 /** Before Android 12 an exact alarm needs no permission at all. */
 private fun exactAlarmsState(context: Context): PermState = when {
     Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> PermState.NOT_APPLICABLE
-    ServiceWatchdog.canScheduleExact(context) -> PermState.GRANTED
+    (context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager).canScheduleExactAlarms() -> PermState.GRANTED
     else -> PermState.DENIED
 }
 

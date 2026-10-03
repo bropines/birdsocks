@@ -19,7 +19,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "tailscaled"
+rootProject.name = "birdsocks"
 include(":app")
 include(":appctr")
  

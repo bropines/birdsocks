@@ -35,3 +35,8 @@ make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/route.go \
     client/iface/netstack/route_test.go \
     client/iface/device/device_netstack.go
+
+# The device as the dashboard shows it: Android, its version and model, which
+# a Linux binary cannot find on its own (no os-release, no DMI).
+make_patch 02-android-system-info.patch \
+    client/system/info_linux.go

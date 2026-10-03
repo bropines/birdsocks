@@ -3,7 +3,6 @@ import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.BuildConfig
 import androidx.compose.ui.res.stringResource
 
-import io.github.bropines.birdsocks.admin.*
 import io.github.bropines.birdsocks.core.*
 import io.github.bropines.birdsocks.models.*
 
@@ -86,7 +85,7 @@ class LogsActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_CATEGORY = "category"
 
-        /** The Logs screen with one category picked, e.g. [TAILCAT_CATEGORY]. */
+        /** The Logs screen with one category picked, e.g. NETBIRD. */
         fun intent(context: Context, category: String): Intent =
             Intent(context, LogsActivity::class.java).putExtra(EXTRA_CATEGORY, category)
     }
@@ -106,135 +105,23 @@ class LogsActivity : ComponentActivity() {
     }
 }
 
-/** What tailcat connections write, by name (appctr/tailcat.go); a chip only once there is some. */
-const val TAILCAT_CATEGORY = "TAILCAT"
-
-fun getDebugHeader(context: Context): String = Diagnostics.report(context) + "\n\n"
+/** What a pasted log starts with: enough to tell builds and devices apart. */
+fun getDebugHeader(context: Context): String = buildString {
+    appendLine("BirdSocks ${io.github.bropines.birdsocks.BuildConfig.VERSION_NAME}, NetBird ${runCatching { Appctr.coreVersion() }.getOrDefault("?")}")
+    appendLine("Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT}), ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+    appendLine("Daemon: ${io.github.bropines.birdsocks.core.NetbirdState.daemon.value}, ${io.github.bropines.birdsocks.core.NetbirdState.status.value?.status ?: "no status"}")
+    appendLine()
+}
 
 /**
- * The category of the daemon's own lines: its stdout in Proxy mode (tagged by
- * the Go bridge), its file in Root Mode (parsed here). CORE is the app, ROOT
- * the app's Root Mode routing decisions, OTHER the DPI bypass, TAILCAT the
- * tailcat connections. Clearing works by this split: the daemon's lines, the
- * app's (tailcat's among them), or everything.
+ * The category of the daemon's own lines, its output as the bridge files it
+ * (appctr/core.go). CORE is the app. Clearing works by this split: the
+ * daemon's lines, the app's, or everything.
  */
-private const val DAEMON_CATEGORY = "TAILSCALE"
+private const val DAEMON_CATEGORY = "NETBIRD"
 
 /** What one Clear removes. */
 private enum class ClearScope { ALL, APP, DAEMON }
-
-/**
- * Tail reader for the Root Mode daemon log (`<dataDir>/logs/tailscaled.log`).
- * Its lines are the daemon's, so they join the TAILSCALE category, the same
- * tab the daemon's stdout fills in Proxy mode; until 4.1.1 they were a
- * separate ROOT category and shared that tab with the app's routing lines.
- *
- * The daemon appends as root and the file grows without bound; hundreds of KB
- * of netmap dumps are normal. Reading and parsing the whole file on every
- * 2-second refresh made the Logs screen crawl, so only the last [TAIL_BYTES]
- * are read, and the parse is reused until the file's length or mtime changes.
- */
-private object RootDaemonLog {
-    private const val TAIL_BYTES = 128 * 1024
-    private const val MAX_ENTRIES = 300
-
-    /** `2006/01/02 15:04:05 message`: what Go's log package writes with LstdFlags. */
-    private val lineRegex = Regex("""^(\d{4}/\d{2}/\d{2}) (\d{2}:\d{2}:\d{2}) (.*)$""")
-
-    private class Snapshot(val length: Long, val lastModified: Long, val entries: List<LogEntry>)
-
-    @Volatile
-    private var cached: Snapshot? = null
-
-    /** Drops the cached parse, e.g. after the file was truncated. */
-    fun invalidate() { cached = null }
-
-    /** Parsed entries from the end of the file; empty if it is missing or unreadable. */
-    fun tailEntries(file: File): List<LogEntry> {
-        if (!file.exists()) { cached = null; return emptyList() }
-        val length = file.length()
-        val lastModified = file.lastModified()
-        cached?.let { if (it.length == length && it.lastModified == lastModified) return it.entries }
-        val text = try {
-            readTail(file, TAIL_BYTES)
-        } catch (e: Exception) {
-            android.util.Log.e("LogsActivity", "Error reading root log file: ${e.message}")
-            return emptyList()
-        }
-        val entries = parse(text).takeLast(MAX_ENTRIES)
-        cached = Snapshot(length, lastModified, entries)
-        return entries
-    }
-
-    /**
-     * Returns at most the last [maxBytes] of [file] as text. When the read does
-     * not start at the beginning of the file the partial first line is dropped,
-     * so the result always begins on a line boundary.
-     */
-    fun readTail(file: File, maxBytes: Int): String {
-        RandomAccessFile(file, "r").use { raf ->
-            val length = raf.length()
-            val start = maxOf(0L, length - maxBytes.coerceAtLeast(0))
-            val buf = ByteArray((length - start).toInt())
-            raf.seek(start)
-            raf.readFully(buf)
-            val text = String(buf, Charsets.UTF_8)
-            if (start == 0L) return text
-            val nl = text.indexOf('\n')
-            return if (nl >= 0) text.substring(nl + 1) else ""
-        }
-    }
-
-    /**
-     * Splits daemon output into entries. A line that does not start with the
-     * Go log date and time is a continuation (multi-line netmap dumps, panics)
-     * and is appended to the previous entry. The old code took the first 19
-     * characters of every line as its timestamp, which rendered continuation
-     * lines as `netmap: self: [B06o [ROOT] netmap: self: [B06oh] ...`.
-     *
-     * The date and time are local wall-clock, the same clock the Go buffer
-     * stamps its entries with, and become the entry's [LogEntry.unix]; a line
-     * without a stamp inherits the previous entry's so it stays in place.
-     */
-    fun parse(text: String): List<LogEntry> {
-        // Not thread-safe, hence one per parse: two refresh ticks can overlap on IO.
-        val stampFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.US)
-        val unixes = ArrayList<Long>()
-        val timestamps = ArrayList<String>()
-        val messages = ArrayList<StringBuilder>()
-        for (line in text.lineSequence()) {
-            if (line.isEmpty()) continue
-            val m = lineRegex.matchEntire(line)
-            when {
-                m != null -> {
-                    val unix = try { stampFormat.parse("${m.groupValues[1]} ${m.groupValues[2]}")?.time ?: 0L } catch (e: Exception) { 0L }
-                    unixes.add(unix)
-                    timestamps.add(m.groupValues[2])
-                    messages.add(StringBuilder(m.groupValues[3]))
-                }
-                messages.isNotEmpty() -> messages.last().append('\n').append(line)
-                else -> {
-                    unixes.add(0L)
-                    timestamps.add("")
-                    messages.add(StringBuilder(line))
-                }
-            }
-        }
-        return List(timestamps.size) { i ->
-            val message = messages[i].toString()
-            LogEntry(unix = unixes[i], timestamp = timestamps[i], level = levelOf(message), category = DAEMON_CATEGORY, message = message)
-        }
-    }
-
-    private fun levelOf(message: String): String {
-        val lower = message.lowercase()
-        return when {
-            lower.contains("error") || lower.contains("failed") || lower.contains("panic") -> "ERROR"
-            lower.contains("warn") -> "WARN"
-            else -> "INFO"
-        }
-    }
-}
 
 /** Preference: whether the Logs screen also shows the process's own logcat. */
 private const val LOGCAT_PREF = "logs_include_logcat"
@@ -345,7 +232,6 @@ private const val FOLDED_LINES = 3
 /** Identity of an entry across refreshes, for the set of unfolded ones. */
 private fun foldKey(log: LogEntry): Long = log.unix * 31 + log.message.hashCode()
 
-private const val ROOT_LOG_SECTION_HEADER = "\n--- ROOT DAEMON LOGS (tailscaled.log) ---\n"
 private const val LOGCAT_SECTION_HEADER = "\n--- LOGCAT (this process) ---\n"
 
 /**
@@ -362,12 +248,8 @@ private const val CLIPBOARD_TRUNCATED_MARKER =
 fun buildFullLogString(context: Context): String {
     val header = getDebugHeader(context)
     val goLogs = try { Appctr.getLogs() } catch (e: Exception) { "" }
-    val logFile = RootUtils.rootDaemonLogFile(context)
-    val rootLogs = if (logFile.exists()) {
-        try { ROOT_LOG_SECTION_HEADER + logFile.readText() } catch (e: Exception) { "" }
-    } else ""
     val logcat = if (GlobalSettings.getBoolean(context, LOGCAT_PREF, false)) LOGCAT_SECTION_HEADER + LogcatSource.rawText() else ""
-    return header + goLogs + rootLogs + logcat
+    return header + goLogs + logcat
 }
 
 /** Drops the beginning of [text] so that at most [maxChars] remain, cutting at a line boundary. */
@@ -389,49 +271,16 @@ private fun cutToTail(text: String, maxChars: Int): String {
  */
 fun buildClipboardLogString(context: Context): Pair<String, Boolean> {
     val header = getDebugHeader(context)
-    val budget = CLIPBOARD_LOG_LIMIT - header.length - ROOT_LOG_SECTION_HEADER.length - CLIPBOARD_TRUNCATED_MARKER.length
-    var truncated = false
-
+    val budget = CLIPBOARD_LOG_LIMIT - header.length - CLIPBOARD_TRUNCATED_MARKER.length
     var goLogs = try { Appctr.getLogs() } catch (e: Exception) { "" }
-    if (goLogs.length > budget / 2) {
-        goLogs = cutToTail(goLogs, budget / 2)
-        truncated = true
-    }
-
-    val logFile = RootUtils.rootDaemonLogFile(context)
-    val rootLogs = if (logFile.exists()) {
-        try {
-            val remaining = budget - goLogs.length
-            val tail = RootDaemonLog.readTail(logFile, remaining)
-            if (logFile.length() > remaining) truncated = true
-            ROOT_LOG_SECTION_HEADER + tail
-        } catch (e: Exception) { "" }
-    } else ""
-
+    val truncated = goLogs.length > budget
+    if (truncated) goLogs = cutToTail(goLogs, budget)
     val text = buildString {
         append(header)
         if (truncated) append(CLIPBOARD_TRUNCATED_MARKER)
         append(goLogs)
-        append(rootLogs)
     }
     return text to truncated
-}
-
-/**
- * Empties the daemon log. The app can only truncate the file itself when it is
- * app-writable, which it never is in practice (the daemon creates it as root
- * and `writeText("")` fails with EACCES), so it otherwise goes through su.
- * Blocking; call from Dispatchers.IO.
- */
-private fun clearRootDaemonLogFile(context: Context): Boolean {
-    val logFile = RootUtils.rootDaemonLogFile(context)
-    val ok = when {
-        !logFile.exists() -> true
-        logFile.canWrite() && runCatching { logFile.writeText("") }.isSuccess -> true
-        else -> RootUtils.clearRootDaemonLog(context)
-    }
-    RootDaemonLog.invalidate()
-    return ok
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -460,26 +309,13 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
     var scale by remember { mutableFloatStateOf(1f) }
     val listState = rememberLazyListState()
 
-    val isRootMode = remember { GlobalSettings.isRootModeEnabled(context) }
-    val showTailcat = remember(allLogs, selectedCategory) {
-        selectedCategory == TAILCAT_CATEGORY || allLogs.any { it.category == TAILCAT_CATEGORY }
-    }
-    val categoryItems = remember(isRootMode, includeLogcat, showTailcat) {
+    val categoryItems = remember(includeLogcat) {
         val list = mutableListOf(
             SegmentedChipItem("ALL", Icons.AutoMirrored.Filled.List),
             SegmentedChipItem("ERROR", Icons.Default.Error, containerColor = Color(0xFFEF5350).copy(alpha = 0.25f), contentColor = Color(0xFFEF5350)),
             SegmentedChipItem("CORE", Icons.Default.Memory, containerColor = Color(0xFF42A5F5).copy(alpha = 0.25f), contentColor = Color(0xFF1E88E5)),
-            SegmentedChipItem("TAILSCALE", Icons.Default.VpnLock, containerColor = Color(0xFF66BB6A).copy(alpha = 0.25f), contentColor = Color(0xFF43A047))
+            SegmentedChipItem("NETBIRD", Icons.Default.VpnLock, containerColor = Color(0xFF66BB6A).copy(alpha = 0.25f), contentColor = Color(0xFF43A047))
         )
-        if (isRootMode) {
-            // The app's Root Mode work: tiers, rules, the daemon's launch. The
-            // daemon's own lines are under TAILSCALE, as in Proxy mode.
-            list.add(SegmentedChipItem("ROOT", Icons.Default.Terminal, containerColor = Color(0xFF9C27B0).copy(alpha = 0.25f), contentColor = Color(0xFF9C27B0)))
-        }
-        list.add(SegmentedChipItem("OTHER", Icons.Default.Category, containerColor = Color(0xFFFFA726).copy(alpha = 0.25f), contentColor = Color(0xFFFB8C00)))
-        if (showTailcat) {
-            list.add(SegmentedChipItem(TAILCAT_CATEGORY, Icons.Default.Pets, containerColor = Color(0xFFA1887F).copy(alpha = 0.25f), contentColor = Color(0xFFA1887F)))
-        }
         if (includeLogcat) {
             list.add(SegmentedChipItem(LOGCAT_CATEGORY, Icons.Default.BugReport, containerColor = Color(0xFF26A69A).copy(alpha = 0.25f), contentColor = Color(0xFF26A69A)))
         }
@@ -530,19 +366,6 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
             var logsList: List<LogEntry> = if (jsonString.isBlank()) emptyList()
                 else runCatching { AppJson.decodeFromString<List<LogEntry>>(jsonString) }.getOrDefault(emptyList())
 
-            if (GlobalSettings.isRootModeEnabled(context)) {
-                val parsed = RootDaemonLog.tailEntries(RootUtils.rootDaemonLogFile(context))
-                if (parsed.isNotEmpty()) {
-                    // Both sources carry epoch millis, so the merge is by that.
-                    // Until 4.1.1 this sorted by seconds since midnight, which put
-                    // yesterday's "16:43" from the Go buffer (alive as long as the
-                    // app process) after today's "11:27" from the daemon file
-                    // (only its last minutes are read) — the bottom of the screen
-                    // was stale. sortedBy is stable: entries from one source keep
-                    // their original order when they share a millisecond.
-                    logsList = (logsList + parsed).sortedBy { it.unix }
-                }
-            }
             if (includeLogcat) {
                 val lines = LogcatSource.entries(logcatSince)
                 if (lines.isNotEmpty()) logsList = (logsList + lines).sortedBy { it.unix }
@@ -564,8 +387,7 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
      */
     fun clearLogs(scope: ClearScope) {
         coroutineScope.launch(Dispatchers.IO) {
-            val fileOk = scope == ClearScope.APP ||
-                !GlobalSettings.isRootModeEnabled(context) || clearRootDaemonLogFile(context)
+            val fileOk = true
             when (scope) {
                 ClearScope.ALL -> Appctr.clearLogs()
                 ClearScope.APP -> Appctr.clearLogsWhere(DAEMON_CATEGORY, true)
@@ -628,16 +450,7 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
                         onBack = onBack,
                         actions = {
                             IconButton(onClick = {
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    Appctr.flushDNS()
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, context.getString(R.string.logs_dns_flushed), Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }) { Icon(Icons.Default.CleaningServices, contentDescription = stringResource(R.string.logs_cd_flush_dns)) }
-
-                            IconButton(onClick = {
-                                // Reads the root daemon log and calls JNI — off the main thread.
+                                // Calls JNI — off the main thread.
                                 coroutineScope.launch(Dispatchers.IO) {
                                     val (text, truncated) = buildClipboardLogString(context)
                                     withContext(Dispatchers.Main) {
@@ -656,7 +469,7 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
                                 }
                             }) { Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.action_copy)) }
                             
-                            IconButton(onClick = { saveFileLauncher.launch("tailsocks_logs_${System.currentTimeMillis()}.txt") }) { Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save)) }
+                            IconButton(onClick = { saveFileLauncher.launch("birdsocks_logs_${System.currentTimeMillis()}.txt") }) { Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save)) }
 
                             IconButton(onClick = {
                                 includeLogcat = !includeLogcat

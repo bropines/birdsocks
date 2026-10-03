@@ -41,6 +41,7 @@ func main() {
 	config := flag.String("config", "", "the default profile's config file")
 	logFile := flag.String("log-file", "console", "where the log goes: a path or console")
 	logLevel := flag.String("log-level", "info", "log level")
+	hostname := flag.String("hostname", "", "the name this device registers and reports under")
 	dnsServers := flag.String("dns-file", "", "the network's DNS servers, one per line, kept current by the app")
 	flag.Parse()
 	if *socket == "" || *config == "" {
@@ -62,6 +63,12 @@ func main() {
 	// The server reads its connection state from the context, as the
 	// desktop service sets it up before creating one.
 	ctx = internal.CtxInitState(ctx)
+	// Every request the daemon makes — the Up after login included, which
+	// carries no name of its own — reports this device name; without it the
+	// peer would call itself by os.Hostname(), "localhost" on Android.
+	if *hostname != "" {
+		ctx = context.WithValue(ctx, system.DeviceNameCtxKey, *hostname) //nolint:staticcheck
+	}
 
 	system.UpdateStaticInfoAsync()
 

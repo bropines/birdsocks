@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nb_on">Вкл.</string>
+
+    <string name="nb_status_idle">Не подключено</string>
+    <string name="nb_status_idle_desc">NetBird запущен, но не подключён</string>
+    <string name="nb_status_stopping">Остановка…</string>
+    <string name="nb_status_connected_desc">Подключено узлов: %1$d из %2$d</string>
+    <string name="nb_status_connecting_desc">Связь с сервером управления…</string>
+    <string name="nb_status_login_desc">Войдите, чтобы добавить устройство в сеть</string>
+    <string name="nb_action_connect">Подключить</string>
+
+    <string name="nb_menu_peers">Узлы</string>
+    <string name="nb_menu_peers_count">Узлы %1$d/%2$d</string>
+    <string name="nb_menu_networks">Сети</string>
+    <string name="nb_address_name">Имя</string>
+    <string name="nb_socks_title">Прокси SOCKS5</string>
+    <string name="nb_exit_node">Выходной узел</string>
+    <string name="nb_exit_node_none">Нет — интернет напрямую</string>
+
+    <string name="nb_login_title">Вход в NetBird</string>
+    <string name="nb_login_cloud">NetBird Cloud</string>
+    <string name="nb_login_self_hosted">Свой сервер</string>
+    <string name="nb_login_server">Сервер управления</string>
+    <string name="nb_login_use_setup_key">По ключу установки</string>
+    <string name="nb_login_setup_key">Ключ установки (setup key)</string>
+    <string name="nb_login_action_browser">Войти через браузер</string>
+    <string name="nb_login_action_key">Зарегистрировать по ключу</string>
+    <string name="nb_login_browser_desc">Завершите вход в браузере. Если страница спросит код — вот он.</string>
+    <string name="nb_login_waiting">Ждём браузер…</string>
+    <string name="nb_login_open_again">Открыть снова</string>
+
+    <string name="nb_peers_search">Имя или адрес</string>
+    <string name="nb_peers_filter_all">Все</string>
+    <string name="nb_peers_filter_connected">Подключены</string>
+    <string name="nb_peers_filter_idle">Ожидают</string>
+    <string name="nb_peers_empty">Узлов нет</string>
+    <string name="nb_peers_daemon_off">BirdSocks не запущен</string>
+    <string name="nb_peer_direct">P2P</string>
+    <string name="nb_peer_relayed">Через relay</string>
+    <string name="nb_peer_path">Соединение</string>
+    <string name="nb_peer_relay">Relay</string>
+    <string name="nb_peer_ice">ICE-кандидаты</string>
+    <string name="nb_peer_endpoint">Адрес узла</string>
+    <string name="nb_peer_latency">Задержка</string>
+    <string name="nb_peer_handshake">Последнее рукопожатие</string>
+    <string name="nb_peer_transfer">Трафик</string>
+    <string name="nb_peer_pubkey">Публичный ключ</string>
+
+    <string name="nb_networks_selected">Выбрано %1$d из %2$d</string>
+    <string name="nb_networks_all">Все</string>
+    <string name="nb_networks_none">Ничего</string>
+    <string name="nb_networks_empty">С этим устройством не поделились сетями</string>
+    <string name="nb_networks_via">через %1$s</string>
+
+    <string name="nb_notif_starting">Запуск…</string>
+    <string name="nb_notif_connecting">Подключение…</string>
+    <string name="nb_notif_connected">Подключено · %1$s · узлов %2$d/%3$d</string>
+    <string name="nb_notif_login">Нужен вход</string>
+    <string name="nb_notif_idle">Не подключено</string>
+    <string name="nb_error_start">NetBird не запустился: %1$s</string>
+    <string name="nb_error_exit">NetBird неожиданно остановился (%1$s). Подробности — в «Логах».</string>
+
+    <string name="nb_settings_restart_needed">Перезапустите BirdSocks, чтобы изменение вступило в силу</string>
+    <string name="nb_settings_restart">Перезапустить</string>
+    <string name="nb_settings_account">Устройство и аккаунт</string>
+    <string name="nb_settings_device_name">Имя устройства</string>
+    <string name="nb_settings_device_name_desc">Так устройство видно среди узлов. NetBird берёт имя при регистрации; переименованное устройство сохраняет старое DNS-имя до новой регистрации.</string>
+    <string name="nb_settings_server">Сервер управления</string>
+    <string name="nb_settings_logout">Выйти</string>
+    <string name="nb_settings_logout_desc">Убрать устройство из сети</string>
+    <string name="nb_settings_logout_confirm">Устройство удаляется из сети и забывает свои ключи. Повторный вход зарегистрирует его как новый узел.</string>
+    <string name="nb_settings_socks_port">Порт</string>
+    <string name="nb_settings_bad_port">Порт — число от 1 до 65535</string>
+    <string name="nb_settings_socks_user">Имя пользователя</string>
+    <string name="nb_settings_socks_pass">Пароль</string>
+    <string name="nb_settings_socks_auth_desc">Прокси на localhost найдёт любое приложение на телефоне. С именем и паролем им пользуются только те, кому вы их дали. Задайте оба или ни одного.</string>
+    <string name="nb_settings_socks_lan">Раздавать в локальную сеть</string>
+    <string name="nb_settings_socks_lan_desc">Слушать на всех интерфейсах, чтобы прокси пользовались другие устройства в Wi-Fi. Сначала задайте пароль.</string>
+    <string name="nb_settings_netbird">NetBird</string>
+    <string name="nb_settings_netbird_off">Запустите BirdSocks, чтобы их менять: они хранятся в профиле NetBird.</string>
+    <string name="nb_settings_rosenpass_desc">Постквантовые ключи поверх WireGuard. Нужен на обоих узлах.</string>
+    <string name="nb_settings_rosenpass_permissive">Rosenpass, мягкий режим</string>
+    <string name="nb_settings_rosenpass_permissive_desc">Всё равно подключаться к узлам без Rosenpass.</string>
+    <string name="nb_settings_lazy">Ленивые соединения</string>
+    <string name="nb_settings_lazy_desc">Подключаться к узлу, только когда к нему идёт трафик. Бережёт батарею при множестве узлов; первый пакет подождёт.</string>
+    <string name="nb_settings_block_inbound">Блокировать входящие</string>
+    <string name="nb_settings_block_inbound_desc">Отклонять соединения, которые другие узлы открывают к этому устройству, что бы ни разрешали политики.</string>
+    <string name="nb_settings_dns">DNS NetBird</string>
+    <string name="nb_settings_dns_desc">Разрешать имена узлов и DNS-зоны сети через прокси.</string>
+    <string name="nb_settings_client_routes">Использовать сети</string>
+    <string name="nb_settings_client_routes_desc">Ходить в сети и через выходные узлы, которые маршрутизируют другие узлы.</string>
+    <string name="nb_settings_ipv6">IPv6 в сети</string>
+    <string name="nb_settings_ipv6_desc">Брать IPv6-адрес в сети, если сервер его выдаёт.</string>
+    <string name="nb_settings_daemon">Демон</string>
+    <string name="nb_settings_force_relay">Всегда через relay</string>
+    <string name="nb_settings_force_relay_desc">Никогда не соединять узлы напрямую. Для сетей, где ломаются P2P-соединения; медленнее.</string>
+    <string name="nb_settings_log_level">Подробность логов</string>
+    <string name="nb_settings_env">Переменные окружения</string>
+    <string name="nb_settings_env_desc">Пары NAME=value для демона через запятую: NB_RELAY_TRANSPORT=ws, NB_ICE_* и подобные. Для отладки.</string>
+    <string name="nb_settings_background">Фоновая работа</string>
+    <string name="nb_settings_boot">Запуск при загрузке</string>
+    <string name="nb_settings_boot_desc">Возвращаться после перезагрузки, если BirdSocks был запущен.</string>
+    <string name="nb_settings_permissions">Разрешения</string>
+    <string name="nb_settings_permissions_desc">Оптимизация батареи, уведомления, автозапуск</string>
+    <string name="nb_settings_about">О приложении</string>
+    <string name="nb_settings_daemon_version">Демон %1$s</string>
+    <string name="nb_settings_about_desc">BirdSocks запускает клиент NetBird как узел в пространстве пользователя и отдаёт его сеть приложениям через прокси SOCKS5, не занимая слот VPN. Не связан с NetBird GmbH.</string>
+</resources>

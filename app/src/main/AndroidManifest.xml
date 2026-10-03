@@ -4,21 +4,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Optional, asked for from the watchdog switch: an exact alarm's broadcast may
-         start a foreground service from the background, an inexact one may not. -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
-    
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
 
     <application
         android:name=".core.BirdSocksApp"
@@ -26,9 +15,9 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:label="@string/app_name"
-        android:icon="@mipmap/ic_launcher" 
-        android:roundIcon="@mipmap/ic_launcher_round" 
-        android:theme="@style/Theme.Tailscaled" 
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.Tailscaled"
         android:networkSecurityConfig="@xml/network_security_config"
         android:enableOnBackInvokedCallback="true"
         android:hasFragileUserData="true"
@@ -53,79 +42,15 @@
 
         <activity android:name=".ui.SettingsActivity" android:exported="false" />
         <activity android:name=".ui.PermissionsActivity" android:exported="false" />
-        <activity android:name=".ui.FirstStartActivity" android:exported="false" />
-        <activity android:name=".ui.NetcheckActivity" android:exported="false" />
-        <activity android:name=".ui.FilesActivity" android:exported="false" />
         <activity android:name=".ui.LogsActivity" android:exported="false" />
-        <activity android:name=".ui.TaildriveActivity" android:exported="false" />
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
-        <activity android:name=".ui.DnsActivity" android:exported="false" />
-        <activity android:name=".ui.ServeActivity" android:exported="false" />
-        <activity android:name=".ui.ConsoleActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".ui.PeersActivity" android:exported="false" />
-        <activity android:name=".admin.AdminApiActivity" android:exported="false" />
-
+        <activity android:name=".ui.NetworksActivity" android:exported="false" />
         <activity android:name=".ui.ToggleActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" />
 
-        <activity android:name=".ui.ShareActivity" android:exported="true" android:theme="@style/Theme.Tailscaled.Transparent">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-        </activity>
-
-        <service
-            android:name=".core.TailcatService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="tailcat port forwarding" />
+        <!-- The NetBird daemon's keeper (core/NetbirdService.kt). -->
+        <service android:name=".core.NetbirdService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="netbird mesh network node and its local SOCKS5 proxy" />
         </service>
-        <service android:name=".core.TailscaledService" android:directBootAware="true" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="tailscale node service" />
-        </service>
-
-        <receiver android:name=".core.WatchdogReceiver" android:enabled="true" android:exported="false">
-            <intent-filter>
-                <action android:name="io.github.bropines.birdsocks.WATCHDOG_CHECK" />
-            </intent-filter>
-        </receiver>
-
-        <service
-            android:name=".core.TunVpnService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse"
-            android:permission="android.permission.BIND_VPN_SERVICE">
-            <intent-filter>
-                <action android:name="android.net.VpnService" />
-            </intent-filter>
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="vpn tunnel service" />
-        </service>
-
-        <activity
-            android:name=".core.TunPermissionActivity"
-            android:exported="false"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:excludeFromRecents="true" />
-
-        <activity
-            android:name=".ui.TunExcludedAppsActivity"
-            android:label="@string/title_activity_tun_excluded_apps"
-            android:exported="false" />
 
         <service android:name=".core.ProxyTileService" android:exported="true" android:label="BirdSocks" android:icon="@drawable/ic_qs_tile" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
@@ -140,98 +65,5 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-
-        <!-- Tasker & Automation Integration Receiver -->
-        <receiver android:name=".core.TaskerReceiver" android:enabled="true" android:exported="true">
-            <intent-filter>
-                <action android:name="io.github.bropines.birdsocks.action.CONNECT" />
-                <action android:name="io.github.bropines.birdsocks.action.DISCONNECT" />
-                <action android:name="io.github.bropines.birdsocks.action.TOGGLE" />
-                <action android:name="io.github.bropines.birdsocks.action.RESTART" />
-                <action android:name="io.github.bropines.birdsocks.action.GET_STATUS" />
-                <action android:name="io.github.bropines.birdsocks.action.SET_EXIT_NODE" />
-                <action android:name="io.github.bropines.birdsocks.action.SWITCH_ACCOUNT" />
-                <action android:name="io.github.bropines.birdsocks.action.SET_BYEDPI" />
-                <action android:name="io.github.bropines.birdsocks.action.SET_TUN" />
-                <action android:name="io.github.bropines.birdsocks.START" />
-                <action android:name="io.github.bropines.birdsocks.STOP" />
-                <action android:name="io.github.bropines.birdsocks.TOGGLE" />
-                <action android:name="io.github.bropines.birdsocks.RESTART" />
-                <action android:name="io.github.bropines.birdsocks.GET_STATUS" />
-                <action android:name="io.github.bropines.birdsocks.SET_EXIT_NODE" />
-                <action android:name="io.github.bropines.birdsocks.SWITCH_ACCOUNT" />
-                <action android:name="io.github.bropines.birdsocks.SET_BYEDPI" />
-                <action android:name="io.github.bropines.birdsocks.SET_TUN" />
-            </intent-filter>
-        </receiver>
-
-        <receiver android:name=".ui.TailDropReceiver" android:exported="false" />
-
-        <provider
-            android:name=".core.BirdsocksFileProvider"
-            android:authorities="${applicationId}.documents"
-            android:exported="true"
-            android:grantUriPermissions="true"
-            android:permission="android.permission.MANAGE_DOCUMENTS">
-            <intent-filter>
-                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
-            </intent-filter>
-        </provider>
-
-        <!-- BirdSocks Switcher (Toggle) Widget -->
-        <receiver android:name=".ui.ServiceToggleWidgetReceiver" android:exported="false" android:label="BirdSocks Switcher">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="io.github.bropines.birdsocks.STATUS_CHANGED" />
-                <action android:name="io.github.bropines.birdsocks.STATUS" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.USER_PRESENT" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_service" />
-        </receiver>
-
-        <!-- Exit Node Toggle Widget -->
-        <receiver android:name=".ui.ExitNodeToggleWidgetReceiver" android:exported="false" android:label="BirdSocks Exit Node">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="io.github.bropines.birdsocks.STATUS_CHANGED" />
-                <action android:name="io.github.bropines.birdsocks.STATUS" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.USER_PRESENT" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_exit_node" />
-        </receiver>
-        <!-- AppLocalesMetadataHolderService for backward-compatible app-specific language settings -->
-        <!-- Jetpack AppFunctions Service (Gemini On-Device AI Integration) -->
-        <!-- BIND_APP_FUNCTION_SERVICE exists from API 36. Below it the platform
-             has no such permission and never binds the service, which is the
-             behaviour we want; tools:targetApi says so rather than leaving lint
-             to call it an error. -->
-        <service
-            android:name=".appfunctions.BirdSocksAppFunctionService"
-            android:exported="true"
-            android:permission="android.permission.BIND_APP_FUNCTION_SERVICE"
-            tools:targetApi="36">
-            <!-- The AppSearch apps-indexer only picks up functions whose service
-                 declares the schema and the generated v2 metadata asset. Without
-                 these two properties the service binds but nothing is indexed, so
-                 no assistant ever sees the functions. Both files are generated by
-                 the AppFunctions KSP compiler into assets/. -->
-            <property
-                android:name="android.app.appfunctions.schema"
-                android:value="app_functions_schema.xsd" />
-            <property
-                android:name="android.app.appfunctions.v2"
-                android:value="app_functions_v2.xml" />
-            <intent-filter>
-                <action android:name="android.app.appfunctions.AppFunctionService" />
-            </intent-filter>
-        </service>
     </application>
 </manifest>

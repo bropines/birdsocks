@@ -232,7 +232,7 @@ fun BirdSocksTheme(
  
     // Shared preferences listener to instantly trigger updates on back press / background screens
     DisposableEffect(context) {
-        val sharedPrefs = context.getSharedPreferences("tailsocks_global", Context.MODE_PRIVATE)
+        val sharedPrefs = context.getSharedPreferences("global_settings", Context.MODE_PRIVATE)
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
                 "app_theme" -> resolvedTheme = GlobalSettings.getAppTheme(context)

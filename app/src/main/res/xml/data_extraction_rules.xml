@@ -1,21 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Cloud backup is disabled app-wide (android:allowBackup="false"), but Android 12+
-    device-to-device transfer is governed here. Without a policy the Tailscale Admin
-    API token, the automation secret and the tailscaled state files (node private
-    keys) would travel to a new device on a D2D transfer. Exclude them.
+    device-to-device transfer is governed here. Without a policy the SOCKS5
+    password and NetBird's profiles (the node's WireGuard and SSH private keys)
+    would travel to a new device. Exclude them.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="admin_api_keys.xml" />
-        <exclude domain="sharedpref" path="tailsocks_global.xml" />
-        <exclude domain="file" path="states" />
-        <exclude domain="file" path="taildrop" />
+        <exclude domain="sharedpref" path="global_settings.xml" />
+        <exclude domain="file" path="netbird" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="sharedpref" path="admin_api_keys.xml" />
-        <exclude domain="sharedpref" path="tailsocks_global.xml" />
-        <exclude domain="file" path="states" />
-        <exclude domain="file" path="taildrop" />
+        <exclude domain="sharedpref" path="global_settings.xml" />
+        <exclude domain="file" path="netbird" />
     </device-transfer>
 </data-extraction-rules>
