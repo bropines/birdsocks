@@ -275,25 +275,25 @@ TailSocks supports background control via **Android Broadcast Intents**. You can
 
 **A secret token is required.** Set one under **Settings → Automation & API** (there is a *Generate* button) and pass it with every intent as the string extra `secret` (`token` and `key` are accepted too). Since 4.0.0 the receiver ignores every intent until a token is configured, so no other app on the device can stop your VPN or reroute traffic.
 
-* **Target Receiver:** `io.github.bropines.tailscaled/.core.TaskerReceiver` (package `io.github.bropines.tailscaled`)
-* **Supported Actions** (each also has a short alias, e.g. `io.github.bropines.tailscaled.START`):
-  * `io.github.bropines.tailscaled.action.CONNECT` / `DISCONNECT` / `TOGGLE` / `RESTART` — control the connection
-  * `io.github.bropines.tailscaled.action.GET_STATUS` — refreshes the widgets/tile state (the `STATUS_CHANGED` broadcast is not visible to other apps)
-  * `io.github.bropines.tailscaled.action.SET_EXIT_NODE` — extra `exit_node` (IP, or `none` to clear)
-  * `io.github.bropines.tailscaled.action.SWITCH_ACCOUNT` — extra `account` (profile name or ID)
-  * `io.github.bropines.tailscaled.action.SET_BYEDPI` — extras `enabled` (boolean), `flags` (string)
-  * `io.github.bropines.tailscaled.action.SET_TUN` — extra `enabled` (boolean)
+* **Target Receiver:** `io.github.bropines.birdsocks/.core.TaskerReceiver` (package `io.github.bropines.birdsocks`)
+* **Supported Actions** (each also has a short alias, e.g. `io.github.bropines.birdsocks.START`):
+  * `io.github.bropines.birdsocks.action.CONNECT` / `DISCONNECT` / `TOGGLE` / `RESTART` — control the connection
+  * `io.github.bropines.birdsocks.action.GET_STATUS` — refreshes the widgets/tile state (the `STATUS_CHANGED` broadcast is not visible to other apps)
+  * `io.github.bropines.birdsocks.action.SET_EXIT_NODE` — extra `exit_node` (IP, or `none` to clear)
+  * `io.github.bropines.birdsocks.action.SWITCH_ACCOUNT` — extra `account` (profile name or ID)
+  * `io.github.bropines.birdsocks.action.SET_BYEDPI` — extras `enabled` (boolean), `flags` (string)
+  * `io.github.bropines.birdsocks.action.SET_TUN` — extra `enabled` (boolean)
 
 #### ADB example
 ```bash
-adb shell am broadcast -a io.github.bropines.tailscaled.action.DISCONNECT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.DISCONNECT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 ```
 
 #### Tasker Configuration Example:
 1. Action: **System** → **Send Intent**
-2. Action: `io.github.bropines.tailscaled.action.CONNECT`
+2. Action: `io.github.bropines.birdsocks.action.CONNECT`
 3. Target: **Broadcast Receiver**
-4. Package: `io.github.bropines.tailscaled`, Class: `io.github.bropines.tailscaled.core.TaskerReceiver`
+4. Package: `io.github.bropines.birdsocks`, Class: `io.github.bropines.birdsocks.core.TaskerReceiver`
 5. Extra: `secret:YOUR_TOKEN`
 
 Full reference — every action, its extras, the status broadcast, and the AppFunctions list — in the [Tasker & Automation Guide](docs/AUTOMATION.md).

@@ -85,10 +85,10 @@ KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
 
 ## 📂 Project Layout
 
-* [`app/src/main/java/io/github/bropines/tailscaled/`](app/src/main/java/io/github/bropines/tailscaled/) — Kotlin Android source code.
-  * [`admin/`](app/src/main/java/io/github/bropines/tailscaled/admin/) — Device & network management via Tailscale Admin API.
-  * [`core/`](app/src/main/java/io/github/bropines/tailscaled/core/) — Background services, VPN tunnel, ByeDPI JNI, account storage, tasker receiver.
-  * [`ui/`](app/src/main/java/io/github/bropines/tailscaled/ui/) — Jetpack Compose dashboards, settings, serve UI, and dialogs.
+* [`app/src/main/java/io/github/bropines/birdsocks/`](app/src/main/java/io/github/bropines/birdsocks/) — Kotlin Android source code.
+  * [`admin/`](app/src/main/java/io/github/bropines/birdsocks/admin/) — Device & network management via Tailscale Admin API.
+  * [`core/`](app/src/main/java/io/github/bropines/birdsocks/core/) — Background services, VPN tunnel, ByeDPI JNI, account storage, tasker receiver.
+  * [`ui/`](app/src/main/java/io/github/bropines/birdsocks/ui/) — Jetpack Compose dashboards, settings, serve UI, and dialogs.
 * [`appctr/`](appctr/) — Go Gomobile bridge and core engine.
   * [`patches/`](appctr/patches/) — Atomic Tailscale patch files (`01-*.patch` .. `16-*.patch`).
   * [`tailscale_src/`](appctr/tailscale_src/) — Active patched Tailscale source copy (git-ignored).
@@ -104,16 +104,16 @@ KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
   - Colors, shapes, and typography must dynamically adapt via `TailSocksTheme`, which supports multiple presets, AMOLED pure black mode, and dynamic color (`dynamicLightColorScheme` / `dynamicDarkColorScheme`). Use semantic colors (e.g., `MaterialTheme.colorScheme.surfaceContainerHigh`) rather than hardcoded hex values.
 
 * **High-Density 2×4 Grid Dashboard**:
-  - The main dashboard ([`MainActivity.kt`](app/src/main/java/io/github/bropines/tailscaled/ui/MainActivity.kt)) utilizes a dense, scroll-free vertical layout encapsulated in a `Column`.
+  - The main dashboard ([`MainActivity.kt`](app/src/main/java/io/github/bropines/birdsocks/ui/MainActivity.kt)) utilizes a dense, scroll-free vertical layout encapsulated in a `Column`.
   - Core control is a large `StatusCard` with `MaterialTheme.shapes.extraLarge` (28.dp) corners serving as the primary connection toggle.
   - Sub-menus are arranged in a 2×4 grid using `Row` components where each `MenuCard` uses `Modifier.weight(1f)` for a precise 2-column distribution.
 
 * **Component & Layout Patterns**:
-  - **Top bar**: every screen uses `AppTopBar` ([`ui/AppTopBar.kt`](app/src/main/java/io/github/bropines/tailscaled/ui/AppTopBar.kt)) — title, optional one-line subtitle, back arrow, actions — never a bare `TopAppBar`.
-  - **Corners**: three radii, from `MaterialTheme.shapes` ([`ui/theme/Shape.kt`](app/src/main/java/io/github/bropines/tailscaled/ui/theme/Shape.kt)): `small` (8.dp) for badges, tags and chips; `medium` (12.dp) for fields, buttons and rows inside a card or sheet; `large` (16.dp) for cards and banners on the screen background. Pills and bars take `CircleShape`. No literal `RoundedCornerShape(n.dp)`.
+  - **Top bar**: every screen uses `AppTopBar` ([`ui/AppTopBar.kt`](app/src/main/java/io/github/bropines/birdsocks/ui/AppTopBar.kt)) — title, optional one-line subtitle, back arrow, actions — never a bare `TopAppBar`.
+  - **Corners**: three radii, from `MaterialTheme.shapes` ([`ui/theme/Shape.kt`](app/src/main/java/io/github/bropines/birdsocks/ui/theme/Shape.kt)): `small` (8.dp) for badges, tags and chips; `medium` (12.dp) for fields, buttons and rows inside a card or sheet; `large` (16.dp) for cards and banners on the screen background. Pills and bars take `CircleShape`. No literal `RoundedCornerShape(n.dp)`.
   - **Cards & Surfaces**: Extensively use `ElevatedCard` or `Surface` with `MaterialTheme.shapes.large` for list items and configuration containers.
   - **Pull-To-Refresh**: Use Material 3's `PullToRefreshBox` with `rememberPullToRefreshState` for lists requiring manual sync (e.g., Peers list, Logs).
-  - **Horizontal Pager**: Use `HorizontalPager` for tabbed views (e.g., Serve/Funnel/Logs in [`ServeActivity.kt`](app/src/main/java/io/github/bropines/tailscaled/ui/ServeActivity.kt)).
+  - **Horizontal Pager**: Use `HorizontalPager` for tabbed views (e.g., Serve/Funnel/Logs in [`ServeActivity.kt`](app/src/main/java/io/github/bropines/birdsocks/ui/ServeActivity.kt)).
   - **Chip-Based Controls**: For mutually exclusive settings (e.g., Serve Mode [Web/TCP], Transport [HTTP/HTTPS]), use `FilterChip` organized in horizontally scrollable rows: `Row(horizontalArrangement = Arrangement.spacedBy(8.dp))`.
 
 * **Dialog & BottomSheet Patterns**:
@@ -125,14 +125,14 @@ KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
   - **Preference Sync**: Use `DisposableEffect` with `SharedPreferences.OnSharedPreferenceChangeListener` to react to global/account preference changes instantly across the app.
   - **Side Effects**: Use `LaunchedEffect` and `CoroutineScope(Dispatchers.IO)` for backend API calls via `Appctr`, returning state to the main thread via `withContext(Dispatchers.Main)`. Never block the UI thread during JNI calls.
 
-* **KISS & DRY Principles**: Keep code simple and reusable. Reuse common utilities in [`Utils.kt`](app/src/main/java/io/github/bropines/tailscaled/core/Utils.kt) and preferences in [`GlobalSettings.kt`](app/src/main/java/io/github/bropines/tailscaled/core/GlobalSettings.kt).
+* **KISS & DRY Principles**: Keep code simple and reusable. Reuse common utilities in [`Utils.kt`](app/src/main/java/io/github/bropines/birdsocks/core/Utils.kt) and preferences in [`GlobalSettings.kt`](app/src/main/java/io/github/bropines/birdsocks/core/GlobalSettings.kt).
 
 ---
 
 ## 📝 Versioning & CI/CD Integration
 
 * **The version is [`version.properties`](version.properties)**: `VERSION_NAME` and `VERSION_CODE` (major×1000000 + minor×10000 + patch×100). The release commit bumps both and is tagged `v<VERSION_NAME>`; CI refuses a tag that disagrees, and F-Droid reads the two lines from the tag to find updates. `versionName` is exactly `4.5.2` in a release and `4.5.2-dev` in a debug build; the commit is `BuildConfig.GIT_HASH`, shown in About and in the diagnostics. Builds up to 4.5.1 read `v4.5.1-c76dbb.release`, so version parsing in Kotlin (`isVersionNewer`) still drops a `v` prefix and everything after `-`.
-* **Release builds are reproducible — keep them so.** F-Droid rebuilds each release APK and ships ours only if its build matches byte for byte (docs/DISTRIBUTION.md, "Reproducible build"). So: one APK for every channel — never a build-time difference between GitHub and F-Droid; the GitHub updater is gated at run time by `UpdateChannel.selfUpdate()`, and anything new that fetches or installs an APK goes behind it. Nothing in the build may depend on the clock, the checkout path, git state or the runner's defaults (the core is built in `/home/vagrant/build/io.github.bropines.tailscaled` with the pinned Go and NDK). `-PselfUpdate=false` still exists for builders that do not reproduce the release.
+* **Release builds are reproducible — keep them so.** F-Droid rebuilds each release APK and ships ours only if its build matches byte for byte (docs/DISTRIBUTION.md, "Reproducible build"). So: one APK for every channel — never a build-time difference between GitHub and F-Droid; the GitHub updater is gated at run time by `UpdateChannel.selfUpdate()`, and anything new that fetches or installs an APK goes behind it. Nothing in the build may depend on the clock, the checkout path, git state or the runner's defaults (the core is built in `/home/vagrant/build/io.github.bropines.birdsocks` with the pinned Go and NDK). `-PselfUpdate=false` still exists for builders that do not reproduce the release.
 * **`tailsocks://` links open screens and nothing else** (`ui/DeepLinks.kt`, handled in `MainActivity.handleIntent`; table in `docs/AUTOMATION.md`). Never let a link change state — that is the token-guarded `TaskerReceiver`'s job. When driving a device, `adb shell am start -a android.intent.action.VIEW -d tailsocks://tailcat` beats tapping through menus.
 * **Tailcat runs in the bridge, in the app process** (`appctr/tailcat.go` for connections, `appctr/tailcat_server.go` for this phone as a server, `TailcatService`, `TailcatScreen` — the Tailcat side of `ServeActivity`), not in the daemon: its clients have their own WireGuard engines and network monitors, which find interfaces through the getter in `appctr/netmon_android.go` and are woken on network changes by `netmon.WakePollingMonitors` (patch 21) via `InjectNetworkState`. So anything that reports the network to the bridge must keep doing so with the daemon stopped. The client key is a file (`files/tailcat/client.key`), never a preference. A connection's output goes to its card and to the shared log (category TAILCAT, and logcat); `TC_BIN=<tailcat> go test -run 'TestTailcat(Server)?Live'` in `appctr` exercises both against the real CLI. The server key (`files/tailcat/server.json`) has its relay region fixed, so the address survives restarts. A card's switch is remembered (`enabled`): `TailscaledService` calls `TailcatService.resume` in `startTailscale()` and `suspend` in `stopMe()`.
 * **One APK per ABI**: each split carries `VERSION_CODE` + 1–4 (armeabi-v7a, arm64-v8a, x86, x86_64), the universal APK `VERSION_CODE`. `-PtargetAbi=<abi>` and `TS_ABIS=<abi>` build a single ABI.
@@ -161,7 +161,7 @@ KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
    - Do NOT commit files inside `.agents/`, `.skills/`, `skills-lock.json`, or `.gemini/` directories. Verify that these remain untracked using `git status`.
 4. **Devices and how to drive them**:
    - Test devices arrive over `adb connect` from the author: a non-rooted daily phone, a rooted phone (APatch), and a Magisk WSA image (x86_64). Root Mode work can only be verified on the rooted ones.
-   - On a release build the app's components are not exported, so `adb shell am start`/`am broadcast` cannot reach them. Two ways in: drive the UI with `uiautomator dump` plus `input tap`, or, on a rooted device, go through a root shell — `su -c 'am start-foreground-service -n io.github.bropines.tailscaled/.core.TailscaledService -a START_ACTION'`.
+   - On a release build the app's components are not exported, so `adb shell am start`/`am broadcast` cannot reach them. Two ways in: drive the UI with `uiautomator dump` plus `input tap`, or, on a rooted device, go through a root shell — `su -c 'am start-foreground-service -n io.github.bropines.birdsocks/.core.TailscaledService -a START_ACTION'`.
    - **On WSA prefer the root shell.** `uiautomator dump` there returns `null root node` whenever the Windows-side window is unfocused, so the UI route is unreliable on exactly the image most often used for Root Mode work.
 5. **CRITICAL ADB & Data Preservation Rules**:
    - **NEVER execute `adb uninstall` without explicit user permission.**

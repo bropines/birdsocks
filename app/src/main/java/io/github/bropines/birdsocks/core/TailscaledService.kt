@@ -1,0 +1,2591 @@
+package io.github.bropines.birdsocks.core
+import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.BuildConfig
+
+import io.github.bropines.birdsocks.admin.*
+import io.github.bropines.birdsocks.models.*
+import io.github.bropines.birdsocks.ui.*
+
+import android.app.*
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.Build
+import android.os.FileObserver
+import android.os.IBinder
+import android.os.PowerManager
+import android.service.quicksettings.TileService
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import appctr.Appctr
+import appctr.Closer
+import appctr.StartOptions
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.*
+
+class TailscaledService : Service() {
+    companion object {
+        const val ACTION_APPLY_SETTINGS = "APPLY_SETTINGS"
+
+        /** The one ongoing card; TunVpnService goes foreground on it too. */
+        const val MAIN_NOTIF_ID = 1
+        private const val MAIN_CHANNEL_ID = "tailscaled_channel"
+
+        /**
+         * What the card says right now, as last posted; null while no service
+         * holds it. Every update is compared against it, so a tick that reads
+         * the same state as the one before costs no notify at all.
+         */
+        @Volatile private var shownCard: NotificationCard? = null
+        private val cardLock = Any()
+
+        /** The app's resources in the language chosen in Settings, per language. */
+        @Volatile private var localizedCache: Pair<String, Context>? = null
+
+        /**
+         * Kept for TunVpnService, which still names the card it joins "Active".
+         * The card decides what it says now; see [buildStatusNotification].
+         */
+        @Suppress("UNUSED_PARAMETER")
+        fun statusText(context: Context, status: String): String = status
+
+        /**
+         * The card for a service that goes foreground on [MAIN_NOTIF_ID] —
+         * TunVpnService does. It shows what the main service last put there, so
+         * the tunnel coming up does not overwrite "Connecting…" with a word of
+         * its own, and the "nothing changed" check stays true to what is on
+         * screen. [status] is that caller's legacy word and is not shown; before
+         * the main service has said anything the card names the tunnel.
+         */
+        @Suppress("UNUSED_PARAMETER")
+        fun buildStatusNotification(context: Context, status: String): Notification {
+            val card = shownCard ?: localized(context).let {
+                NotificationCard(it.getString(R.string.app_name), it.getString(R.string.tun_notif_active))
+            }
+            return renderCard(context, card)
+        }
+
+        private fun renderCard(context: Context, card: NotificationCard): Notification {
+            val res = localized(context)
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                nm.createNotificationChannel(NotificationChannel(MAIN_CHANNEL_ID, res.getString(R.string.notif_channel_status), NotificationManager.IMPORTANCE_LOW))
+            }
+            val pendingIntent = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val stopIntent = Intent(context, TailscaledService::class.java).apply { action = "STOP_ACTION" }
+            val stopPendingIntent = PendingIntent.getService(context, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            return NotificationCompat.Builder(context, MAIN_CHANNEL_ID)
+                .setContentTitle(card.title).setContentText(card.text).setSmallIcon(android.R.drawable.ic_secure).setOngoing(true).setContentIntent(pendingIntent)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, res.getString(R.string.notif_action_stop), stopPendingIntent).build()
+        }
+
+        /**
+         * Resources in the language picked in Settings (`app_locale`).
+         *
+         * Activities get it from wrapContextWithLocale, but a service has no such
+         * hook, and that helper also moves the process default locale and asks
+         * the framework to store the choice — side effects a notification has no
+         * business causing. The platform per-app locale alone is not enough
+         * either: HyperOS accepts it and stores nothing, so the card would come
+         * out in the system language under an app shown in another. Only the
+         * configuration half is repeated here.
+         */
+        private fun localized(context: Context): Context {
+            val lang = GlobalSettings.getString(context, "app_locale", "sys")
+            if (lang == "sys") return context
+            localizedCache?.let { (cachedLang, ctx) -> if (cachedLang == lang) return ctx }
+            val base = context.applicationContext ?: context
+            val config = android.content.res.Configuration(base.resources.configuration)
+            config.setLocale(java.util.Locale.forLanguageTag(lang))
+            return base.createConfigurationContext(config).also { localizedCache = lang to it }
+        }
+        const val ACTION_STATUS_CHANGED = "io.github.bropines.birdsocks.STATUS_CHANGED"
+        const val ALIAS_STATUS_CHANGED = "io.github.bropines.birdsocks.STATUS"
+
+        /** What `tailscale up --advertise-exit-node` puts into AdvertiseRoutes. */
+        private val EXIT_NODE_ROUTES = listOf("0.0.0.0/0", "::/0")
+
+        /**
+         * Upstream resolvers used when the preference holds nothing usable.
+         * Must stay the same list the daemon falls back to, or its own bootstrap
+         * queries are redirected back into MagicDNS.
+         */
+        private val DEFAULT_DNS_FALLBACKS = listOf("1.1.1.1", "8.8.8.8")
+
+        /**
+         * Asks the service to push current preferences to the daemon.
+         *
+         * Callers outside the service (widgets, automation) must not talk to the
+         * bridge directly: in Root Mode the daemon can be alive while this process
+         * is not attached to it, and only the service knows how to attach.
+         */
+        fun requestApplySettings(context: Context) {
+            try {
+                ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, TailscaledService::class.java).apply { action = ACTION_APPLY_SETTINGS }
+                )
+            } catch (e: Exception) {
+                Log.w("TailscaledService", "Failed to request settings apply: ${e.message}")
+            }
+        }
+
+        fun sendStatusBroadcast(context: Context, statusOverride: String? = null) {
+            try {
+                val isRunning = Appctr.isRunning()
+                val activeAccount = AccountManager.getActiveAccount(context)
+                val profilePrefs = context.getSharedPreferences("appctr_${activeAccount.id}", Context.MODE_PRIVATE)
+                val exitNodeIp = profilePrefs.getString("exit_node_ip", "") ?: ""
+                val statusText = statusOverride ?: if (isRunning) "ACTIVE" else "STOPPED"
+
+                val intent = Intent(ACTION_STATUS_CHANGED).apply {
+                    setPackage(context.packageName)
+                    putExtra("running", isRunning)
+                    putExtra("status", statusText)
+                    putExtra("account", activeAccount.name)
+                    putExtra("account_id", activeAccount.id)
+                    putExtra("exit_node", exitNodeIp)
+                    putExtra("tun_enabled", GlobalSettings.isTunModeEnabled(context))
+                    putExtra("byedpi_enabled", GlobalSettings.isCPByeDpiEnabled(context))
+                }
+                context.sendBroadcast(intent)
+
+                val aliasIntent = Intent(ALIAS_STATUS_CHANGED).apply {
+                    setPackage(context.packageName)
+                    putExtra("running", isRunning)
+                    putExtra("status", statusText)
+                    putExtra("account", activeAccount.name)
+                    putExtra("account_id", activeAccount.id)
+                    putExtra("exit_node", exitNodeIp)
+                    putExtra("tun_enabled", GlobalSettings.isTunModeEnabled(context))
+                    putExtra("byedpi_enabled", GlobalSettings.isCPByeDpiEnabled(context))
+                }
+                context.sendBroadcast(aliasIntent)
+
+                updateAllWidgets(context)
+                forceAppWidgetUpdate(context)
+            } catch (e: Exception) {
+                Log.e("TailscaledService", "Failed to send status broadcast: ${e.message}")
+            }
+        }
+    }
+    private val TAG = "TailscaledService"
+    private val notificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+    private var wakeLock: PowerManager.WakeLock? = null
+    /** ByeDPI run state: written from buildStartOptions() on the start and the
+     *  APPLY_SETTINGS threads, from shutdownDaemon() on the teardown thread and
+     *  from onDestroy() on main, so every reader needs the latest value. */
+    @Volatile private var byedpiProxyAddress: Pair<String, Int>? = null
+    @Volatile private var lastStartedFlags: String? = null
+    @Volatile private var lastStartedIpv6Disabled: Boolean? = null
+    /**
+     * An apply pass has already run since the last re-arm.
+     *
+     * A latch and nothing else: it answers "is there anything left to try this
+     * cycle?", never "are there rules on the device". Those two used to share one
+     * field, so re-arming the latch also told the not-Running branch there was
+     * nothing to clean up. What is actually installed is recorded by
+     * `root_routing_installed`, which survives the app being killed with the
+     * ruleset up — the one thing an in-memory flag cannot do.
+     */
+    @Volatile private var rootRoutingPassDone = false
+    /** Consecutive non-Running ticks; routing is only torn down after a couple of
+     *  them so a brief state flap does not thrash iptables through `su`. */
+    @Volatile private var rootNotRunningTicks = 0
+    /**
+     * Consecutive failed routing attempts for one set of inputs; retrying forever
+     * through `su` is noise.
+     *
+     * The bound is per ruleset, not per session. [failedRootRoutingInputs] records
+     * what the attempts were spent on and the apply starts the count over as soon
+     * as those inputs differ, so a device where this ruleset genuinely cannot be
+     * installed is not asked again on every network flap, while a real change is
+     * never held back by an earlier failure. Every re-check used to clear the
+     * counter instead, which meant the bound never bound anything.
+     */
+    @Volatile private var rootRoutingFailures = 0
+    /** The root-shell-free inputs the failures above were counted against. */
+    @Volatile private var failedRootRoutingInputs: String? = null
+    private val maxRootRoutingAttempts = 3
+    /** An apply is on a `su` thread right now; a second one must not overlap it. */
+    @Volatile private var rootRoutingInFlight = false
+    /** A teardown is on a `su` thread right now; an apply must not overlap it
+     *  either, and a second teardown must not queue up behind it. */
+    @Volatile private var rootCleanupInFlight = false
+    /**
+     * Bumped by every teardown of the Root Mode ruleset.
+     *
+     * An apply carries the value it started with and discards its result once it
+     * no longer matches. Without that, a teardown landing while an apply sits in
+     * its `su` shell leaves the rules that apply installed live on the device
+     * while the service believes they are gone — and the signature it recorded on
+     * its way out makes the next apply a no-op, so nothing ever removes them.
+     */
+    private val rootRoutingGeneration = java.util.concurrent.atomic.AtomicInteger()
+    /**
+     * The inputs the currently installed ruleset was built from.
+     *
+     * An apply tears the system-wide DNS chain down before rebuilding it, so
+     * re-running it for an unchanged ruleset is a device-wide DNS gap for
+     * nothing. Cleared whenever the rules are removed.
+     */
+    @Volatile private var lastRootRoutingSignature: String? = null
+
+    /**
+     * The last apply put the device-wide DNS redirect (T3) on the device.
+     * The health gate below has nothing to unhook while this is false.
+     */
+    @Volatile private var rootDnsTierInstalled = false
+    /** The two nat OUTPUT jumps are off: the gate took them, or the apply never
+     *  armed them because MagicDNS was not answering when it ran. The chain
+     *  itself stays populated either way, so re-arming is those two lines and
+     *  nothing more. */
+    @Volatile private var dnsRedirectUnhooked = false
+    /** Consecutive refresh ticks in which MagicDNS did not answer. */
+    @Volatile private var magicDnsFailures = 0
+    /** Misses before the redirect comes off, for the same reason the reconnect
+     *  check waits three ticks: one unanswered probe is not an outage. */
+    private val maxMagicDnsFailures = 3
+
+    private val refreshHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile private var refreshTickRunning = false
+
+    /** Delayed "network is back" notification refresh. Held as a named Runnable
+     *  posted on refreshHandler so onDestroy can cancel it — a throwaway Handler's
+     *  callback could otherwise fire after the service was torn down. The card is
+     *  read from the daemon rather than set to "connected": a network coming
+     *  back says nothing about whether the relays are reachable again. */
+    private val networkNotifyRunnable = Runnable {
+        Thread { refreshLiveCard() }.start()
+    }
+
+    /**
+     * No default network since the last onLost. The card says so instead of
+     * reading the daemon, which keeps reporting Running for a while after the
+     * link is gone — the old card said "Waiting for network…" until the network
+     * returned, and the tick must not talk over that.
+     */
+    @Volatile private var waitingForNetwork = false
+
+    /** Until when the card is re-read quickly after a start; see followCardAfterStart. */
+    @Volatile private var cardFollowUntil = 0L
+    private val cardFollowRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * The exit node's name for the "Connected" line, by address. Resolving it
+     * takes the status with every peer in it, which is not something to pull
+     * on every tick, so it is looked up once per exit node — again only if the
+     * last lookup found no name, and then at most once a minute.
+     */
+    @Volatile private var exitNodeNameCache: Pair<String, String?>? = null
+    @Volatile private var exitNodeNameFetchedAt = 0L
+
+    /** Coalescing window for routing re-checks; see scheduleRootRoutingReapply. */
+    private val rootRoutingReapplyDelayMs = 800L
+
+    /** Deferred routing re-check. Posted on refreshHandler like its sibling
+     *  above, so onDestroy cancels it, and it does its work on a thread of its
+     *  own — the check talks to the daemon over its socket. */
+    private val rootRoutingReapplyRunnable = Runnable {
+        Thread { reevaluateRootRouting() }.start()
+    }
+
+    /**
+     * The tick queries the daemon over its socket, so it runs off the main
+     * thread and only re-schedules itself once it is done.
+     */
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            if (refreshTickRunning) return
+            refreshTickRunning = true
+            Thread {
+                val interval = try {
+                    runRefreshTick()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Refresh tick failed: ${e.message}")
+                    15000L
+                } finally {
+                    refreshTickRunning = false
+                }
+                refreshHandler.post {
+                    if (!teardownStarted) {
+                        refreshHandler.removeCallbacks(this)
+                        refreshHandler.postDelayed(this, interval)
+                    }
+                }
+            }.start()
+        }
+    }
+
+    private fun runRefreshTick(): Long {
+        // No longer need to manually check and reset Exit Nodes here,
+        // as LocalAPI synchronization in ApplySettings handles profile-dependent settings.
+        val activeAccount = AccountManager.getActiveAccount(this@TailscaledService)
+        val profilePrefs = getSharedPreferences("appctr_${activeAccount.id}", Context.MODE_PRIVATE)
+        val defaultInterval = profilePrefs.getString("refresh_interval", "15000")?.toLongOrNull() ?: 15000L
+        var interval = defaultInterval
+
+        val isRunning = Appctr.isRunning()
+        val backendState = if (isRunning) {
+            try { Appctr.getBackendState() } catch (e: Exception) { "" }
+        } else ""
+        // An in-memory copy of the bus snapshot, so reading it every tick is free.
+        val healthWarnings = readHealthWarnings(isRunning)
+
+        checkCoordinatorOsRefusal(isRunning, backendState, healthWarnings)
+
+        // First Running state of this run: the netmap (and with it drive:share)
+        // is in, so register Taildrive shares now if the start deferred it.
+        if (isRunning && backendState == "Running" && !taildriveAppliedWhileRunning) {
+            taildriveAppliedWhileRunning = true
+            applyTaildrive(this@TailscaledService)
+        }
+
+        if (GlobalSettings.isRootModeEnabled(this@TailscaledService) && GlobalSettings.isRootTunEnabled(this@TailscaledService)) {
+            // The VPN-slot callback is registered in onCreate and may have been
+            // refused; the tick is the backstop that keeps the answer current.
+            if (!vpnCallbackRegistered) refreshForeignVpnFromScan()
+            pollForeignVpnProbe()
+            if (isRunning && backendState == "Running") {
+                rootNotRunningTicks = 0
+                // The markers can be cleared from outside this service — Settings'
+                // "remove the rules" button does exactly that while the daemon keeps
+                // running. The latch would then hold back an apply that has nothing
+                // on the device behind it, so act on the disagreement rather than
+                // wait for an event that may never come.
+                if (rootRoutingPassDone && !rootRoutingInFlight && !rootCleanupInFlight &&
+                    !GlobalSettings.isRootRoutingInstalled(this@TailscaledService)
+                ) {
+                    Log.i(TAG, "Root routing rules are gone but the latch is set; re-arming")
+                    rootRoutingPassDone = false
+                    lastRootRoutingSignature = null
+                    rootDnsTierInstalled = false
+                }
+                applyRootRoutingIfNeeded("daemon is Running")
+                syncTailnetHosts()
+            } else {
+                // Asked of the device, not of the latch. Re-arming the latch for a
+                // fresh apply must not read as "nothing to clean up", and an apply
+                // that installed nothing has nothing to remove.
+                if (GlobalSettings.isRootRoutingInstalled(this@TailscaledService)) {
+                    rootNotRunningTicks++
+                    if (rootNotRunningTicks >= 2) {
+                        if (rootRoutingInFlight || rootCleanupInFlight) {
+                            // An apply is in its `su` shell right now. Tearing down
+                            // under it would remove rules it is still installing, and
+                            // it would then record a signature for a ruleset the
+                            // device does not have — which makes the next apply a
+                            // no-op. The counter is left where it is, so the next
+                            // tick acts the moment the shell is done.
+                            Log.i(TAG, "Daemon is not Running ($backendState), but root work is in flight; deferring cleanup")
+                        } else {
+                            Log.i(TAG, "Daemon is not Running ($backendState). Cleaning up tailscale0 routing.")
+                            rootRoutingPassDone = false
+                            rootNotRunningTicks = 0
+                            lastRootRoutingSignature = null
+                            rootDnsTierInstalled = false
+                            dnsRedirectUnhooked = false
+                            magicDnsFailures = 0
+                            // Bumped before the teardown starts, so an apply that
+                            // slipped past the guard above discards its own result.
+                            rootRoutingGeneration.incrementAndGet()
+                            rootCleanupInFlight = true
+                            Thread {
+                                try {
+                                    RootUtils.cleanupTailscale0Routing()
+                                    GlobalSettings.setRootRoutingInstalled(this@TailscaledService, false)
+                                    GlobalSettings.setRootRoutingYielded(this@TailscaledService, false)
+                                    GlobalSettings.setRootRoutingShared(this@TailscaledService, false)
+                                } finally {
+                                    rootCleanupInFlight = false
+                                }
+                            }.start()
+                        }
+                    }
+                }
+                if (isRunning && (backendState == "NeedsLogin" || backendState == "Starting" || backendState == "NoState")) {
+                    interval = 2000L
+                }
+            }
+            checkMagicDnsHealth()
+        }
+
+        if (checkConnectionHealth(isRunning, backendState)) {
+            interval = 5000L
+        }
+
+        // After the health check: a recovery it just started owns the card.
+        publishLiveCard(isRunning, backendState, healthWarnings)
+
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (isRunning && powerManager.isInteractive) {
+            updateAllWidgets(this@TailscaledService)
+        }
+
+        return interval
+    }
+
+    /**
+     * Installs the Root Mode ruleset, unless what is already on the device was
+     * built from the same inputs.
+     *
+     * An apply tears the system-wide DNS chain down before it rebuilds it, so
+     * repeating one that would produce an identical ruleset is a device-wide DNS
+     * gap for nothing. Every input the script depends on is folded into a
+     * signature and the `su` work is skipped while it is unchanged, which is
+     * what lets the re-apply triggers (another VPN coming or going, a settings
+     * apply, a network change) fire freely.
+     *
+     * Yielding the device-wide tiers to another VPN is not a failure: the
+     * tailnet tier is installed either way, so the attempt budget is untouched
+     * and the installed marker is still written — without it the rules that did
+     * go in could never be found and removed again.
+     */
+    private fun applyRootRoutingIfNeeded(reason: String) {
+        // A stop can begin between the tick's Root Mode check and this call.
+        // Installing a ruleset behind the teardown that was meant to remove it
+        // leaves it on the device with nothing recording it.
+        if (teardownStarted) return
+        if (rootRoutingPassDone || rootRoutingInFlight || rootCleanupInFlight) return
+
+        val dnsRedirect = GlobalSettings.getBoolean(this, "accept_dns", true) &&
+            GlobalSettings.isRootDnsRedirectEnabled(this)
+        val bypass = upstreamDnsAddresses()
+        val takeDeviceAnyway = GlobalSettings.isRootTakeDeviceAnyway(this)
+        // Read here rather than inside the signature so the values that decide
+        // the ruleset and the values it is built from are the same ones.
+        //
+        // Uids rather than package names, because a rule names a uid: an app
+        // installed, removed or restored under a different uid changes the whole
+        // ruleset without changing a single name in the list, and keying on names
+        // left exactly that case unnoticed.
+        val excludedUids = excludedAppUids().joinToString(",")
+        val excludedCidrs = GlobalSettings.getTunExcludedCIDRs(this)
+        val vpnSlotTaken = foreignVpnPresent
+        // The one input that is a property of the device rather than of a
+        // setting: the interfaces holding an address inside 100.64.0.0/10 that
+        // is not the tailnet. A carrier hands one out on the walk out of the
+        // house, and nothing else in this list moves when it does — so without
+        // it the apply would decide the ruleset is unchanged and leave that
+        // carrier's own subnet inside the tunnel until something unrelated
+        // happened to change.
+        val cgnatGuard = RootUtils.cgnatGuardSignature()
+
+        // Everything the apply reads without a root shell. The failure budget is
+        // spent against this: a budget spent on one ruleset says nothing about a
+        // different one, so a change here starts the three attempts over. That is
+        // what lets the bound hold, instead of being cleared by every re-check.
+        // The foreign tunnel's shape is in it as the tick last read it — the
+        // authoritative copy comes from the probe below, but this is free.
+        val inputs = listOf(
+            dnsRedirect.toString(),
+            bypass.joinToString(","),
+            excludedUids,
+            excludedCidrs,
+            takeDeviceAnyway.toString(),
+            vpnSlotTaken.toString(),
+            cgnatGuard,
+            lastForeignShape ?: ""
+        ).joinToString("|")
+        if (inputs != failedRootRoutingInputs) {
+            rootRoutingFailures = 0
+            failedRootRoutingInputs = null
+        }
+        if (rootRoutingFailures >= maxRootRoutingAttempts) return
+
+        rootRoutingPassDone = true
+        rootRoutingInFlight = true
+        // The teardown counter as it stands now. Anything that removes the ruleset
+        // while the `su` shell below runs bumps it, and this apply then drops what
+        // it did instead of recording it.
+        val generation = rootRoutingGeneration.get()
+
+        Thread {
+            try {
+                // ConnectivityManager only reports a tunnel this app is a member
+                // of, so the root-side probe still has to run when it says no.
+                // That probe is the expensive half, hence the short circuit.
+                val probeResult = RootUtils.detectForeignVpn()
+                val foreignVpn = vpnSlotTaken || probeResult.present
+                // The foreign tunnel's membership belongs in here: "a VPN is
+                // present" is unchanged when its owner moves an app in or out of
+                // its bypass list, but the ruleset we build from it is not.
+                val foreignShape = RootUtils.foreignRoutingShape(probeResult)
+                val signature = listOf(inputs, foreignVpn.toString(), foreignShape).joinToString("|")
+
+                if (signature == lastRootRoutingSignature) {
+                    Log.i(TAG, "Root routing re-check ($reason): inputs unchanged, leaving the rules alone")
+                    return@Thread
+                }
+
+                Log.i(TAG, "Applying Root tailscale0 routing ($reason)")
+                // Pass the Context so the SO_MARK check reads the daemon log
+                // by its canonical path. Without it the check falls back to
+                // the log of a daemon this process launched, which is unset
+                // when the app attached to one the boot script had already
+                // started — and the exit-node catch-all would then never be
+                // installed after a reboot.
+                val result = RootUtils.applyTailscale0Routing(
+                    dnsRedirect,
+                    bypass,
+                    this@TailscaledService,
+                    foreignVpn,
+                    takeDeviceAnyway,
+                    probeResult
+                )
+                if (generation != rootRoutingGeneration.get()) {
+                    // A teardown ran while this apply was in its `su` shell. Its
+                    // rules may well have landed after the teardown's did, so they
+                    // are on the device with nothing recording them. Remove them
+                    // here rather than record a ruleset the service was told to
+                    // drop — recording it would also make the next apply a no-op.
+                    Log.i(TAG, "Root routing apply superseded by a teardown; removing what it installed")
+                    rootRoutingPassDone = false
+                    lastRootRoutingSignature = null
+                    rootDnsTierInstalled = false
+                    RootUtils.cleanupTailscale0Routing()
+                    GlobalSettings.setRootRoutingInstalled(this@TailscaledService, false)
+                    GlobalSettings.setRootRoutingYielded(this@TailscaledService, false)
+                    GlobalSettings.setRootRoutingShared(this@TailscaledService, false)
+                    return@Thread
+                }
+                if (result.ok) {
+                    rootRoutingFailures = 0
+                    failedRootRoutingInputs = null
+                    lastRootRoutingSignature = signature
+                    // A fresh chain went on the device, and the apply says whether
+                    // its two nat OUTPUT jumps went in with it: the health gate
+                    // withholds them while MagicDNS is not answering, and the gate
+                    // only ever arms them again for a redirect it knows is off.
+                    // Asserting "hooked" here, as this used to, left a chain that
+                    // was deliberately built inert with nothing that would arm it —
+                    // the redirect stayed off for the session while Settings and
+                    // the ROOT log both said it was on.
+                    rootDnsTierInstalled = result.dnsChainInstalled
+                    dnsRedirectUnhooked = rootDnsTierInstalled && !result.dnsHooked
+                    magicDnsFailures = 0
+                    // Persist the fact that system rules now exist, so they
+                    // can be removed even if the app is killed or Root Mode
+                    // is switched off before the next stop.
+                    GlobalSettings.setRootRoutingInstalled(this@TailscaledService, true)
+                    // Says only whether the device-wide tiers were left to the
+                    // other tunnel; tailnet reachability is installed regardless.
+                    GlobalSettings.setRootRoutingYielded(
+                        this@TailscaledService,
+                        foreignVpn && !takeDeviceAnyway
+                    )
+                    // And whether that yield was the partial one: the tiers went in
+                    // scoped to the uid ranges the other tunnel bypasses. Yielded
+                    // alone cannot tell that from a full yield, and the dashboard
+                    // was announcing "the exit node is off" while it was in fact
+                    // carrying those apps.
+                    GlobalSettings.setRootRoutingShared(this@TailscaledService, result.shared)
+                } else {
+                    rootRoutingPassDone = false
+                    lastRootRoutingSignature = null
+                    // Read from what the script wrote, not cleared. Both verify
+                    // lines run after the DNS section and the script does not stop
+                    // at the first error, so a failed apply can leave the redirect
+                    // live — and the health gate, the only thing that can take it
+                    // back off, is disarmed while this is false. Clearing it here
+                    // meant a device that failed its three attempts kept port 53
+                    // pointed at a MagicDNS that might later stop answering, with
+                    // nothing left to notice.
+                    rootDnsTierInstalled = result.dnsChainInstalled
+                    dnsRedirectUnhooked = rootDnsTierInstalled && !result.dnsHooked
+                    failedRootRoutingInputs = inputs
+                    rootRoutingFailures++
+                    if (rootRoutingFailures >= maxRootRoutingAttempts) {
+                        Log.e(TAG, "Giving up on tailscale0 routing after $rootRoutingFailures attempts")
+                        Appctr.logAndroid(
+                            "ERROR", "ROOT",
+                            "Routing setup failed $rootRoutingFailures times — giving up until something " +
+                                "about the setup changes. Use Settings → Root Mode → Check Routing for details."
+                        )
+                    }
+                }
+            } finally {
+                rootRoutingInFlight = false
+            }
+        }.start()
+    }
+
+    /**
+     * The excluded apps as the uids the rules are actually built from.
+     *
+     * The list is stored as package names, but every rule the apply writes names
+     * a uid, and a package can appear, disappear or come back under a different
+     * one while the service runs. Resolving here is what makes the routing
+     * signature answer "would the ruleset differ?" instead of "did the user edit
+     * the list?". Packages that are not installed simply have no uid and drop
+     * out; RootUtils names them in the ROOT log when it builds the rules, so
+     * there is nothing to report from here.
+     */
+    private fun excludedAppUids(): List<Int> = runCatching {
+        val pm = packageManager
+        GlobalSettings.getTunExcludedApps(this)
+            .mapNotNull { pkg ->
+                runCatching { pm.getApplicationInfo(pkg.trim(), 0).uid }.getOrNull()
+            }
+            .distinct()
+            .sorted()
+    }.getOrDefault(emptyList())
+
+    /**
+     * Takes the device-wide DNS redirect off its hook while MagicDNS is not
+     * answering, and puts it back the moment it does.
+     *
+     * The redirect sends every port-53 packet on the device to 100.100.100.100.
+     * When the daemon stops answering there — netstack wedged, `accept-dns`
+     * turned off on the control plane, the daemon killed under us — the whole
+     * phone loses name resolution and nothing on it can say why. Unhooking gives
+     * the device its resolver back within a tick, and the chain is left populated
+     * so re-arming is the two `nat OUTPUT` jumps and nothing else.
+     *
+     * The apply's own gate feeds the same flag: a chain it built while MagicDNS
+     * was silent arrives here already marked unhooked, so the first answering
+     * tick arms it without a second apply.
+     *
+     * This rides the refresh tick that already runs. A clock of its own would
+     * wake the device for nothing, and the whole point is that the redirect is
+     * only ever a problem while the device is awake and resolving.
+     */
+    private fun checkMagicDnsHealth() {
+        if (!rootDnsTierInstalled) {
+            // Nothing of ours is on port 53. Forget the count, so a later install
+            // starts from zero rather than acting on a stale one.
+            magicDnsFailures = 0
+            dnsRedirectUnhooked = false
+            return
+        }
+        if (RootUtils.magicDnsAnswers(this)) {
+            magicDnsFailures = 0
+            if (dnsRedirectUnhooked && RootUtils.setDnsRedirectHooked(true)) {
+                dnsRedirectUnhooked = false
+                Log.i(TAG, "MagicDNS is answering again; device-wide DNS redirect re-armed")
+                Appctr.logAndroid(
+                    "INFO", "ROOT",
+                    "MagicDNS is answering again — the device-wide DNS redirect is back on"
+                )
+            }
+            return
+        }
+        if (dnsRedirectUnhooked) return
+        magicDnsFailures++
+        if (magicDnsFailures < maxMagicDnsFailures) return
+        if (RootUtils.setDnsRedirectHooked(false)) {
+            dnsRedirectUnhooked = true
+            Log.w(TAG, "MagicDNS has not answered for $magicDnsFailures ticks; unhooking the DNS redirect")
+            Appctr.logAndroid(
+                "WARN", "ROOT",
+                "MagicDNS did not answer $magicDnsFailures times in a row — the device-wide DNS redirect " +
+                    "was taken off so the phone keeps resolving names. It goes back on by itself as soon " +
+                    "as MagicDNS answers again."
+            )
+        }
+    }
+
+    /**
+     * Queues a re-evaluation of the Root Mode ruleset.
+     *
+     * Every apply spawns a `su` shell and re-scans the daemon log, and the
+     * events that call for one arrive in bursts (a tunnel coming up moves the
+     * default network too), so they are coalesced into a single deferred check.
+     */
+    private fun scheduleRootRoutingReapply(reason: String) {
+        if (teardownStarted) return
+        if (!GlobalSettings.isRootModeEnabled(this) || !GlobalSettings.isRootTunEnabled(this)) return
+        Log.i(TAG, "Root routing re-check queued: $reason")
+        refreshHandler.removeCallbacks(rootRoutingReapplyRunnable)
+        refreshHandler.postDelayed(rootRoutingReapplyRunnable, rootRoutingReapplyDelayMs)
+    }
+
+    /**
+     * Re-arms the one-shot apply latch and re-applies.
+     *
+     * The latch only. The failure budget is deliberately left where it is: it is
+     * spent per set of inputs, and the apply clears it itself as soon as those
+     * differ, so a device where this ruleset genuinely cannot be installed is not
+     * asked again on every network flap — while a real change is never held back
+     * by an earlier failure. Clearing the counter here, as this used to, made the
+     * three-attempt bound the field documents unreachable.
+     */
+    private fun reevaluateRootRouting() {
+        if (teardownStarted) return
+        if (!GlobalSettings.isRootModeEnabled(this) || !GlobalSettings.isRootTunEnabled(this)) return
+        // Only re-arm the latch. Whether the daemon is up is the refresh tick's
+        // question, and the tick is the one place that answers it correctly for
+        // a daemon this process did not launch; asking Appctr here left the
+        // re-check silently dead in exactly the Root Mode case it exists for.
+        // The signature guard in the apply keeps the extra pass cheap.
+        //
+        // The latch and nothing else. What is installed describes the device and
+        // this function changes nothing on it; clearing that too, as re-arming
+        // used to, told the not-Running branch there was no ruleset to remove.
+        rootRoutingPassDone = false
+        Log.i(TAG, "Root routing latch re-armed; running a refresh pass now")
+        // Run a pass right away rather than waiting out the refresh interval,
+        // which is 15 s by default: the user is watching the main screen when
+        // the other tunnel goes up or down, and a routing change that lands
+        // half a minute later reads as "it did not work".
+        refreshHandler.removeCallbacks(refreshRunnable)
+        refreshHandler.post(refreshRunnable)
+    }
+
+    /**
+     * Holds the CPU awake for as long as the connection is wanted.
+     *
+     * The setting is stored globally but used to be read from the per-profile
+     * store, so the lock was never taken; and even when it was, it expired after
+     * ten minutes. Without it the CPU sleeps in Doze, the daemon stops servicing
+     * its DERP/WireGuard keepalives, and the connection is dead by morning.
+     */
+    private fun acquireKeepAliveLock() {
+        if (!GlobalSettings.getBoolean(this, "force_bg", false)) return
+        try {
+            if (wakeLock?.isHeld != true) {
+                @Suppress("WakelockTimeout")
+                wakeLock?.acquire()
+                Log.i(TAG, "Keep-alive wake lock acquired for the session")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to acquire wake lock: ${e.message}")
+        }
+    }
+
+    @Volatile private var coordinatorOsRefusalReported = false
+
+    /**
+     * The coordination server refuses a registered node whose reported OS
+     * changed ("node OS changed since last connection, was node state copied
+     * between devices?") and sends it no netmap: the daemon sits in Starting
+     * with no peers and an empty CapMap, and says so only in a health warning.
+     * Measured on 2026-09-07 after "Report the real OS" was turned on for a
+     * node registered as Linux. Without this the app just said "connecting"
+     * forever; now it says what happened, once per outage. The card says it
+     * for as long as the refusal lasts: liveStatusOf reads the same warning.
+     */
+    private fun checkCoordinatorOsRefusal(isRunning: Boolean, backendState: String, warnings: List<HealthWarning>) {
+        if (!isRunning || backendState == "Running") {
+            coordinatorOsRefusalReported = false
+            return
+        }
+        if (coordinatorOsRefusalReported) return
+        if (!coordinatorRefusedOs(warnings)) return
+        coordinatorOsRefusalReported = true
+        Appctr.logAndroid(
+            "ERROR", "CORE",
+            "The coordination server refused this node: its reported OS changed since it was registered. " +
+                "Log out and log in again to register it anew, or turn \"Report the real OS\" back off."
+        )
+        ServiceWatchdog.noteCoordinatorRefusedOs(this)
+    }
+
+    /** The daemon's health warnings as the IPN bus last reported them; none without a daemon. */
+    private fun readHealthWarnings(isRunning: Boolean): List<HealthWarning> =
+        if (!isRunning) emptyList()
+        else parseHealthWarnings(runCatching { Appctr.getHealthWarningsJSON() }.getOrNull())
+
+    /**
+     * Reads the tailnet and brings the card in line with it. Off the main
+     * thread: the backend state can cost a LocalAPI round trip, and the
+     * exit node's name a status fetch. Returns what the card now says, or
+     * null when there was nothing to read yet or the card was not ours to set.
+     */
+    private fun refreshLiveCard(): CardState? {
+        val isRunning = runCatching { Appctr.isRunning() }.getOrDefault(false)
+        val backendState = if (isRunning) runCatching { Appctr.getBackendState() }.getOrDefault("") else ""
+        return publishLiveCard(isRunning, backendState, readHealthWarnings(isRunning))
+    }
+
+    /**
+     * The card for what the tick just read — the main screen's states, from
+     * the same backend state and the same settled warnings.
+     *
+     * Nothing is read while the daemon is not up: a start that has not
+     * launched it yet, a stop, a crash stand-down and an auto-reconnect each
+     * own the card while they run and say what they are doing.
+     */
+    private fun publishLiveCard(isRunning: Boolean, backendState: String, warnings: List<HealthWarning>): CardState? {
+        if (!isRunning || teardownStarted || autoRestartInFlight) return null
+        if (waitingForNetwork && runCatching { connectivityManager.activeNetwork != null }.getOrDefault(false)) {
+            // A missed onAvailable must not leave the card waiting for ever.
+            waitingForNetwork = false
+        }
+        val status = if (waitingForNetwork) LiveStatus(CardState.WAITING_FOR_NETWORK)
+            else liveStatusOf(
+                backendState, warnings, System.currentTimeMillis(),
+                dnsHasFallback = GlobalSettings.dnsHasFallback(this)
+            )
+        postLiveCard(cardFor(status))
+        return status.state
+    }
+
+    /**
+     * Posts a card read from the daemon, through the main thread and only while
+     * no teardown has begun. A reading taken on a worker just before a stop
+     * could otherwise land after the stop took the card down, and put back an
+     * ongoing card that no service owns and nothing ever removes.
+     */
+    private fun postLiveCard(card: NotificationCard) {
+        // The common tick reads what is already shown; it need not wake the main thread.
+        if (card == shownCard) return
+        refreshHandler.post {
+            if (!teardownStarted && !autoRestartInFlight) showCard(card)
+        }
+    }
+
+    /**
+     * Re-reads the card every 1.5 s for the first half-minute of a start. The
+     * tick runs every 15 s by default, and "Connecting…" held that long over a
+     * tailnet the main screen already calls connected reads as a fault. It
+     * stops the moment the card leaves Connecting, and costs nothing after.
+     */
+    private fun followCardAfterStart() {
+        cardFollowUntil = System.currentTimeMillis() + 30_000L
+        if (!cardFollowRunning.compareAndSet(false, true)) return
+        Thread {
+            try {
+                while (!teardownStarted && System.currentTimeMillis() < cardFollowUntil) {
+                    Thread.sleep(1500L)
+                    val shown = refreshLiveCard()
+                    if (shown != null && shown != CardState.CONNECTING) break
+                }
+            } catch (_: InterruptedException) {
+            } finally {
+                cardFollowRunning.set(false)
+            }
+        }.start()
+    }
+
+    /** Posts [card] unless the card already says exactly that. */
+    private fun showCard(card: NotificationCard) {
+        synchronized(cardLock) {
+            if (card == shownCard) return
+            shownCard = card
+            notificationManager.notify(MAIN_NOTIF_ID, renderCard(this, card))
+        }
+    }
+
+    /** One of the service's own moves (starting, stopping, recovering) on the card. */
+    private fun updateNotification(state: CardState) = showCard(cardFor(LiveStatus(state)))
+
+    /** What the card says now, for a path that must re-enter the foreground without reading the daemon. */
+    private fun currentCardOrConnecting(): NotificationCard =
+        shownCard ?: cardFor(LiveStatus(CardState.CONNECTING))
+
+    /**
+     * The words for [status], in the app's language. The live states borrow the
+     * main screen's own strings wherever it has them, so the two never disagree.
+     * Only CONNECTED reaches past the resources — see connectedLine.
+     */
+    private fun cardFor(status: LiveStatus): NotificationCard {
+        val res = localized(this)
+        fun card(title: Int, text: Int? = null) =
+            NotificationCard(res.getString(title), text?.let { res.getString(it) })
+        return when (status.state) {
+            CardState.CONNECTED -> NotificationCard(res.getString(R.string.notif_connected), connectedLine(res))
+            CardState.CONNECTING -> card(R.string.notif_connecting, R.string.main_status_connecting_desc)
+            CardState.DEGRADED -> NotificationCard(
+                res.getString(R.string.main_status_degraded),
+                status.issue?.let { issueTitle(res, it) }
+            )
+            CardState.NEEDS_LOGIN -> card(R.string.main_status_needs_login, R.string.notif_needs_login_text)
+            CardState.AWAITING_APPROVAL -> card(R.string.notif_awaiting_approval, R.string.notif_awaiting_approval_text)
+            CardState.OS_REFUSED -> card(R.string.coordinator_os_refused_short, R.string.notif_os_refused_text)
+            CardState.WAITING_FOR_NETWORK -> card(R.string.notif_waiting_network, R.string.notif_waiting_network_text)
+            CardState.STARTING -> card(R.string.main_status_starting)
+            CardState.RESTARTING -> card(R.string.notif_restarting)
+            CardState.RECONNECTING -> card(R.string.notif_reconnecting, R.string.notif_reconnecting_text)
+            CardState.CONNECTION_LOST -> card(R.string.notif_connection_lost, R.string.notif_connection_lost_text)
+            CardState.ROOT_FAILED -> card(R.string.notif_root_failed)
+            CardState.STOPPING -> card(R.string.notif_stopping)
+        }
+    }
+
+    /**
+     * The line under "Connected": the exit node when one carries the traffic,
+     * otherwise how the tailnet reaches apps. Root Mode yielded to another VPN
+     * leaves a selected exit node carrying nothing, and the main screen says as
+     * much, so the card names the mode then instead.
+     */
+    private fun connectedLine(res: Context): String {
+        val account = AccountManager.getActiveAccount(this)
+        val exitNodeIp = getSharedPreferences("appctr_${account.id}", Context.MODE_PRIVATE)
+            .getString("exit_node_ip", "").orEmpty()
+        val root = GlobalSettings.isRootModeEnabled(this)
+        val exitNodeInert = root && GlobalSettings.isRootRoutingYielded(this) &&
+            !GlobalSettings.isRootRoutingShared(this)
+        if (exitNodeIp.isNotBlank() && !exitNodeInert) {
+            return res.getString(R.string.main_exit_node_routed_desc, exitNodeName(exitNodeIp) ?: exitNodeIp)
+        }
+        return when {
+            root -> res.getString(R.string.notif_mode_root)
+            TunVpnService.isRunning -> res.getString(R.string.notif_mode_tun)
+            else -> res.getString(R.string.notif_mode_proxy, GlobalSettings.getSocks5BindAddr(this))
+        }
+    }
+
+    /** The exit node's host name, as the main screen shows it; see exitNodeNameCache. */
+    private fun exitNodeName(ip: String): String? {
+        val now = System.currentTimeMillis()
+        exitNodeNameCache?.let { (cachedIp, name) ->
+            if (cachedIp == ip && (name != null || now - exitNodeNameFetchedAt < 60_000L)) return name
+        }
+        exitNodeNameFetchedAt = now
+        val name = runCatching {
+            val json = Appctr.getStatusJSON(true)
+            if (json.isNullOrBlank()) null
+            else summarize(AppJson.decodeFromString<StatusResponse>(json), ip).exitNodeName
+        }.getOrNull()
+        exitNodeNameCache = ip to name
+        return name
+    }
+
+    /** The banner's title for a warning (healthTitle), outside a composition. */
+    private fun issueTitle(res: Context, w: HealthWarning): String {
+        val id = when (w.code) {
+            "no-derp-connection", "no-derp-home" -> R.string.health_relay_unreachable
+            "derp-timed-out" -> R.string.health_relay_timeout
+            "derp-region-error" -> R.string.health_relay_region
+            "not-in-map-poll" -> R.string.health_coord_unreachable
+            "mapresponse-timeout" -> R.string.health_coord_timeout
+            "tls-connection-failed" -> R.string.health_tls_failed
+            "network-status" -> R.string.health_network_down
+            "no-udp4-bind" -> R.string.health_udp_unavailable
+            "magicsock-receive-func-error" -> R.string.health_network_error
+            "login-state" -> R.string.health_login
+            else -> null
+        }
+        return id?.let { res.getString(it) } ?: w.title.ifBlank { w.code }
+    }
+
+    /** Ticks spent without reaching a connected state while the user wants one.
+     *  Touched from a fresh refresh Thread per tick, like the sibling counters. */
+    @Volatile private var unhealthyTicks = 0
+    @Volatile private var autoRestartsDone = 0
+    @Volatile private var autoRestartInFlight = false
+
+    /**
+     * Watches for a connection that never came up, or one that died on its own,
+     * and restarts the daemon when the user asked for that.
+     *
+     * A daemon waiting for the user to log in is not unhealthy, so states that
+     * need human action are left alone — restarting them would only throw the
+     * pending login away.
+     *
+     * @return true while a recovery is pending, so the caller polls faster.
+     */
+    private fun checkConnectionHealth(isRunning: Boolean, backendState: String): Boolean {
+        if (!ProxyState.isUserLetRunning(this) || teardownStarted || autoRestartInFlight) {
+            return false
+        }
+        if (!GlobalSettings.isAutoReconnectEnabled(this)) {
+            unhealthyTicks = 0
+            return false
+        }
+
+        val awaitingUser = backendState == "NeedsLogin" ||
+            backendState == "NoState" ||
+            (isRunning && runCatching { Appctr.getLoginURL().isNotEmpty() }.getOrDefault(false))
+        if (awaitingUser) {
+            unhealthyTicks = 0
+            return false
+        }
+
+        val healthy = isRunning && (backendState == "Running" || backendState == "Starting")
+        if (healthy) {
+            unhealthyTicks = 0
+            autoRestartsDone = 0
+            return false
+        }
+
+        unhealthyTicks++
+        // Three consecutive unhealthy ticks before acting, so a momentary
+        // reconnect is not answered with a full daemon restart.
+        if (unhealthyTicks < 3) return true
+
+        val limit = GlobalSettings.getAutoReconnectAttempts(this)
+        if (limit != 0 && autoRestartsDone >= limit) {
+            return false
+        }
+
+        unhealthyTicks = 0
+        restartDaemonForRecovery("Connection did not come up (state: ${backendState.ifEmpty { "stopped" }})")
+        return true
+    }
+
+    /**
+     * One bounded auto-reconnect attempt: tear the daemon down and start again,
+     * unless a manual stop, restart or start lands meanwhile. Shared by the
+     * health check (a connection that never comes up) and the crash path (a
+     * daemon that exited on its own).
+     */
+    private fun restartDaemonForRecovery(reason: String) {
+        autoRestartsDone++
+        autoRestartInFlight = true
+        Log.w(TAG, "$reason, restarting daemon (attempt $autoRestartsDone)")
+        Appctr.logAndroid("WARN", "CORE", "$reason, restarting the daemon (attempt $autoRestartsDone)")
+        updateNotification(CardState.RECONNECTING)
+
+        val gen = lifecycleGeneration.get()
+        // Published as the in-flight teardown so a START arriving meanwhile joins
+        // it and starts afterwards (see the START path) instead of doing nothing
+        // because the daemon still looked alive.
+        shutdownInFlight = Thread {
+            try {
+                stopTunMode()
+                shutdownDaemon()
+                Thread.sleep(1500)
+                if (gen != lifecycleGeneration.get() || !ProxyState.isUserLetRunning(this)) {
+                    // A manual stop, restart or start landed during the pause; a stop
+                    // must not be undone, and a start owns the service now.
+                    Log.i(TAG, "Auto-reconnect abandoned: superseded by a stop, restart or start")
+                    return@Thread
+                }
+                teardownStarted = false
+                startTailscale()
+            } finally {
+                autoRestartInFlight = false
+            }
+        }.also { it.start() }
+    }
+
+    /**
+     * The userspace daemon process exited on its own (the Go supervisor reports
+     * it through the close callback; a Stop() we asked for never gets here).
+     *
+     * A crash is not a manual Stop, so desired_running stays true and nothing
+     * here cancels the watchdog. What happens next is whatever recovery the
+     * user enabled: auto-reconnect restarts the daemon now, within its attempt
+     * limit; otherwise the service stands down with a tap-to-reconnect
+     * notification, the 15-minute watchdog revives it if that is on, and a
+     * reboot starts it again. Up to 4.1.0 this path ran stopMe(), which cleared
+     * desired_running — so a crashed daemon was treated exactly like a user
+     * pressing Stop and neither recovery ever fired.
+     */
+    private fun onDaemonExited() {
+        if (teardownStarted || !ProxyState.isUserLetRunning(this)) {
+            // A stop or restart is already in progress, or the user stopped.
+            return
+        }
+        Appctr.logAndroid("ERROR", "CORE", "The daemon exited unexpectedly")
+        if (GlobalSettings.isAutoReconnectEnabled(this) && !autoRestartInFlight) {
+            val limit = GlobalSettings.getAutoReconnectAttempts(this)
+            if (limit == 0 || autoRestartsDone < limit) {
+                restartDaemonForRecovery("The daemon exited unexpectedly")
+                return
+            }
+            Appctr.logAndroid("WARN", "CORE", "Auto-reconnect attempts exhausted ($autoRestartsDone); leaving the connection down")
+        }
+        standDownAfterCrash()
+    }
+
+    /**
+     * Like stopMe(), minus the parts that record a user decision: the wish to
+     * be connected and the watchdog alarm both survive, and a notification
+     * says what happened.
+     */
+    private fun standDownAfterCrash() {
+        if (teardownStarted) return
+        teardownStarted = true
+        refreshHandler.removeCallbacks(refreshRunnable)
+        try {
+            stopTunMode()
+        } catch (t: Throwable) {
+            Log.e(TAG, "stopTunMode failed after a daemon crash, continuing teardown", t)
+        }
+        updateNotification(CardState.CONNECTION_LOST)
+        ServiceWatchdog.noteDaemonCrashed(this)
+
+        val gen = lifecycleGeneration.incrementAndGet()
+        shutdownInFlight = Thread {
+            try {
+                shutdownDaemon()
+            } finally {
+                refreshHandler.post {
+                    if (gen != lifecycleGeneration.get()) {
+                        Log.i(TAG, "Crash stand-down superseded by a newer start")
+                        return@post
+                    }
+                    if (wakeLock?.isHeld == true) wakeLock?.release()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    updateTile()
+                    applicationContext.sendBroadcast(Intent("STOP").setPackage(packageName))
+                    sendStatusBroadcast(this, "STOPPED")
+                }
+            }
+        }.also { it.start() }
+    }
+
+    /**
+     * Upstream resolver IPs that must keep reaching port 53 directly.
+     *
+     * The system-wide DNS redirect sends every port-53 packet to MagicDNS. The
+     * daemon's own upstream queries and our local DNS proxy's fallbacks would be
+     * caught by that rule too and bounce straight back into MagicDNS, so their
+     * destinations are excluded from the redirect.
+     */
+    /**
+     * Reduces a user-entered device name to what a DNS label may contain.
+     * Trailing newlines and spaces used to be sent verbatim to the control plane.
+     */
+    private fun sanitizeHostname(raw: String): String =
+        raw.trim()
+            .replace(" ", "-")
+            .lowercase()
+            .replace(Regex("[^a-z0-9-]"), "")
+            .trim('-')
+            .take(63)
+
+    private fun upstreamDnsAddresses(): List<String> {
+        val raw = GlobalSettings.getString(this, "dns_fallbacks", "8.8.8.8:53,1.1.1.1:53")
+        // The redirect chain is IPv4-only, so only IPv4 literals are usable here.
+        val ipv4 = Regex("^\\d{1,3}(\\.\\d{1,3}){3}$")
+        return raw.split(",")
+            .map { it.trim().substringBefore(":") }
+            .filter { ipv4.matches(it) }
+            .distinct()
+            // The daemon substitutes its own defaults when this list is empty, so
+            // an empty list here means no exclusion is written for the servers it
+            // then queries — and its bootstrap lookups are redirected back into
+            // MagicDNS, which is not answering yet.
+            .ifEmpty { DEFAULT_DNS_FALLBACKS }
+    }
+
+    private lateinit var connectivityManager: ConnectivityManager
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        // Read, compared and written from a fresh Thread per network event
+        // (injectIfNeeded), so the dedup check races across concurrent events.
+        // @Volatile at least makes each event's write visible to the next.
+        @Volatile private var lastStateJson = ""
+
+        override fun onAvailable(network: Network) {
+            Log.d(TAG, "Network Available")
+            waitingForNetwork = false
+            injectIfNeeded()
+            // Post through refreshHandler (not a throwaway Handler) so onDestroy
+            // cancels this and it cannot fire after the service is gone; remove
+            // any pending one first so rapid onAvailable events do not stack.
+            refreshHandler.removeCallbacks(networkNotifyRunnable)
+            refreshHandler.postDelayed(networkNotifyRunnable, 1500)
+            scheduleRootRoutingReapply("the default network changed")
+        }
+        // Android's own verdict on whether this network reaches the internet.
+        // Worth tracking because the worst case changes nothing else: a cell
+        // that chokes under a tethered laptop keeps its interface and its
+        // address, so there is no link event of any kind, and the daemon waits
+        // out its relay backoff long after the link is back.
+        @Volatile private var networkValidated = true
+
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            // The common case is a capability update that changes nothing we
+            // care about — signal strength, metering — and it must stay free.
+            if (validated == networkValidated) return
+            if (network != connectivityManager.activeNetwork) return
+            networkValidated = validated
+            if (!validated) {
+                Log.i(TAG, "The network stopped reaching the internet")
+                return
+            }
+            Log.i(TAG, "The network reaches the internet again")
+            Thread { runCatching { Appctr.networkBecameUsable() } }.start()
+        }
+
+        override fun onLost(network: Network) {
+            Log.d(TAG, "Network Lost")
+            injectIfNeeded()
+            waitingForNetwork = true
+            if (Appctr.isRunning()) postLiveCard(cardFor(LiveStatus(CardState.WAITING_FOR_NETWORK)))
+            scheduleRootRoutingReapply("the default network went away")
+        }
+
+        /** The active network's interface, as the platform names it. */
+        private fun reportDefaultRoute() {
+            runCatching { Appctr.setDefaultRouteInterface(NetworkSnapshot.defaultRouteInterface(connectivityManager)) }
+        }
+
+        private fun injectIfNeeded() {
+            Thread {
+                try {
+                    // Which interface carries the default route. The daemon has
+                    // no way to learn this — netmon's Android backend takes it
+                    // from the app — and without it every change it sees counts
+                    // as minor, so it never rebinds its sockets or re-runs a
+                    // netcheck. Report it before the interface list: the daemon
+                    // is woken by the list and reads the name on the way in.
+                    reportDefaultRoute()
+                    // The interface list is only worth gathering for a daemon
+                    // that exists; the route name above is recorded either way,
+                    // and is handed to the next daemon when it starts.
+                    if (!Appctr.isRunning()) return@Thread
+                    val json = NetworkSnapshot.interfacesJson()
+                    if (json != lastStateJson) {
+                        lastStateJson = json
+                        Appctr.injectNetworkState(json)
+                        Log.d(TAG, "Network state changed and injected")
+                    }
+                } catch (e: Exception) { Log.e(TAG, "Inject failed: ${e.message}") }
+            }.start()
+        }
+    }
+
+    /**
+     * Whether another app holds Android's VPN slot right now.
+     *
+     * Android hands the slot to one app at a time and does not name the holder,
+     * so this only answers whether it is taken. Root Mode's device-wide tiers
+     * (the default-route capture and the system-wide DNS redirect) are yielded
+     * while it is: their rules sit below netd's own VPN rules and would take the
+     * other tunnel's apps away from it.
+     */
+    @Volatile private var foreignVpnPresent = false
+    /** Written from binder callback threads and read from the refresh tick. */
+    private val foreignVpnNetworks = java.util.Collections.synchronizedSet(HashSet<Network>())
+    @Volatile private var vpnCallbackRegistered = false
+    private var interfaceWatch: FileObserver? = null
+    /** Last answer of the cheap tunnel-interface check; a change re-arms the ruleset. */
+    @Volatile private var foreignVpnProbeSeen = false
+    /** Last known shape of the other tunnel's membership; null until first read. */
+    @Volatile private var lastForeignShape: String? = null
+    @Volatile private var foreignShapeRunning = false
+
+    /**
+     * A subscription of its own, because registerDefaultNetworkCallback only
+     * reports the network *this app* routes over: a VPN that excludes BirdSocks
+     * from its tunnel never touches our default network while it captures every
+     * other app. The default request also implicitly demands NET_CAPABILITY_NOT_VPN
+     * and would never match a VPN at all.
+     */
+    private val vpnNetworkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            note(network, runCatching { connectivityManager.getNetworkCapabilities(network) }.getOrNull())
+        }
+
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            note(network, caps)
+        }
+
+        override fun onLost(network: Network) {
+            if (foreignVpnNetworks.remove(network)) publishForeignVpnState("a VPN went away")
+        }
+
+        private fun note(network: Network, caps: NetworkCapabilities?) {
+            val foreign = caps != null &&
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                !isOwnVpnNetwork(caps)
+            val changed = if (foreign) foreignVpnNetworks.add(network) else foreignVpnNetworks.remove(network)
+            if (changed) {
+                publishForeignVpnState(if (foreign) "a VPN came up" else "a VPN went away")
+            } else if (foreign) {
+                // Kept as the fast path, not relied on: membership is part of the
+                // network's capabilities, but those are redacted for an app that
+                // is not a member — and a client that excludes us is exactly the
+                // one whose membership we care about. Measured on the device: an
+                // app moving out of another tunnel's bypass list produced no
+                // callback at all. The tick's probe below is what actually
+                // guarantees we notice.
+                scheduleRootRoutingReapply("another VPN changed which apps it carries")
+            }
+        }
+    }
+
+    /**
+     * Our own TUN mode is a VpnService like any other and must not make the app
+     * yield to itself. The owner uid is only readable by the app that owns the
+     * network, so it identifies ours exactly where the platform exposes it;
+     * below that, and where it is withheld, the TUN service's own run flag
+     * answers the same question. In Root Mode that service never runs, so
+     * nothing is filtered out there.
+     *
+     * The gate is API 30, where getOwnerUid() was made public. It used to read
+     * 29, and on Android 10 the call that the gate had just allowed threw
+     * NoSuchMethodError on ConnectivityThread — a fatal one, since that thread
+     * belongs to the framework and nothing catches for it (issue #11).
+     */
+    private fun isOwnVpnNetwork(caps: NetworkCapabilities): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val owner = caps.ownerUid
+            if (owner != android.os.Process.INVALID_UID) return owner == android.os.Process.myUid()
+        }
+        return TunVpnService.isRunning
+    }
+
+    private fun publishForeignVpnState(reason: String) {
+        setForeignVpnPresent(foreignVpnNetworks.isNotEmpty(), reason)
+    }
+
+    private fun setForeignVpnPresent(present: Boolean, reason: String) {
+        if (present == foreignVpnPresent) return
+        foreignVpnPresent = present
+        Log.i(TAG, "VPN slot is ${if (present) "held by another app" else "free"} ($reason)")
+        scheduleRootRoutingReapply(
+            if (present) "another VPN took the slot" else "the other VPN released the slot"
+        )
+    }
+
+    /**
+     * Backstop for a callback registration the system refused — both of ours are
+     * registered inside a catch that swallows the failure, so nothing else would
+     * notice. One cheap ConnectivityManager scan per refresh tick.
+     */
+    @Suppress("DEPRECATION")
+    /**
+     * Notices another tunnel coming or going, without polling anything expensive.
+     *
+     * Two reasons this exists rather than leaning on the ConnectivityManager
+     * callback alone: a VPN that excludes BirdSocks from its tunnel is not
+     * reported to us at all, so the slot can be taken and handed back without a
+     * single callback firing; and the callback is the only other thing that
+     * would re-arm the ruleset, which left the device yielded for the rest of
+     * the session after the other tunnel had already gone.
+     *
+     * The check is a plain interface enumeration — no root shell, no wakeup of
+     * its own. It rides the refresh tick that already runs, costs microseconds,
+     * and only a *change* in its answer spends anything: the expensive root
+     * probe runs inside the apply, and only then.
+     */
+    private fun pollForeignVpnProbe() {
+        if (teardownStarted) return
+        val seen = foreignTunnelInterfacePresent() ?: return
+        if (seen != foreignVpnProbeSeen) {
+            foreignVpnProbeSeen = seen
+            lastForeignShape = null
+            scheduleRootRoutingReapply(
+                if (seen) "a tunnel interface appeared" else "the tunnel interface went away"
+            )
+            return
+        }
+        // While another tunnel is up, watch WHAT it carries, not just that it is
+        // there: its owner can move an app in or out of its bypass list without
+        // the interface ever going away, and our rules are built from that list.
+        // A stale list is not merely out of date — it strands the app between the
+        // two tunnels, routed by us and handed the other one's resolver.
+        //
+        // This is the one thing here that costs a root shell, so it is spent as
+        // narrowly as possible: only while a foreign tunnel actually exists, and
+        // only on the refresh tick that already runs. No foreign VPN, no cost.
+        if (!seen || foreignShapeRunning) return
+        foreignShapeRunning = true
+        Thread {
+            try {
+                val shape = RootUtils.foreignRoutingShape(runCatching { RootUtils.detectForeignVpn() }.getOrNull())
+                if (shape != lastForeignShape) {
+                    val first = lastForeignShape == null
+                    lastForeignShape = shape
+                    if (!first) scheduleRootRoutingReapply("another VPN changed which apps it carries")
+                }
+            } finally {
+                foreignShapeRunning = false
+            }
+        }.start()
+    }
+
+    /**
+     * True when an interface that belongs to somebody else's tunnel is up.
+     *
+     * Only `tun`/`ppp`/`wg`/`ipsec` names count and `tailscale0` is ours, so we
+     * can never see ourselves here. Returns null when the enumeration fails, so
+     * a transient error is not read as "the tunnel went away".
+     */
+    private fun foreignTunnelInterfacePresent(): Boolean? = runCatching {
+        val ifaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return@runCatching false
+        for (ni in java.util.Collections.list(ifaces)) {
+            val name = ni.name ?: continue
+            if (name == "tailscale0") continue
+            val looksLikeTunnel = name.startsWith("tun") || name.startsWith("ppp") ||
+                name.startsWith("wg") || name.startsWith("ipsec")
+            // Deliberately not gated on isUp(): Java reports an interface as up
+            // only with IFF_RUNNING too, which a tunnel briefly lacks, and this
+            // check is a change signal — the root probe is what decides. A
+            // leftover interface at worst costs one probe that says "no".
+            if (looksLikeTunnel) return@runCatching true
+        }
+        false
+    }.getOrNull()
+
+    /**
+     * Watches the kernel's own list of network interfaces, so another tunnel
+     * coming up or going down is noticed at once instead of on the next tick.
+     *
+     * This is inotify on a sysfs directory: it costs nothing while nothing
+     * happens, and it is an accelerator, not a dependency — the tick still
+     * checks, so a kernel that declines to report sysfs directory events only
+     * costs latency, never correctness.
+     */
+    private fun startInterfaceWatch() {
+        if (interfaceWatch != null) return
+        val mask = FileObserver.CREATE or FileObserver.DELETE or
+            FileObserver.MOVED_TO or FileObserver.MOVED_FROM
+        fun onNetEvent(path: String?) {
+            val name = path ?: return
+            if (name == "tailscale0") return
+            val looksLikeTunnel = name.startsWith("tun") || name.startsWith("ppp") ||
+                name.startsWith("wg") || name.startsWith("ipsec")
+            if (!looksLikeTunnel) return
+            refreshHandler.post { pollForeignVpnProbe() }
+        }
+        val dir = "/sys/class/net"
+        // The File constructor is API 29; the String one, deprecated there, is all 24–28 have.
+        val watch = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            object : FileObserver(java.io.File(dir), mask) {
+                override fun onEvent(event: Int, path: String?) = onNetEvent(path)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            object : FileObserver(dir, mask) {
+                override fun onEvent(event: Int, path: String?) = onNetEvent(path)
+            }
+        }
+        if (runCatching { watch.startWatching() }.isSuccess) {
+            interfaceWatch = watch
+            Log.i(TAG, "Watching /sys/class/net for other tunnels")
+        }
+    }
+
+    // allNetworks is deprecated for callbacks, which this service has as well;
+    // this is the one-off scan that seeds and re-checks what they report.
+    @Suppress("DEPRECATION")
+    private fun refreshForeignVpnFromScan() {
+        val present = runCatching {
+            connectivityManager.allNetworks.any { network ->
+                val caps = connectivityManager.getNetworkCapabilities(network)
+                caps != null &&
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                    !isOwnVpnNetwork(caps)
+            }
+        }.getOrDefault(foreignVpnPresent)
+        setForeignVpnPresent(present, "network scan")
+    }
+
+    /**
+     * Doze suspends the CPU and defers work; a connection that died while the
+     * device was idle is only noticed on the next refresh tick, which can be
+     * minutes later. Leaving idle is the moment to check and recover.
+     */
+    private val idleModeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (pm.isDeviceIdleMode) {
+                Log.d(TAG, "Device entered Doze")
+                return
+            }
+            Log.i(TAG, "Device left Doze, re-checking connection")
+            refreshHandler.removeCallbacks(refreshRunnable)
+            refreshHandler.post(refreshRunnable)
+        }
+    }
+
+    /**
+     * Preference keys the Root Mode ruleset is built from.
+     *
+     * Every one of them can be written without the service ever hearing about
+     * it: the excluded-apps picker is its own activity and writes the list
+     * directly, a settings import rewrites the lot, and automation can flip the
+     * coexistence override. Watching the store covers all three at once.
+     */
+    private val rootRulePrefKeys = setOf(
+        "tun_excluded_apps",
+        "tun_excluded_cidrs",
+        "root_dns_redirect",
+        "root_take_device_anyway",
+        "accept_dns",
+        "dns_fallbacks"
+    )
+
+    /** Held as a field because SharedPreferences keeps only a weak reference to
+     *  the listener; a local would be collected and the watch would stop. */
+    private val globalPrefs by lazy {
+        getSharedPreferences("tailsocks_global", Context.MODE_PRIVATE)
+    }
+
+    private val rootRulePrefsListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key != null && key in rootRulePrefKeys) {
+                scheduleRootRoutingReapply("a setting the rules are built from changed ($key)")
+            }
+        }
+
+    /**
+     * A package appearing or disappearing changes the uids the rules are built
+     * from, and the excluded-apps list is stored as names — so an app installed
+     * mid-run had no rule of its own until something asked again, and one removed
+     * left a rule pointing at a uid that had moved on.
+     *
+     * An update fires a remove and an add within milliseconds; the re-check is
+     * coalesced by [scheduleRootRoutingReapply], and the routing signature is
+     * built from the resolved uids, so a package nobody excluded costs one probe
+     * and changes nothing.
+     */
+    private val packageChangeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_PACKAGE_ADDED, Intent.ACTION_PACKAGE_REMOVED ->
+                    scheduleRootRoutingReapply("a package was installed or removed")
+            }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        try { android.system.Os.setenv("TZ", java.util.TimeZone.getDefault().id, true) } catch (e: Exception) {}
+        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Tailscaled::WakeLock").apply {
+            setReferenceCounted(false)
+        }
+        try { connectivityManager.registerDefaultNetworkCallback(networkCallback) } catch (e: Exception) {}
+        try {
+            connectivityManager.registerNetworkCallback(
+                NetworkRequest.Builder()
+                    .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                    .build(),
+                vpnNetworkCallback
+            )
+            vpnCallbackRegistered = true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to watch the VPN slot: ${e.message}")
+        }
+        startInterfaceWatch()
+        try {
+            globalPrefs.registerOnSharedPreferenceChangeListener(rootRulePrefsListener)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to watch the Root Mode settings: ${e.message}")
+        }
+        try {
+            ContextCompat.registerReceiver(
+                this,
+                packageChangeReceiver,
+                android.content.IntentFilter().apply {
+                    addAction(Intent.ACTION_PACKAGE_ADDED)
+                    addAction(Intent.ACTION_PACKAGE_REMOVED)
+                    addDataScheme("package")
+                },
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to watch package changes: ${e.message}")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                ContextCompat.registerReceiver(
+                    this,
+                    idleModeReceiver,
+                    android.content.IntentFilter(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED),
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to register Doze receiver: ${e.message}")
+            }
+        }
+        // Finished Taildrop transfers arrive on the IPN bus; the bridge forwards them
+        // here for as long as the service lives, across daemon restarts and attaches.
+        TaildropEvents.attach(this)
+    }
+
+    /**
+     * Enters the foreground within the FGS start window. Android 12+ kills the
+     * process if a foreground-service start does not call startForeground within
+     * a few seconds, so every onStartCommand path goes through this before any
+     * branching or teardown — several branches used to reach stopMe(), whose
+     * root teardown can take seconds, without ever calling it.
+     */
+    private fun enterForeground(card: NotificationCard) {
+        synchronized(cardLock) {
+            val notification = renderCard(this, card)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    1,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(1, notification)
+            }
+            shownCard = card
+        }
+    }
+
+    private fun enterForeground(state: CardState) = enterForeground(cardFor(LiveStatus(state)))
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val action = intent?.action
+
+        if (intent == null && !ProxyState.isUserLetRunning(this)) {
+            enterForeground(CardState.STOPPING)
+            stopMe()
+            return START_NOT_STICKY
+        }
+
+        if (action == "STOP_ACTION") {
+            enterForeground(CardState.STOPPING)
+            stopMe()
+            return START_NOT_STICKY
+        }
+
+        if (action == "REFRESH_ACTION" || action == "APPLY_SETTINGS" || action == ACTION_APPLY_SETTINGS) {
+            // A settings change says nothing about the tailnet: keep what the
+            // card says, and let the tick change it if the change did.
+            enterForeground(currentCardOrConnecting())
+            if (!ProxyState.isActualRunning(this)) {
+                // Nothing is running and the daemon is genuinely gone. Do not run
+                // the full stopMe() teardown here — it clears the user's
+                // desired-running state and kills the root daemon. Just leave the
+                // foreground quietly.
+                Log.i(TAG, "Apply/refresh with no running daemon; standing down without teardown")
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            if (!Appctr.isRunning()) {
+                if (!ProxyState.isUserLetRunning(this)) {
+                    // The root daemon was deliberately left alive by a manual
+                    // Stop (root_kill_daemon_on_stop=false). A settings change
+                    // is not a start request: do not attach and, above all, do
+                    // not flip desired_running back on.
+                    Log.i(TAG, "Apply requested while detached and not wanted; standing down")
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                // The daemon is alive but this process is not attached to it —
+                // Root Mode after the app was killed. Attach through the normal
+                // start path, which applies the settings on the way.
+                Log.i(TAG, "Apply requested while detached, attaching to running daemon first")
+                ProxyState.setUserState(this, true)
+                startTailscale()
+                refreshHandler.removeCallbacks(refreshRunnable)
+                refreshHandler.postDelayed(refreshRunnable, 1000)
+                return START_STICKY
+            }
+            Thread {
+                Appctr.applySettings(buildStartOptions())
+                try { Thread.sleep(1500) } catch (e: Exception) {}
+                applyTagsAndRoutes(this@TailscaledService)
+                applyTaildrive(this@TailscaledService)
+                if (GlobalSettings.isTunModeEnabled(this@TailscaledService)) {
+                    startTunMode()
+                } else {
+                    stopTunMode()
+                }
+                // The DNS, per-app and coexistence settings all change what the
+                // Root Mode ruleset should look like, and this path never used to
+                // touch it. The re-check compares the inputs and does nothing when
+                // the change was not one of them.
+                scheduleRootRoutingReapply("settings were applied")
+            }.start()
+            return START_STICKY
+        }
+        
+        if (action == "RESTART_ACTION") {
+            enterForeground(CardState.RESTARTING)
+            // A restart must not run through stopMe(): that calls stopSelf(), and
+            // the daemon was then started again on a service the system was already
+            // tearing down. Shut the daemon down in place and bring it back up.
+            ProxyState.setUserState(this, true)
+            // The restart owns the service now. A stop whose teardown is still
+            // running must not stop the service this restart brings back up, and
+            // a Stop that lands during the restart's own teardown must not be
+            // swallowed by stopMe()'s teardownStarted guard.
+            val gen = lifecycleGeneration.incrementAndGet()
+            teardownStarted = false
+            ServiceWatchdog.schedule(this)
+            refreshHandler.removeCallbacks(refreshRunnable)
+            // Published as the in-flight teardown so a START arriving meanwhile
+            // joins it and starts afterwards instead of seeing a daemon that is
+            // about to be killed and doing nothing.
+            shutdownInFlight = Thread {
+                stopTunMode()
+                shutdownDaemon()
+                Thread.sleep(1000)
+                if (gen != lifecycleGeneration.get()) {
+                    // A stop or a fresh START landed during the teardown; the
+                    // START path joins this thread and starts itself, a stop wins.
+                    Log.i(TAG, "Restart abandoned: superseded by a stop or start")
+                    return@Thread
+                }
+                teardownStarted = false
+                startTailscale()
+                refreshHandler.post {
+                    refreshHandler.removeCallbacks(refreshRunnable)
+                    refreshHandler.postDelayed(refreshRunnable, 1000)
+                }
+            }.also { it.start() }
+            return START_STICKY
+        }
+
+        ProxyState.setUserState(this, true)
+        // A previous stop may have marked this instance as torn down; a fresh start
+        // command revives it, so the guard has to be cleared.
+        teardownStarted = false
+        // Supersede the deferred completion of any stop still in flight.
+        lifecycleGeneration.incrementAndGet()
+        ServiceWatchdog.schedule(this)
+        // Whatever the system refused earlier, it let us through now; take the
+        // "could not restart" notification down.
+        ServiceWatchdog.clearRevivalRefused(this)
+        updateTile()
+        val pendingStop = shutdownInFlight
+        if (pendingStop != null && pendingStop.isAlive) {
+            // The previous stop is still tearing the daemon down. Appctr.isRunning()
+            // is still true at this point, so the old code just showed "Active" and
+            // started nothing — and the teardown then killed the daemon under it.
+            // Let the teardown finish (it no longer stops the service, see stopMe)
+            // and start fresh afterwards.
+            enterForeground(CardState.RESTARTING)
+            Thread {
+                try { pendingStop.join(15_000) } catch (_: InterruptedException) {}
+                startTailscale()
+            }.start()
+        } else if (!Appctr.isRunning()) {
+            enterForeground(CardState.STARTING)
+            startTailscale()
+        } else {
+            // Already up (a second tap, the watchdog): the card stands, and the
+            // tick a second from now reads the daemon again.
+            enterForeground(currentCardOrConnecting())
+        }
+        
+        refreshHandler.removeCallbacks(refreshRunnable)
+        refreshHandler.postDelayed(refreshRunnable, 1000)
+        return START_STICKY
+    }
+
+    private fun startTailscale() {
+        acquireKeepAliveLock()
+        taildriveAppliedWhileRunning = false
+        // What was switched on in Tailcat comes up with the core, whichever way
+        // it starts (button, boot, watchdog): while this start is still inside
+        // the window that let it start a foreground service.
+        TailcatService.resume(this)
+        // Only a stop may abandon a start. teardownStarted is set by stopMe() and
+        // cleared synchronously by START/RESTART/auto-reconnect before they start,
+        // so it means "the most recent lifecycle command was a stop". The
+        // generation counter is bumped by START as well and must not be used
+        // here: a second START_ACTION during an in-flight start (tile double-tap,
+        // swipe from Recents, watchdog, Tasker) would make the first start kill
+        // the daemon it had just launched while the service kept showing Active.
+        fun stale() = teardownStarted
+
+        Thread {
+            // buildStartOptions does file IO, preference writes, a ServerSocket
+            // bind (ByeDPI) and a JNI call — all off the main thread.
+            val options = buildStartOptions()
+            try {
+                if (stale()) {
+                    // buildStartOptions may already have started ByeDPI; the stop
+                    // that superseded us ran before that, so clean up here.
+                    Log.i(TAG, "Start abandoned: stopped before the daemon was launched")
+                    shutdownDaemon()
+                    return@Thread
+                }
+                applicationContext.sendBroadcast(Intent("STARTING").setPackage(packageName))
+                if (GlobalSettings.isRootModeEnabled(this@TailscaledService)) {
+                    val socketFile = java.io.File(options.socketPath)
+                    // A socket file left behind by a killed daemon still exists, so
+                    // liveness is decided by an actual connect before we query it.
+                    // allowSocketConnect is isDaemonAlive plus one repair: if the
+                    // connect is refused by SELinux rather than by a missing
+                    // daemon, it adds the one allow rule and retries. Without it
+                    // a healthy daemon started by the boot script looks dead and
+                    // gets killed and restarted below.
+                    val daemonAlive = RootUtils.allowSocketConnect(options.socketPath)
+                    val statusJson = if (daemonAlive) {
+                        kotlinx.coroutines.runBlocking { LocalApiClient { options.socketPath }.getStatus().getOrNull() }
+                    } else null
+
+                    val isRunningValid = statusJson != null && !statusJson.contains("\"BackendState\":\"NoState\"")
+
+                    if (isRunningValid) {
+                        if (stale()) {
+                            Log.i(TAG, "Start abandoned before attaching to the root daemon")
+                            return@Thread
+                        }
+                        Log.i(TAG, "Root daemon is already running. Attaching to existing socket with full options.")
+                        // The daemon keeps whatever the boot script gave it, but the
+                        // env file that script reads next boot is brought up to date
+                        // now, so a settings change made while attached is not lost
+                        // to the next reboot.
+                        RootUtils.writeRootEnvFile(this@TailscaledService, rootDaemonSpec(options))
+                        Appctr.attachExternal(options)
+                    } else {
+                        if (socketFile.exists()) {
+                            Log.w(TAG, "Root daemon socket is stale or unconfigured. Stopping leftover daemon and restarting.")
+                            RootUtils.stopRootDaemon(options.socketPath)
+                            RootUtils.handStateBackToApp(this@TailscaledService)
+                        }
+                        val ok = RootUtils.startRootDaemon(this@TailscaledService, rootDaemonSpec(options))
+
+                        if (!ok) {
+                            // Do not report "Active" for a daemon that never came up.
+                            Log.e(TAG, "Root daemon failed to start, aborting service start")
+                            updateNotification(CardState.ROOT_FAILED)
+                            stopMe()
+                            return@Thread
+                        }
+                        if (stale()) {
+                            // A stop landed while su was bringing the daemon up; its
+                            // teardown ran before the daemon existed, so take it down here.
+                            Log.i(TAG, "Start abandoned after the root daemon launched, shutting it down again")
+                            shutdownDaemon()
+                            return@Thread
+                        }
+                        Appctr.attachExternal(options)
+                    }
+                } else {
+                    // Starting in userspace mode while system rules from a previous
+                    // Root Mode session are still installed would leave the device
+                    // routing tailnet traffic into an interface nobody manages.
+                    if (GlobalSettings.isRootRoutingInstalled(this@TailscaledService)) {
+                        Log.i(TAG, "Removing leftover Root Mode routing before userspace start")
+                        removeRootArtifacts(killDaemon = true)
+                    }
+                    if (stale()) {
+                        Log.i(TAG, "Start abandoned before launching the daemon")
+                        shutdownDaemon()
+                        return@Thread
+                    }
+                    // Native TUN engine: when the node's addresses are known from the
+                    // last run, establish the VPN first so the daemon's first launch
+                    // is already on the device — no userspace start followed by a
+                    // relaunch, no flicker. Anything missing falls back to the usual
+                    // order: TUN after readiness.
+                    if (GlobalSettings.isTunModeEnabled(this@TailscaledService) &&
+                        GlobalSettings.getTunEngine(this@TailscaledService) == TunVpnService.ENGINE_NATIVE &&
+                        TunVpnService.cachedSelfIps(this@TailscaledService).isNotEmpty() &&
+                        android.net.VpnService.prepare(this@TailscaledService) == null
+                    ) {
+                        startTunMode()
+                        var waited = 0
+                        while (!Appctr.hasNativeTun() && waited < 5000 && !stale()) { Thread.sleep(100); waited += 100 }
+                        Log.i(TAG, if (Appctr.hasNativeTun()) "Native TUN established before the daemon start ($waited ms)"
+                                   else "Native TUN not ready after $waited ms, the daemon starts in userspace mode first")
+                    }
+                    Appctr.setExternalSocketPath("")
+                    Appctr.start(options)
+                }
+                if (stale()) {
+                    // A stop landed while the daemon was starting; its teardown may
+                    // have run before the daemon existed. The Go side spawns the
+                    // process asynchronously, so give it a moment to appear before
+                    // taking it down, or it would be left running under no service.
+                    Log.i(TAG, "Start abandoned after the daemon launched, shutting it down again")
+                    var waited = 0
+                    while (!Appctr.isRunning() && waited < 3000) { Thread.sleep(100); waited += 100 }
+                    shutdownDaemon()
+                    return@Thread
+                }
+                // Not "connected" yet: the daemon has only been launched. The card
+                // follows it on a thread of its own, so a slow LocalAPI answer
+                // cannot hold up the rest of the start.
+                followCardAfterStart()
+                applicationContext.sendBroadcast(Intent("START").setPackage(packageName))
+                forceAppWidgetUpdate(this@TailscaledService)
+                if (waitForDaemonReady()) {
+                    if (stale()) {
+                        Log.i(TAG, "Start abandoned after the daemon became ready, shutting it down again")
+                        shutdownDaemon()
+                        return@Thread
+                    }
+                    Log.d(TAG, "Daemon readiness checkpoint reached. Launching auxiliary modules...")
+                    applyTagsAndRoutes(this@TailscaledService)
+                    // Share registration needs the node's capabilities (drive:share),
+                    // which arrive with the netmap. Right after the socket appears the
+                    // backend is still Starting and the daemon answers 403 "sharing not
+                    // enabled" — a race, not a policy problem. Apply now only if already
+                    // Running (re-attach); otherwise the refresh tick does it once the
+                    // state flips, see taildriveAppliedWhileRunning.
+                    if (runCatching { Appctr.getBackendState() }.getOrDefault("") == "Running") {
+                        taildriveAppliedWhileRunning = true
+                        applyTaildrive(this@TailscaledService)
+                    } else {
+                        Log.i(TAG, "Taildrive: deferring share registration until the backend is Running")
+                    }
+
+                    if (GlobalSettings.isTunModeEnabled(this@TailscaledService) && !GlobalSettings.isRootModeEnabled(this@TailscaledService)) {
+                        startTunMode()
+                    }
+                } else {
+                    Log.w(TAG, "Daemon readiness checkpoint timed out.")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Start failed", e)
+                // A failure of a superseded start must not stop whatever superseded it.
+                if (!stale()) stopMe()
+            }
+        }.start()
+    }
+
+    private fun waitForDaemonReady(timeoutMs: Long = 10000L): Boolean {
+        val startTime = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            try {
+                val st = Appctr.getStatusJSON(false)
+                if (st.isNotBlank() && st.contains("BackendState")) {
+                    return true
+                }
+            } catch (e: Exception) {
+                // Socket / daemon not responsive yet
+            }
+            try { Thread.sleep(300) } catch (e: Exception) {}
+        }
+        return false
+    }
+
+    private fun buildStartOptions(): StartOptions {
+        val activeAccount = AccountManager.getActiveAccount(this)
+        val profilePrefs = getSharedPreferences("appctr_${activeAccount.id}", Context.MODE_PRIVATE)
+        val stateDir = "${filesDir.absolutePath}/states/${activeAccount.id}"
+        java.io.File(stateDir).mkdirs()
+
+        val accRoutes = GlobalSettings.getBoolean(this@TailscaledService, "accept_routes", false)
+        val accDNS = GlobalSettings.getBoolean(this@TailscaledService, "accept_dns", true)
+        // Whitespace and stray characters make it all the way to the control
+        // plane as part of the node name, so the stored value is sanitised here
+        // and written back to repair profiles that already hold a broken one.
+        var host = sanitizeHostname(profilePrefs.getString("hostname", "") ?: "")
+        if (host != (profilePrefs.getString("hostname", "") ?: "")) {
+            profilePrefs.edit().putString("hostname", host).apply()
+        }
+        if (host.isBlank()) {
+            val defaultHost = sanitizeHostname(android.os.Build.MODEL)
+            if (defaultHost.isNotBlank()) {
+                host = defaultHost
+                profilePrefs.edit().putString("hostname", defaultHost).apply()
+            }
+        }
+
+        val byedpiEnabled = GlobalSettings.isCPByeDpiEnabled(this@TailscaledService)
+        val flags = GlobalSettings.getCPByeDpiFlags(this@TailscaledService)
+        val ipv6Disabled = GlobalSettings.isCPByeDpiIpv6Disabled(this@TailscaledService)
+
+        if (byedpiEnabled) {
+            if (byedpiProxyAddress == null || flags != lastStartedFlags || ipv6Disabled != lastStartedIpv6Disabled) {
+                if (byedpiProxyAddress != null) {
+                    try { ByeDpiProxy.stop() } catch (e: Exception) {}
+                    try { Thread.sleep(200) } catch (e: Exception) {}
+                }
+                byedpiProxyAddress = ByeDpiProxy.start(flags, this@TailscaledService)
+                lastStartedFlags = flags
+                lastStartedIpv6Disabled = ipv6Disabled
+            }
+        } else {
+            ByeDpiProxy.stop()
+            byedpiProxyAddress = null
+            lastStartedFlags = null
+            lastStartedIpv6Disabled = null
+        }
+
+        return StartOptions().apply {
+            socks5Server = GlobalSettings.getSocks5BindAddr(this@TailscaledService)
+            socks5User   = GlobalSettings.getString(this@TailscaledService, "socks5_user", "")
+            socks5Pass   = GlobalSettings.getString(this@TailscaledService, "socks5_pass", "")
+            httpProxy    = GlobalSettings.getHttpProxyBindAddr(this@TailscaledService)
+            controlProxy = if (byedpiEnabled && byedpiProxyAddress != null) {
+                "socks5://${byedpiProxyAddress!!.first}:${byedpiProxyAddress!!.second}"
+            } else {
+                GlobalSettings.getControlProxyUrl(this@TailscaledService)
+            }
+            dnsProxy     = GlobalSettings.getDnsProxyBindAddr(this@TailscaledService)
+            dnsFallbacks = GlobalSettings.getString(this@TailscaledService, "dns_fallbacks", "8.8.8.8:53,1.1.1.1:53")
+            dohFallback  = GlobalSettings.getString(this@TailscaledService, "doh_url", "https://1.1.1.1/dns-query")
+            loginServer  = profilePrefs.getString("login_server", "") ?: ""
+            
+            authKey      = profilePrefs.getString("authkey", "")
+            enableWebUI = profilePrefs.getBoolean("enable_webui", false)
+            webUIAddr   = profilePrefs.getString("webui_addr", "127.0.0.1:8080")
+            
+            // Not under stateDir: the FileProvider has to be able to hand a
+            // received file to another app, and that root must not also cover
+            // the node keys. See TaildropPaths / res/xml/file_paths.xml.
+            taildropDir = TaildropPaths.ensureDir(this@TailscaledService, activeAccount.id).absolutePath
+            execPath     = "${applicationInfo.nativeLibraryDir}/libtailscale.so"
+            socketPath   = "${filesDir.absolutePath}/tailscaled.sock"
+            statePath    = stateDir
+            // The Go supervisor calls this when the daemon process exits on its
+            // own. A crash is not a Stop (see onDaemonExited).
+            closeCallBack = Closer { onDaemonExited() }
+            doReset      = profilePrefs.getBoolean("do_reset", false)
+            if (doReset) profilePrefs.edit().putBoolean("do_reset", false).apply()
+
+            // Pass flags directly for LocalAPI synchronization in Go
+            hostname = host
+            acceptRoutes = accRoutes
+            acceptDNS = accDNS
+            exitNodeID = profilePrefs.getString("exit_node_id", "") ?: ""
+
+            // What this profile's node says about the device to the coordination
+            // server — a property of the profile, since control binds a node to the
+            // OS it registered with (ProfileHostinfo). Off: the patch-06 masquerade
+            // (OS "linux", a Linux CLI). On: the truth, filled the way the official
+            // Android client fills it.
+            honestHostinfo = ProfileHostinfo.isHonest(this@TailscaledService, activeAccount.id)
+            osVersion = android.os.Build.VERSION.RELEASE ?: ""
+            deviceModel = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".trim()
+            installSource = installSourceName()
+
+            // The bridge parses extraUpArgs as `tailscale up`-style flags and folds
+            // the result into the same prefs PATCH syncSettings sends, after the
+            // app's own keys (appctr/extraargs.go). Only the user's own text goes
+            // here: everything the app owns already travels as a StartOptions
+            // field, and re-emitting those as flags would let the app's own
+            // --advertise-exit-node overwrite AdvertiseRoutes with just the two
+            // default routes, dropping the subnet routes applyTagsAndRoutes owns.
+            extraUpArgs = GlobalSettings.getString(this@TailscaledService, "extra_args_raw", "").trim()
+
+            val detailedLogs = GlobalSettings.getBoolean(this@TailscaledService, "detailed_logs", false)
+            Appctr.setLogLevel(if (detailedLogs) 0 else 1)
+        }
+    }
+
+    /** The root daemon's launch parameters, the same for the app's start and the boot script. */
+    private fun rootDaemonSpec(options: StartOptions): RootUtils.RootDaemonSpec {
+        val logsDir = java.io.File(filesDir.parentFile ?: filesDir, "logs").absolutePath
+        return RootUtils.RootDaemonSpec(
+            stateDir = options.statePath,
+            socketPath = options.socketPath,
+            logFilePath = "$logsDir/tailscaled.log",
+            socksAddr = options.socks5Server,
+            httpAddr = options.httpProxy,
+            socksUser = options.socks5User,
+            socksPass = options.socks5Pass,
+            controlProxy = options.controlProxy,
+            taildropDir = options.taildropDir,
+            tunMode = GlobalSettings.isRootTunEnabled(this),
+            dnsFallbacks = upstreamDnsAddresses(),
+            honestHostinfo = options.honestHostinfo,
+            osVersion = options.osVersion,
+            deviceModel = options.deviceModel,
+            installSource = options.installSource,
+        )
+    }
+
+    /**
+     * Hostinfo.Package the way the official Android client reports it:
+     * "googleplay", "fdroid", "amazon", else "unknown". Only sent in honest mode.
+     */
+    private fun installSourceName(): String {
+        val installer = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                packageManager.getInstallSourceInfo(packageName).installingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getInstallerPackageName(packageName)
+            }
+        } catch (e: Exception) {
+            null
+        }
+        return when (installer) {
+            "com.android.vending" -> "googleplay"
+            "org.fdroid.fdroid", "org.fdroid.basic" -> "fdroid"
+            "com.amazon.venezia" -> "amazon"
+            else -> "unknown"
+        }
+    }
+
+    /** Guards against running the daemon teardown twice (stopMe then onDestroy). */
+    @Volatile private var teardownStarted = false
+
+    /**
+     * Bumped by every stop and every start. The deferred completion of a stop
+     * (stopSelf and friends) only runs if no start superseded it meanwhile,
+     * and a start thread abandons its work once a stop superseded it. Without
+     * this, STOP followed by a quick START left the service dead with
+     * desired_running=true (so the watchdog "revived it by itself" later), and
+     * STOP during a slow start left a daemon running under no service.
+     */
+    private val lifecycleGeneration = java.util.concurrent.atomic.AtomicInteger()
+
+    /** Teardown thread of the most recent stop, while it is still running. */
+    @Volatile private var shutdownInFlight: Thread? = null
+
+    /** Taildrive shares were registered after this run's backend reached Running. */
+    @Volatile private var taildriveAppliedWhileRunning = false
+
+    /**
+     * Set when a TUN start was requested, cleared once ACTION_STOP has been sent.
+     * TunVpnService.isRunning only turns true at the end of its own start
+     * sequence (VPN permission dialog, establish(), JNI), so without this a stop
+     * landing in that window skipped the TUN stop and left the tunnel — routing
+     * the whole device when an exit node is set — up under a stopped service.
+     */
+    @Volatile private var tunRequested = false
+
+    private fun stopMe() {
+        if (teardownStarted) return
+        teardownStarted = true
+
+        // Record the user's decision before anything that can fail. If the
+        // teardown below crashes the process, desired_running must already be
+        // false and the watchdog alarm gone, otherwise the sticky restart and the
+        // 15-minute watchdog bring the service back after a manual stop.
+        ProxyState.setUserState(this, false)
+        ServiceWatchdog.cancel(this)
+        // Tailcat stops with the core and keeps its switches for the next start.
+        TailcatService.suspend(this)
+        // The user asked for this one, so there is no outage left to report.
+        ServiceWatchdog.clearRevivalRefused(this)
+        refreshHandler.removeCallbacks(refreshRunnable)
+
+        try {
+            stopTunMode()
+        } catch (t: Throwable) {
+            // stopTunMode() catches Exceptions; this covers LinkageErrors from
+            // touching TunVpnService when its native library cannot be loaded.
+            Log.e(TAG, "stopTunMode failed during stop, continuing teardown", t)
+        }
+        updateNotification(CardState.STOPPING)
+
+        // Root teardown talks to `su` and can take seconds; doing that on the
+        // caller's thread froze the UI whenever the tile or the notification
+        // triggered a stop. The service stays in the foreground until it is done
+        // so the process is not killed mid-cleanup.
+        val gen = lifecycleGeneration.incrementAndGet()
+        shutdownInFlight = Thread {
+            try {
+                shutdownDaemon()
+            } finally {
+                refreshHandler.post {
+                    if (gen != lifecycleGeneration.get()) {
+                        // A START arrived while the daemon was shutting down. That
+                        // start owns the service now; stopping it here would leave
+                        // desired_running=true with no service behind it.
+                        Log.i(TAG, "Stop completion superseded by a newer start")
+                        return@post
+                    }
+                    if (wakeLock?.isHeld == true) wakeLock?.release()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    updateTile()
+                    applicationContext.sendBroadcast(Intent("STOP").setPackage(packageName))
+                    sendStatusBroadcast(this, "STOPPED")
+                }
+            }
+        }.also { it.start() }
+    }
+
+    /** Blocking teardown of the daemon and everything attached to it. */
+    private fun shutdownDaemon() {
+        try { Appctr.stopDriveServer() } catch (e: Exception) {}
+        try { Appctr.stopDriveProxy() } catch (e: Exception) {}
+
+        val rootMode = GlobalSettings.isRootModeEnabled(this)
+        if (rootMode) {
+            // Release the bridge first: the IPN bus and the DNS proxy must stop
+            // talking to a daemon that is about to disappear.
+            Appctr.detachExternal()
+        } else {
+            Appctr.stop()
+        }
+
+        // Rule removal is deliberately not tied to Root Mode still being on.
+        // Turning the mode off flips the setting before the service is asked to
+        // stop, which used to send this down the non-root path and leave the
+        // firewall rules, the routing table and the hosts bind-mount behind.
+        removeRootArtifacts(killDaemon = !rootMode || GlobalSettings.shouldKillRootDaemonOnStop(this))
+
+        try { ByeDpiProxy.stop() } catch (e: Exception) {}
+        byedpiProxyAddress = null
+        lastStartedFlags = null
+        lastStartedIpv6Disabled = null
+    }
+
+    /**
+     * Removes everything Root Mode installs on the system, if anything is
+     * recorded as installed. Safe to call when nothing is.
+     *
+     * @param killDaemon also terminate the root daemon. When Root Mode is being
+     *   switched off the daemon must go regardless of the keep-alive preference,
+     *   since nothing will manage it any more.
+     */
+    private fun removeRootArtifacts(killDaemon: Boolean) {
+        val installed = GlobalSettings.isRootRoutingInstalled(this)
+        val rootMode = GlobalSettings.isRootModeEnabled(this)
+        if (!installed && !rootMode) return
+
+        rootRoutingPassDone = false
+        rootRoutingFailures = 0
+        failedRootRoutingInputs = null
+        rootNotRunningTicks = 0
+        lastRootRoutingSignature = null
+        rootDnsTierInstalled = false
+        dnsRedirectUnhooked = false
+        magicDnsFailures = 0
+        refreshHandler.removeCallbacks(rootRoutingReapplyRunnable)
+        GlobalSettings.setRootRoutingYielded(this, false)
+        GlobalSettings.setRootRoutingShared(this, false)
+        // An apply may be inside its `su` shell right now — the tick's guard does
+        // not cover a stop. The bump makes it discard its result and remove what
+        // it installed, instead of recording rules this teardown is deleting.
+        rootRoutingGeneration.incrementAndGet()
+
+        if (installed) {
+            rootCleanupInFlight = true
+            try {
+                RootUtils.cleanupTailscale0Routing()
+                GlobalSettings.setRootRoutingInstalled(this, false)
+            } finally {
+                rootCleanupInFlight = false
+            }
+        }
+        if (killDaemon) {
+            RootUtils.stopRootDaemon("${filesDir.absolutePath}/tailscaled.sock")
+            RootUtils.handStateBackToApp(this@TailscaledService)
+        }
+    }
+    
+    private fun updateTile() {
+        TileService.requestListeningState(this, ComponentName(this, ProxyTileService::class.java))
+        updateAllWidgets(this@TailscaledService)
+        forceAppWidgetUpdate(this@TailscaledService)
+    }
+
+    private fun applyTagsAndRoutes(context: Context) {
+        val activeAccount = AccountManager.getActiveAccount(context)
+        val profilePrefs = context.getSharedPreferences("appctr_${activeAccount.id}", Context.MODE_PRIVATE)
+        val tagsStr = profilePrefs.getString("advertise_tags", "") ?: ""
+        val routesStr = profilePrefs.getString("advertise_routes", "") ?: ""
+
+        val tags = tagsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }.map {
+            if (it.startsWith("tag:")) it else "tag:$it"
+        }
+        val routes = routesStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+
+        // Being an exit node IS advertising the two default routes — there is no
+        // separate pref for it. This is the only place that writes AdvertiseRoutes,
+        // so the "Run as exit node" switch has to be folded in here or the write
+        // below would drop the routes again on the next apply. The key is only
+        // consulted when it exists: a device made an exit node from the CLI or the
+        // admin console is left alone until the switch is touched once.
+        if (profilePrefs.contains("advertise_exit_node") &&
+            profilePrefs.getBoolean("advertise_exit_node", false)
+        ) {
+            for (r in EXIT_NODE_ROUTES) if (r !in routes) routes.add(r)
+        }
+
+        val json = kotlinx.serialization.json.buildJsonObject {
+            putJsonArray("AdvertiseTags") { tags.forEach { add(it) } }
+            put("AdvertiseTagsSet", true)
+            putJsonArray("AdvertiseRoutes") { routes.forEach { add(it) } }
+            put("AdvertiseRoutesSet", true)
+        }.toString()
+        Log.d(TAG, "Syncing tags & routes via LocalAPI: $json")
+        val res = Appctr.setPrefs(json)
+        if (res != "OK") {
+            Log.e(TAG, "Failed to apply tags & routes: $res")
+        }
+    }
+
+    private fun applyTaildrive(context: Context) {
+        val activeAccount = AccountManager.getActiveAccount(context)
+        val profilePrefs = context.getSharedPreferences("appctr_${activeAccount.id}", Context.MODE_PRIVATE)
+        if (!profilePrefs.contains("taildrive_enabled")) {
+            profilePrefs.edit()
+                .putBoolean("taildrive_enabled", true)
+                .putString("taildrive_shares", "[{\"name\":\"Downloads\",\"path\":\"/storage/emulated/0/Download\"}]")
+                .apply()
+        }
+
+        val taildriveEnabled = profilePrefs.getBoolean("taildrive_enabled", true)
+        val proxyEnabled = profilePrefs.getBoolean("taildrive_proxy_enabled", false)
+
+        if (!Appctr.isRunning()) {
+            Log.d(TAG, "Taildrive: Tailscaled is not running, skipping.")
+            return
+        }
+
+        if (taildriveEnabled) {
+            try {
+                Log.d(TAG, "Taildrive: Enabling server...")
+                val addr = Appctr.startDriveServer()
+                Log.d(TAG, "Taildrive: Server started on $addr")
+                val sharesJson = profilePrefs.getString("taildrive_shares", "[]") ?: "[]"
+                Log.d(TAG, "Taildrive: Updating shares: $sharesJson")
+                Appctr.updateDriveShares(sharesJson)
+                Log.d(TAG, "Taildrive: Shares updated successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Taildrive: Failed to start server or update shares", e)
+            }
+        } else {
+            try {
+                Log.d(TAG, "Taildrive: Disabling server...")
+                Appctr.stopDriveServer()
+                Log.d(TAG, "Taildrive: Server stopped")
+            } catch (e: Exception) {
+                Log.e(TAG, "Taildrive: Failed to stop server", e)
+            }
+        }
+
+        if (proxyEnabled) {
+            try {
+                val ip = profilePrefs.getString("taildrive_proxy_ip", "127.0.0.1") ?: "127.0.0.1"
+                val port = profilePrefs.getString("taildrive_proxy_port", "33445") ?: "33445"
+                val authEnabled = profilePrefs.getBoolean("taildrive_proxy_auth_enabled", false)
+                val user = if (authEnabled) (profilePrefs.getString("taildrive_proxy_username", "tailsocks") ?: "tailsocks") else ""
+                val pass = if (authEnabled) (profilePrefs.getString("taildrive_proxy_password", "") ?: "") else ""
+                val localAddr = "$ip:$port"
+
+                Log.d(TAG, "Taildrive Proxy: Enabling proxy on $localAddr (auth=$authEnabled)...")
+                Appctr.startDriveProxy(localAddr, user, pass)
+                Log.d(TAG, "Taildrive Proxy: Proxy started successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Taildrive Proxy: Failed to start proxy", e)
+            }
+        } else {
+            try {
+                Log.d(TAG, "Taildrive Proxy: Disabling proxy...")
+                Appctr.stopDriveProxy()
+                Log.d(TAG, "Taildrive Proxy: Proxy stopped")
+            } catch (e: Exception) {
+                Log.e(TAG, "Taildrive Proxy: Failed to stop proxy", e)
+            }
+        }
+    }
+
+    private fun startTunMode() {
+        try {
+            val prepareIntent = android.net.VpnService.prepare(this)
+            tunRequested = true
+            if (prepareIntent == null) {
+                Log.d(TAG, "VPN permission already granted, starting TunVpnService directly")
+                val tunIntent = Intent(this, TunVpnService::class.java).apply {
+                    action = TunVpnService.ACTION_START
+                }
+                ContextCompat.startForegroundService(this, tunIntent)
+            } else {
+                Log.d(TAG, "VPN permission required, launching TunPermissionActivity")
+                val intent = Intent(this, TunPermissionActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start TUN mode", e)
+        }
+    }
+
+    private fun stopTunMode() {
+        try {
+            if (!TunVpnService.nativeLoaded) {
+                Log.d(TAG, "TUN native library not loaded, skipping stop")
+                return
+            }
+            if (!TunVpnService.isRunning && !tunRequested) {
+                // Nothing to stop. Starting the VpnService only to stop it again
+                // used to leave its foreground notification behind; also drop any
+                // such leftover from earlier builds.
+                (getSystemService(NOTIFICATION_SERVICE) as? android.app.NotificationManager)
+                    ?.cancel(TunVpnService.NOTIF_ID)
+                return
+            }
+            tunRequested = false
+            startService(Intent(this, TunVpnService::class.java).apply {
+                action = TunVpnService.ACTION_STOP
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop TunVpnService", e)
+        }
+    }
+
+    @Volatile private var lastHostsHash: Int = 0
+    @Volatile private var lastHostsSyncAt: Long = 0
+    @Volatile private var hostsSyncInFlight = false
+
+    /** Minimum gap between full peer-status fetches for the /etc/hosts sync. */
+    private val hostsSyncIntervalMs = 60_000L
+
+    private fun syncTailnetHosts() {
+        if (!GlobalSettings.isRootModeEnabled(this) || !GlobalSettings.isRootTunEnabled(this)) return
+
+        // The peer list changes rarely; pulling the full status on every refresh
+        // tick is the polling this architecture deliberately moved away from.
+        val now = System.currentTimeMillis()
+        if (hostsSyncInFlight || now - lastHostsSyncAt < hostsSyncIntervalMs) return
+        lastHostsSyncAt = now
+        hostsSyncInFlight = true
+
+        Thread {
+            try {
+                val statusJson = Appctr.getStatusJSON(true)
+                if (statusJson.isNullOrBlank()) return@Thread
+
+                val status = runCatching { AppJson.decodeFromString<StatusResponse>(statusJson) }.getOrNull() ?: return@Thread
+                val peers = status.peers ?: emptyMap()
+
+                // Every name published here resolves device-wide for every app, so
+                // the tailnet zone is the only namespace a node may claim. The
+                // control-assigned DNSName must sit inside the MagicDNS suffix, and
+                // the self-reported HostName is accepted only as a bare label: a peer
+                // calling itself "accounts.google.com" used to hijack that domain.
+                val zone = status.magicDnsSuffix?.trim()?.removeSuffix(".")?.lowercase()
+                if (zone.isNullOrEmpty()) {
+                    Log.w(TAG, "hosts-sync: MagicDNS suffix unknown, not publishing tailnet names")
+                    return@Thread
+                }
+                val bareLabel = Regex("^[A-Za-z0-9-]{1,63}$")
+                val claimed = mutableSetOf<String>()
+                val hostsMap = mutableMapOf<String, String>()
+
+                fun addNode(dnsRaw: String?, hostRaw: String?, ips: List<String>?) {
+                    val dnsName = dnsRaw?.removeSuffix(".")?.lowercase() ?: return
+                    if (ips == null || dnsName.isEmpty() || !dnsName.endsWith(".$zone")) return
+                    val shortName = dnsName.substringBefore('.')
+                    val hostName = hostRaw?.trim()?.lowercase()
+                        ?.takeIf { bareLabel.matches(it) && it != dnsName && it != shortName }
+                    // First claim wins (self is added first), so no peer can shadow
+                    // another node's name or this device's own.
+                    val aliases = listOfNotNull(dnsName, shortName.takeIf { it != dnsName }, hostName)
+                        .filter { claimed.add(it) }
+                    if (aliases.isEmpty()) return
+                    for (ip in ips) {
+                        if (ip.isEmpty()) continue
+                        hostsMap[ip] = aliases.joinToString(" ")
+                    }
+                }
+
+                status.self?.let { addNode(it.dnsName, it.hostName, it.tailscaleIPs) }
+                for ((_, p) in peers) addNode(p.dnsName, p.hostName, p.tailscaleIPs)
+                
+                val currentHash = hostsMap.hashCode()
+                if (currentHash != lastHostsHash && hostsMap.isNotEmpty()) {
+                    Log.i(TAG, "Syncing ${hostsMap.size} tailnet hosts to /system/etc/hosts")
+                    if (RootUtils.updateRootHosts(hostsMap)) {
+                        lastHostsHash = currentHash
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to sync tailnet hosts: ${e.message}")
+            } finally {
+                hostsSyncInFlight = false
+            }
+        }.start()
+    }
+
+    /**
+     * Swiping the app out of Recents destroys the task but must not take the
+     * connection with it, so the service asks to be started again.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (ProxyState.isUserLetRunning(this) && !teardownStarted) {
+            Log.i(TAG, "Task removed while running, requesting restart")
+            ServiceWatchdog.schedule(this)
+            try {
+                ContextCompat.startForegroundService(
+                    this,
+                    Intent(this, TailscaledService::class.java).apply { action = "START_ACTION" }
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not re-request service start after task removal: ${e.message}")
+            }
+        }
+        super.onTaskRemoved(rootIntent)
+    }
+
+    override fun onDestroy() {
+        refreshHandler.removeCallbacks(refreshRunnable)
+        refreshHandler.removeCallbacks(networkNotifyRunnable)
+        refreshHandler.removeCallbacks(rootRoutingReapplyRunnable)
+        // stopMe() already ran the teardown (or is running it); only handle the
+        // case where the system tore the service down without going through it.
+        if (!teardownStarted) {
+            teardownStarted = true
+            // The system destroyed us without stopMe(): the TUN tunnel would
+            // otherwise stay up, forwarding into a SOCKS proxy that is gone.
+            stopTunMode()
+            val rootMode = GlobalSettings.isRootModeEnabled(this)
+            Thread {
+                if (rootMode) {
+                    Appctr.detachExternal()
+                } else {
+                    Appctr.stop()
+                }
+                // Autostart installed means the daemon is expected to outlive the
+                // app, so it is left alone — but its rules are still ours to drop
+                // if the daemon is going away with us.
+                removeRootArtifacts(killDaemon = !RootUtils.isServiceScriptInstalled())
+                try { ByeDpiProxy.stop() } catch (e: Exception) {}
+            }.start()
+            byedpiProxyAddress = null
+            lastStartedFlags = null
+            lastStartedIpv6Disabled = null
+        }
+        try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (e: Exception) {}
+        try { connectivityManager.unregisterNetworkCallback(vpnNetworkCallback) } catch (e: Exception) {}
+        vpnCallbackRegistered = false
+        runCatching { interfaceWatch?.stopWatching() }
+        interfaceWatch = null
+        try { unregisterReceiver(idleModeReceiver) } catch (e: Exception) {}
+        try { unregisterReceiver(packageChangeReceiver) } catch (e: Exception) {}
+        try { globalPrefs.unregisterOnSharedPreferenceChangeListener(rootRulePrefsListener) } catch (e: Exception) {}
+        TaildropEvents.detach()
+        if (wakeLock?.isHeld == true) wakeLock?.release()
+        // The card went with the service. Forgetting it lets the next start's
+        // first post through, and keeps a TUN service that comes up on its own
+        // from re-posting a card of a session that is over.
+        synchronized(cardLock) { shownCard = null }
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+}
+
+/** One ongoing card: a headline, and the line under it (none for a bare transition). */
+internal data class NotificationCard(val title: String, val text: String?)
+
+/**
+ * What the card can say. The first six are read from the daemon and follow the
+ * main screen's status card (connected, connecting, a connection problem,
+ * sign-in); the rest are the service's own moves, set by the paths that make
+ * them.
+ */
+internal enum class CardState {
+    CONNECTED, CONNECTING, DEGRADED, NEEDS_LOGIN, AWAITING_APPROVAL, OS_REFUSED,
+    WAITING_FOR_NETWORK, STARTING, RESTARTING, RECONNECTING, CONNECTION_LOST, ROOT_FAILED, STOPPING,
+}
+
+/** A card state, with the warning a DEGRADED card names. */
+internal data class LiveStatus(val state: CardState, val issue: HealthWarning? = null)
+
+/**
+ * What the coordination server says when it refuses a node whose reported OS
+ * changed; it reaches the app only as the text of a health warning.
+ */
+private const val OS_REFUSAL_MARKER = "node OS changed since last connection"
+
+/** The coordination server refused this node because its OS changed (see checkCoordinatorOsRefusal). */
+internal fun coordinatorRefusedOs(warnings: List<HealthWarning>): Boolean =
+    warnings.any { OS_REFUSAL_MARKER in it.text || OS_REFUSAL_MARKER in it.title }
+
+/**
+ * The card's state for a running daemon, decided the way the main screen
+ * decides its own: Running is connected unless a settled warning says traffic
+ * is affected; Starting (and the brief NoState before it) is still connecting.
+ * NeedsMachineAuth has a card of its own, because "connecting" would never end
+ * and "sign in" would send the user to the wrong place. A refusal by the
+ * coordination server leaves the backend in Starting, so it is checked first.
+ */
+internal fun liveStatusOf(backendState: String, warnings: List<HealthWarning>, nowMs: Long, dnsHasFallback: Boolean): LiveStatus =
+    when (backendState) {
+        "Running" -> {
+            val shown = visibleWarnings(warnings, nowMs)
+            if (warningsDegradeConnection(shown, dnsHasFallback)) LiveStatus(CardState.DEGRADED, shown.first())
+            else LiveStatus(CardState.CONNECTED)
+        }
+        else -> when {
+            coordinatorRefusedOs(warnings) -> LiveStatus(CardState.OS_REFUSED)
+            backendState == "NeedsLogin" -> LiveStatus(CardState.NEEDS_LOGIN)
+            backendState == "NeedsMachineAuth" -> LiveStatus(CardState.AWAITING_APPROVAL)
+            else -> LiveStatus(CardState.CONNECTING)
+        }
+    }

@@ -1,0 +1,77 @@
+package io.github.bropines.birdsocks.core
+import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.BuildConfig
+
+import io.github.bropines.birdsocks.admin.*
+import io.github.bropines.birdsocks.models.*
+import io.github.bropines.birdsocks.ui.*
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.util.Log
+
+private const val TAG = "BootReceiver"
+
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action
+        if (action != Intent.ACTION_BOOT_COMPLETED &&
+            action != "android.intent.action.QUICKBOOT_POWERON" &&
+            action != Intent.ACTION_MY_PACKAGE_REPLACED
+        ) return
+
+        // "Keep running in background" is a global setting; it used to be read
+        // from an unrelated preference file here, so it never took effect.
+        val forceBg = GlobalSettings.getBoolean(context, "force_bg", false)
+        val userLetRunning = ProxyState.isUserLetRunning(context)
+
+        // An update kills the running service; the user did not ask for that, so
+        // resume whenever it was running before the install. "Keep running in
+        // background" only decides whether we also come back after a reboot.
+        val replaced = action == Intent.ACTION_MY_PACKAGE_REPLACED
+        Log.i(TAG, "$action: userLetRunning=$userLetRunning forceBg=$forceBg")
+        if (userLetRunning && (forceBg || replaced)) {
+            val serviceIntent = Intent(context, TailscaledService::class.java).apply { this.action = "START_ACTION" }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+                Log.i(TAG, "Service start requested")
+            } catch (e: Exception) {
+                // Android 12+ and OEM skins can refuse a background start. An
+                // uncaught exception here would take down whatever process the
+                // system happened to run this receiver in; the watchdog alarm
+                // and the next app launch both retry.
+                Log.e(TAG, "Service start refused: ${e.message}")
+                ServiceWatchdog.noteRevivalRefused(context)
+            }
+        } else if (action != Intent.ACTION_MY_PACKAGE_REPLACED) {
+            ProxyState.setUserState(context, false)
+        }
+
+        // Refreshing the root scripts spawns su shells and can block for seconds
+        // (the Magisk prompt may not resolve at boot). Run it off the main thread
+        // so it never ANRs the boot/update broadcast.
+        val onlyIfRoot = GlobalSettings.isRootModeEnabled(context)
+        if (!onlyIfRoot) return
+        val pending = goAsync()
+        Thread {
+            try {
+                if (RootUtils.isServiceScriptInstalled()) {
+                    RootUtils.setServiceScriptInstalled(context, true)
+                }
+                if (RootUtils.isTailscaleCliInstalled()) {
+                    RootUtils.setTailscaleCliInstalled(context, true)
+                }
+            } catch (e: Exception) {
+                // Best effort; nothing to recover at boot.
+            } finally {
+                pending.finish()
+            }
+        }.start()
+    }
+}

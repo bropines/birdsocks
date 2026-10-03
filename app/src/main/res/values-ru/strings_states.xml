@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="state_stopped_title">TailSocks остановлен</string>
+    <string name="state_stopped_title">BirdSocks остановлен</string>
 
     <string name="state_nothing_found">Ничего не найдено</string>
     <string name="state_clear_search">Сбросить поиск</string>

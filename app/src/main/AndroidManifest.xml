@@ -21,7 +21,7 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
 
     <application
-        android:name=".core.TailSocksApp"
+        android:name=".core.BirdSocksApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -42,12 +42,12 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
-            <!-- tailsocks:// links open a screen and nothing more (ui/DeepLinks.kt). -->
+            <!-- birdsocks:// links open a screen and nothing more (ui/DeepLinks.kt). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="tailsocks" />
+                <data android:scheme="birdsocks" />
             </intent-filter>
         </activity>
 
@@ -101,7 +101,7 @@
 
         <receiver android:name=".core.WatchdogReceiver" android:enabled="true" android:exported="false">
             <intent-filter>
-                <action android:name="io.github.bropines.tailscaled.WATCHDOG_CHECK" />
+                <action android:name="io.github.bropines.birdsocks.WATCHDOG_CHECK" />
             </intent-filter>
         </receiver>
 
@@ -127,7 +127,7 @@
             android:label="@string/title_activity_tun_excluded_apps"
             android:exported="false" />
 
-        <service android:name=".core.ProxyTileService" android:exported="true" android:label="TailSocks" android:icon="@drawable/ic_qs_tile" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+        <service android:name=".core.ProxyTileService" android:exported="true" android:label="BirdSocks" android:icon="@drawable/ic_qs_tile" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
@@ -144,31 +144,31 @@
         <!-- Tasker & Automation Integration Receiver -->
         <receiver android:name=".core.TaskerReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
-                <action android:name="io.github.bropines.tailscaled.action.CONNECT" />
-                <action android:name="io.github.bropines.tailscaled.action.DISCONNECT" />
-                <action android:name="io.github.bropines.tailscaled.action.TOGGLE" />
-                <action android:name="io.github.bropines.tailscaled.action.RESTART" />
-                <action android:name="io.github.bropines.tailscaled.action.GET_STATUS" />
-                <action android:name="io.github.bropines.tailscaled.action.SET_EXIT_NODE" />
-                <action android:name="io.github.bropines.tailscaled.action.SWITCH_ACCOUNT" />
-                <action android:name="io.github.bropines.tailscaled.action.SET_BYEDPI" />
-                <action android:name="io.github.bropines.tailscaled.action.SET_TUN" />
-                <action android:name="io.github.bropines.tailscaled.START" />
-                <action android:name="io.github.bropines.tailscaled.STOP" />
-                <action android:name="io.github.bropines.tailscaled.TOGGLE" />
-                <action android:name="io.github.bropines.tailscaled.RESTART" />
-                <action android:name="io.github.bropines.tailscaled.GET_STATUS" />
-                <action android:name="io.github.bropines.tailscaled.SET_EXIT_NODE" />
-                <action android:name="io.github.bropines.tailscaled.SWITCH_ACCOUNT" />
-                <action android:name="io.github.bropines.tailscaled.SET_BYEDPI" />
-                <action android:name="io.github.bropines.tailscaled.SET_TUN" />
+                <action android:name="io.github.bropines.birdsocks.action.CONNECT" />
+                <action android:name="io.github.bropines.birdsocks.action.DISCONNECT" />
+                <action android:name="io.github.bropines.birdsocks.action.TOGGLE" />
+                <action android:name="io.github.bropines.birdsocks.action.RESTART" />
+                <action android:name="io.github.bropines.birdsocks.action.GET_STATUS" />
+                <action android:name="io.github.bropines.birdsocks.action.SET_EXIT_NODE" />
+                <action android:name="io.github.bropines.birdsocks.action.SWITCH_ACCOUNT" />
+                <action android:name="io.github.bropines.birdsocks.action.SET_BYEDPI" />
+                <action android:name="io.github.bropines.birdsocks.action.SET_TUN" />
+                <action android:name="io.github.bropines.birdsocks.START" />
+                <action android:name="io.github.bropines.birdsocks.STOP" />
+                <action android:name="io.github.bropines.birdsocks.TOGGLE" />
+                <action android:name="io.github.bropines.birdsocks.RESTART" />
+                <action android:name="io.github.bropines.birdsocks.GET_STATUS" />
+                <action android:name="io.github.bropines.birdsocks.SET_EXIT_NODE" />
+                <action android:name="io.github.bropines.birdsocks.SWITCH_ACCOUNT" />
+                <action android:name="io.github.bropines.birdsocks.SET_BYEDPI" />
+                <action android:name="io.github.bropines.birdsocks.SET_TUN" />
             </intent-filter>
         </receiver>
 
         <receiver android:name=".ui.TailDropReceiver" android:exported="false" />
 
         <provider
-            android:name=".core.TailsocksFileProvider"
+            android:name=".core.BirdsocksFileProvider"
             android:authorities="${applicationId}.documents"
             android:exported="true"
             android:grantUriPermissions="true"
@@ -178,12 +178,12 @@
             </intent-filter>
         </provider>
 
-        <!-- TailSocks Switcher (Toggle) Widget -->
-        <receiver android:name=".ui.ServiceToggleWidgetReceiver" android:exported="false" android:label="TailSocks Switcher">
+        <!-- BirdSocks Switcher (Toggle) Widget -->
+        <receiver android:name=".ui.ServiceToggleWidgetReceiver" android:exported="false" android:label="BirdSocks Switcher">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="io.github.bropines.tailscaled.STATUS_CHANGED" />
-                <action android:name="io.github.bropines.tailscaled.STATUS" />
+                <action android:name="io.github.bropines.birdsocks.STATUS_CHANGED" />
+                <action android:name="io.github.bropines.birdsocks.STATUS" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.USER_PRESENT" />
@@ -194,11 +194,11 @@
         </receiver>
 
         <!-- Exit Node Toggle Widget -->
-        <receiver android:name=".ui.ExitNodeToggleWidgetReceiver" android:exported="false" android:label="TailSocks Exit Node">
+        <receiver android:name=".ui.ExitNodeToggleWidgetReceiver" android:exported="false" android:label="BirdSocks Exit Node">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="io.github.bropines.tailscaled.STATUS_CHANGED" />
-                <action android:name="io.github.bropines.tailscaled.STATUS" />
+                <action android:name="io.github.bropines.birdsocks.STATUS_CHANGED" />
+                <action android:name="io.github.bropines.birdsocks.STATUS" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.USER_PRESENT" />
@@ -214,7 +214,7 @@
              behaviour we want; tools:targetApi says so rather than leaving lint
              to call it an error. -->
         <service
-            android:name=".appfunctions.TailSocksAppFunctionService"
+            android:name=".appfunctions.BirdSocksAppFunctionService"
             android:exported="true"
             android:permission="android.permission.BIND_APP_FUNCTION_SERVICE"
             tools:targetApi="36">

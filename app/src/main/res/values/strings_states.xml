@@ -7,7 +7,7 @@
 -->
 <resources>
     <!-- One line over the Start button on a screen that needs the daemon. -->
-    <string name="state_stopped_title">TailSocks is stopped</string>
+    <string name="state_stopped_title">BirdSocks is stopped</string>
 
     <!-- Peers. -->
     <string name="state_nothing_found">Nothing found</string>

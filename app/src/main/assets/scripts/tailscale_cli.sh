@@ -1,8 +1,8 @@
 #!/system/bin/sh
 # TailSocks Tailscale CLI Wrapper
 PKG="%PKG_NAME%"
-[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.tailscaled"
-[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.tailscaled.dev"
+[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.birdsocks"
+[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.birdsocks.dev"
 
 CLI_BIN="%CLI_BIN%"
 if [ ! -x "$CLI_BIN" ]; then

@@ -14,14 +14,14 @@
 -keepclasseswithmembers,includedescriptorclasses class * {
     native <methods>;
 }
--keep class io.github.bropines.tailscaled.core.TunVpnService {
+-keep class io.github.bropines.birdsocks.core.TunVpnService {
     native <methods>;
     public static ** Companion;
 }
--keep class io.github.bropines.tailscaled.core.TunVpnService$Companion {
+-keep class io.github.bropines.birdsocks.core.TunVpnService$Companion {
     native <methods>;
 }
--keep class io.github.bropines.tailscaled.core.ByeDpiProxy {
+-keep class io.github.bropines.birdsocks.core.ByeDpiProxy {
     native <methods>;
 }
 
@@ -31,18 +31,18 @@
 # accessors for this app's @Serializable models so R8 does not strip them.
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**
--keepclassmembers class io.github.bropines.tailscaled.** {
+-keepclassmembers class io.github.bropines.birdsocks.** {
     *** Companion;
 }
--keepclasseswithmembers class io.github.bropines.tailscaled.** {
+-keepclasseswithmembers class io.github.bropines.birdsocks.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
--keep,includedescriptorclasses class io.github.bropines.tailscaled.**$$serializer { *; }
+-keep,includedescriptorclasses class io.github.bropines.birdsocks.**$$serializer { *; }
 
 # ── Jetpack AppFunctions (KSP-generated inventory/invoker) ───────────────────
 -keep class androidx.appfunctions.internal.** { *; }
 -keep @androidx.appfunctions.AppFunctionSerializable class * { *; }
--keep class io.github.bropines.tailscaled.appfunctions.** { *; }
+-keep class io.github.bropines.birdsocks.appfunctions.** { *; }
 
 # ── Glance widgets ──────────────────────────────────────────────────────────
 # GlanceAppWidgetManager persists each GlanceAppWidget subclass's canonicalName

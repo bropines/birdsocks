@@ -3,8 +3,8 @@
 
 # %PKG_NAME% and %DAEMON_BIN% are filled in by RootUtils.setServiceScriptInstalled.
 PKG="%PKG_NAME%"
-[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.tailscaled"
-[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.tailscaled.dev"
+[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.birdsocks"
+[ ! -d "/data/data/$PKG" ] && PKG="io.github.bropines.birdsocks.dev"
 
 DATA_DIR="/data/data/$PKG"
 [ ! -d "$DATA_DIR" ] && exit 1

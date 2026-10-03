@@ -79,5 +79,5 @@ adb install -r app/build/outputs/apk/debug/app-universal-debug.apk
 adb install -r app/build/outputs/apk/release/app-universal-release.apk
 
 # Запуск основного экрана
-adb shell am start -n io.github.bropines.tailscaled/io.github.bropines.tailscaled.ui.MainActivity
+adb shell am start -n io.github.bropines.birdsocks/io.github.bropines.birdsocks.ui.MainActivity
 ```

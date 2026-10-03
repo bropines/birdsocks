@@ -12,7 +12,7 @@ static int g_proxy_running = 0;
 char *g_log_file_path = NULL;
 
 JNIEXPORT void JNICALL
-Java_io_github_bropines_tailscaled_core_ByeDpiProxy_jniSetLogPath(JNIEnv *env, jobject thiz, jstring path) {
+Java_io_github_bropines_birdsocks_core_ByeDpiProxy_jniSetLogPath(JNIEnv *env, jobject thiz, jstring path) {
     if (g_log_file_path) {
         free(g_log_file_path);
         g_log_file_path = NULL;
@@ -41,7 +41,7 @@ void android_log_to_file(int level, const char *fmt, ...) {
 }
 
 JNIEXPORT jint JNICALL
-Java_io_github_bropines_tailscaled_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, jobject thiz, jobjectArray args) {
+Java_io_github_bropines_birdsocks_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, jobject thiz, jobjectArray args) {
     if (g_proxy_running) return -1;
     int argc = (*env)->GetArrayLength(env, args);
     char **argv = calloc(argc, sizeof(char *));
@@ -62,7 +62,7 @@ Java_io_github_bropines_tailscaled_core_ByeDpiProxy_jniStartProxy(JNIEnv *env, j
 }
 
 JNIEXPORT jint JNICALL
-Java_io_github_bropines_tailscaled_core_ByeDpiProxy_jniStopProxy(JNIEnv *env, jobject thiz) {
+Java_io_github_bropines_birdsocks_core_ByeDpiProxy_jniStopProxy(JNIEnv *env, jobject thiz) {
     if (!g_proxy_running) return -1;
     shutdown(server_fd, SHUT_RDWR);
     g_proxy_running = 0;
@@ -70,7 +70,7 @@ Java_io_github_bropines_tailscaled_core_ByeDpiProxy_jniStopProxy(JNIEnv *env, jo
 }
 
 JNIEXPORT jint JNICALL
-Java_io_github_bropines_tailscaled_core_ByeDpiProxy_jniForceClose(JNIEnv *env, jobject thiz) {
+Java_io_github_bropines_birdsocks_core_ByeDpiProxy_jniForceClose(JNIEnv *env, jobject thiz) {
     close(server_fd);
     g_proxy_running = 0;
     return 0;

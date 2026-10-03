@@ -22,8 +22,8 @@ TailSocks поддерживает полнофункциональное фон
 ## 🎯 Поддерживаемые Intent Команды
 
 ### Параметры Целевого Receiver
-* **Имя пакета (Package):** `io.github.bropines.tailscaled`
-* **Класс компонента (Component):** `io.github.bropines.tailscaled.core.TaskerReceiver` *(опционально; рекомендуется на Android 8+, где неявные broadcast не доставляются manifest-receiver'ам)*
+* **Имя пакета (Package):** `io.github.bropines.birdsocks`
+* **Класс компонента (Component):** `io.github.bropines.birdsocks.core.TaskerReceiver` *(опционально; рекомендуется на Android 8+, где неявные broadcast не доставляются manifest-receiver'ам)*
 * **Тип назначения:** Broadcast Receiver
 * **Всегда добавляйте:** строковый extra `secret` (или `token` / `key`) с вашим токеном.
 
@@ -31,15 +31,15 @@ TailSocks поддерживает полнофункциональное фон
 
 | Action (Действие) | Короткий псевдоним | Extras / Параметры | Описание |
 |-------------------|--------------------|--------------------|----------|
-| `io.github.bropines.tailscaled.action.CONNECT` | `io.github.bropines.tailscaled.START` | — | Запускает фоновый демон и подключает TailSocks. |
-| `io.github.bropines.tailscaled.action.DISCONNECT` | `io.github.bropines.tailscaled.STOP` | — | Отключает сеть и останавливает демон. Эквивалент ручного **Stop**: после него ничто не оживляет службу (см. [Поведение в фоне](#-поведение-в-фоне)). |
-| `io.github.bropines.tailscaled.action.TOGGLE` | `io.github.bropines.tailscaled.TOGGLE` | — | Запускает, если остановлено; останавливает, если работает. |
-| `io.github.bropines.tailscaled.action.RESTART` | `io.github.bropines.tailscaled.RESTART` | — | Перезапускает демон на месте. |
-| `io.github.bropines.tailscaled.action.GET_STATUS` | `io.github.bropines.tailscaled.GET_STATUS` | — | Обновляет состояние виджетов / плитки. Итоговый broadcast `STATUS_CHANGED` не виден другим приложениям (см. ниже). |
-| `io.github.bropines.tailscaled.action.SET_EXIT_NODE` | `io.github.bropines.tailscaled.SET_EXIT_NODE` | `exit_node` (String; псевдоним `exit_node_ip`). Tailscale IP узла или `none` / `disabled` / `off` для сброса. | Устанавливает Exit Node активного профиля и применяет его «на лету», если демон запущен. |
-| `io.github.bropines.tailscaled.action.SWITCH_ACCOUNT` | `io.github.bropines.tailscaled.SWITCH_ACCOUNT` | `account` (String; псевдонимы `account_id`, `account_name`). ID или имя профиля без учёта регистра. | Переключает активный профиль; демон перезапускается, если работал. Неизвестное имя пишется в лог и игнорируется. |
-| `io.github.bropines.tailscaled.action.SET_BYEDPI` | `io.github.bropines.tailscaled.SET_BYEDPI` | `enabled` (Boolean, опционально), `flags` (String, опционально) | Включает/выключает обход ByeDPI и/или заменяет его флаги, затем повторно применяет настройки. |
-| `io.github.bropines.tailscaled.action.SET_TUN` | `io.github.bropines.tailscaled.SET_TUN` | `enabled` (Boolean, обязателен) | Включает или выключает прозрачный TUN-режим и повторно применяет настройки. Без extra `enabled` игнорируется. |
+| `io.github.bropines.birdsocks.action.CONNECT` | `io.github.bropines.birdsocks.START` | — | Запускает фоновый демон и подключает TailSocks. |
+| `io.github.bropines.birdsocks.action.DISCONNECT` | `io.github.bropines.birdsocks.STOP` | — | Отключает сеть и останавливает демон. Эквивалент ручного **Stop**: после него ничто не оживляет службу (см. [Поведение в фоне](#-поведение-в-фоне)). |
+| `io.github.bropines.birdsocks.action.TOGGLE` | `io.github.bropines.birdsocks.TOGGLE` | — | Запускает, если остановлено; останавливает, если работает. |
+| `io.github.bropines.birdsocks.action.RESTART` | `io.github.bropines.birdsocks.RESTART` | — | Перезапускает демон на месте. |
+| `io.github.bropines.birdsocks.action.GET_STATUS` | `io.github.bropines.birdsocks.GET_STATUS` | — | Обновляет состояние виджетов / плитки. Итоговый broadcast `STATUS_CHANGED` не виден другим приложениям (см. ниже). |
+| `io.github.bropines.birdsocks.action.SET_EXIT_NODE` | `io.github.bropines.birdsocks.SET_EXIT_NODE` | `exit_node` (String; псевдоним `exit_node_ip`). Tailscale IP узла или `none` / `disabled` / `off` для сброса. | Устанавливает Exit Node активного профиля и применяет его «на лету», если демон запущен. |
+| `io.github.bropines.birdsocks.action.SWITCH_ACCOUNT` | `io.github.bropines.birdsocks.SWITCH_ACCOUNT` | `account` (String; псевдонимы `account_id`, `account_name`). ID или имя профиля без учёта регистра. | Переключает активный профиль; демон перезапускается, если работал. Неизвестное имя пишется в лог и игнорируется. |
+| `io.github.bropines.birdsocks.action.SET_BYEDPI` | `io.github.bropines.birdsocks.SET_BYEDPI` | `enabled` (Boolean, опционально), `flags` (String, опционально) | Включает/выключает обход ByeDPI и/или заменяет его флаги, затем повторно применяет настройки. |
+| `io.github.bropines.birdsocks.action.SET_TUN` | `io.github.bropines.birdsocks.SET_TUN` | `enabled` (Boolean, обязателен) | Включает или выключает прозрачный TUN-режим и повторно применяет настройки. Без extra `enabled` игнорируется. |
 
 Длинная форма `…action.X` и короткий псевдоним объявлены в манифесте и работают одинаково.
 
@@ -47,7 +47,7 @@ TailSocks поддерживает полнофункциональное фон
 
 ## 📡 Автоматические Уведомления о Статусе (События)
 
-При каждом изменении состояния TailSocks или при получении `GET_STATUS` приложение отправляет broadcast **`io.github.bropines.tailscaled.STATUS_CHANGED`** (псевдоним **`io.github.bropines.tailscaled.STATUS`**). Broadcast ограничен собственным пакетом приложения (`setPackage`), поэтому доставляется только виджетам и плитке быстрых настроек самого TailSocks; **сторонние приложения, например Tasker, получить его не могут**. `GET_STATUS`, соответственно, лишь обновляет встроенные виджеты. Чтобы прочитать состояние из другого приложения, используйте AppFunction `getStatus()` на Android 16+ (см. ниже). Для справки, extras внутреннего broadcast:
+При каждом изменении состояния TailSocks или при получении `GET_STATUS` приложение отправляет broadcast **`io.github.bropines.birdsocks.STATUS_CHANGED`** (псевдоним **`io.github.bropines.birdsocks.STATUS`**). Broadcast ограничен собственным пакетом приложения (`setPackage`), поэтому доставляется только виджетам и плитке быстрых настроек самого TailSocks; **сторонние приложения, например Tasker, получить его не могут**. `GET_STATUS`, соответственно, лишь обновляет встроенные виджеты. Чтобы прочитать состояние из другого приложения, используйте AppFunction `getStatus()` на Android 16+ (см. ниже). Для справки, extras внутреннего broadcast:
 
 | Ключ Extra | Тип | Описание | Пример |
 |------------|-----|----------|--------|
@@ -65,33 +65,33 @@ TailSocks поддерживает полнофункциональное фон
 
 ### 1. MacroDroid / Tasker
 * **Тип отправки:** Broadcast Receiver
-* **Action:** `io.github.bropines.tailscaled.action.CONNECT`
-* **Package:** `io.github.bropines.tailscaled`
-* **Class:** `io.github.bropines.tailscaled.core.TaskerReceiver`
+* **Action:** `io.github.bropines.birdsocks.action.CONNECT`
+* **Package:** `io.github.bropines.birdsocks`
+* **Class:** `io.github.bropines.birdsocks.core.TaskerReceiver`
 * **Extra 1:** Ключ: `secret`, Значение: `YOUR_TOKEN`
 
 ### 2. Примеры Команд ADB
 
 ```bash
 # Отключение (токен обязателен для каждого действия)
-adb shell am broadcast -a io.github.bropines.tailscaled.action.DISCONNECT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.DISCONNECT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 
 # Подключение
-adb shell am broadcast -a io.github.bropines.tailscaled.action.CONNECT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.CONNECT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 
 # Обновить виджеты / плитку (итоговый broadcast STATUS_CHANGED остаётся внутри приложения)
-adb shell am broadcast -a io.github.bropines.tailscaled.action.GET_STATUS -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.GET_STATUS -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 
 # Установка Exit Node / сброс
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_EXIT_NODE -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node 100.64.0.1
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_EXIT_NODE -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node none
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_EXIT_NODE -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node 100.64.0.1
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_EXIT_NODE -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node none
 
 # Переключение профиля
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SWITCH_ACCOUNT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --es account Work
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SWITCH_ACCOUNT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --es account Work
 
 # Переключение TUN / ByeDPI (boolean extras передаются через --ez)
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_TUN -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_BYEDPI -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true --es flags "-s 1 -d split -r"
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_TUN -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_BYEDPI -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true --es flags "-s 1 -d split -r"
 ```
 
 ---

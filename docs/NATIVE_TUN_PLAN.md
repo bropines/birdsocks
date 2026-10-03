@@ -165,7 +165,7 @@ clients).
   (`Config.ReconfigureVPN`), `wgengine/router/callback.go`,
   `wgengine/netstack/netstack.go` (`ProcessLocalIPs`, `ProcessSubnets`,
   `handleLocalPackets`).
-- Current TUN implementation to be replaced: `app/src/main/java/io/github/bropines/tailscaled/core/TunVpnService.kt`,
+- Current TUN implementation to be replaced: `app/src/main/java/io/github/bropines/birdsocks/core/TunVpnService.kt`,
   `app/src/main/jni/hev-socks5-tunnel/`, `appctr/daemon.go` (spawn),
   `appctr/dns.go` (bridge DNS proxy, stays for proxy mode).
 

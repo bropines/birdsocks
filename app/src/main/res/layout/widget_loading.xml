@@ -9,7 +9,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="TailSocks"
+        android:text="BirdSocks"
         android:textColor="#E6E1E5"
         android:textSize="14sp" />
 </FrameLayout>

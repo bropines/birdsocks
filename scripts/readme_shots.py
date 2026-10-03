@@ -17,7 +17,7 @@ import sys
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-REF = "app/src/screenshotTestDebug/reference/io/github/bropines/tailscaled/ui/ReadmeShotsKt"
+REF = "app/src/screenshotTestDebug/reference/io/github/bropines/birdsocks/ui/ReadmeShotsKt"
 OUT = "docs/screenshots"
 LANGS = {"en": "en-US", "ru": "ru"}  # README language -> fastlane locale
 NAMES = {

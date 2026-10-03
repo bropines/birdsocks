@@ -277,25 +277,25 @@ TailSocks поддерживает фоновое управление чере�
 
 **Секретный токен обязателен.** Задайте его в **Настройки → Автоматизация и API** (есть кнопка *Сгенерировать*) и передавайте с каждым intent строковым extra `secret` (принимаются также `token` и `key`). С версии 4.0.0 receiver игнорирует все intent-запросы, пока токен не задан, поэтому никакое другое приложение на устройстве не сможет остановить ваш VPN или перенаправить трафик.
 
-* **Целевой Receiver:** `io.github.bropines.tailscaled/.core.TaskerReceiver` (пакет `io.github.bropines.tailscaled`)
-* **Поддерживаемые действия (Actions)** (у каждого есть короткий псевдоним, например `io.github.bropines.tailscaled.START`):
-  * `io.github.bropines.tailscaled.action.CONNECT` / `DISCONNECT` / `TOGGLE` / `RESTART` — управление подключением
-  * `io.github.bropines.tailscaled.action.GET_STATUS` — обновляет состояние виджетов/плитки (broadcast `STATUS_CHANGED` не виден другим приложениям)
-  * `io.github.bropines.tailscaled.action.SET_EXIT_NODE` — extra `exit_node` (IP или `none` для сброса)
-  * `io.github.bropines.tailscaled.action.SWITCH_ACCOUNT` — extra `account` (имя или ID профиля)
-  * `io.github.bropines.tailscaled.action.SET_BYEDPI` — extras `enabled` (boolean), `flags` (string)
-  * `io.github.bropines.tailscaled.action.SET_TUN` — extra `enabled` (boolean)
+* **Целевой Receiver:** `io.github.bropines.birdsocks/.core.TaskerReceiver` (пакет `io.github.bropines.birdsocks`)
+* **Поддерживаемые действия (Actions)** (у каждого есть короткий псевдоним, например `io.github.bropines.birdsocks.START`):
+  * `io.github.bropines.birdsocks.action.CONNECT` / `DISCONNECT` / `TOGGLE` / `RESTART` — управление подключением
+  * `io.github.bropines.birdsocks.action.GET_STATUS` — обновляет состояние виджетов/плитки (broadcast `STATUS_CHANGED` не виден другим приложениям)
+  * `io.github.bropines.birdsocks.action.SET_EXIT_NODE` — extra `exit_node` (IP или `none` для сброса)
+  * `io.github.bropines.birdsocks.action.SWITCH_ACCOUNT` — extra `account` (имя или ID профиля)
+  * `io.github.bropines.birdsocks.action.SET_BYEDPI` — extras `enabled` (boolean), `flags` (string)
+  * `io.github.bropines.birdsocks.action.SET_TUN` — extra `enabled` (boolean)
 
 #### Пример ADB
 ```bash
-adb shell am broadcast -a io.github.bropines.tailscaled.action.DISCONNECT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.DISCONNECT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 ```
 
 #### Пример настройки в Tasker:
 1. Действие: **Система** → **Отправить Intent**
-2. Action: `io.github.bropines.tailscaled.action.CONNECT`
+2. Action: `io.github.bropines.birdsocks.action.CONNECT`
 3. Категория: **Broadcast Receiver**
-4. Пакет: `io.github.bropines.tailscaled`, Класс: `io.github.bropines.tailscaled.core.TaskerReceiver`
+4. Пакет: `io.github.bropines.birdsocks`, Класс: `io.github.bropines.birdsocks.core.TaskerReceiver`
 5. Extra: `secret:YOUR_TOKEN`
 
 Полный справочник — все действия, их extras, broadcast статуса и список AppFunctions — в [руководстве по Tasker и автоматизации](docs/AUTOMATION_RU.md).

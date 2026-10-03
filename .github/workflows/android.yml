@@ -82,7 +82,7 @@ jobs:
           # does not reach), and F-Droid ships our APK only if its rebuild of
           # the release matches it byte for byte. Everything else in the APK
           # was checked not to depend on the path.
-          BUILD_DIR=/home/vagrant/build/io.github.bropines.tailscaled
+          BUILD_DIR=/home/vagrant/build/io.github.bropines.birdsocks
           # The NDK app/build.gradle.kts pins, for cgo and the external linker
           # too. The runner exports ANDROID_NDK_HOME for its own default NDK
           # (r27, clang 18), and the core used to be built with that: the

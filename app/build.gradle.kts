@@ -51,7 +51,7 @@ android {
     // without a device. Run ./gradlew :app:updateDebugScreenshotTest.
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
 
-    namespace = "io.github.bropines.tailscaled"
+    namespace = "io.github.bropines.birdsocks"
     // compileSdk = 37 (не 36): core-ktx 1.17.0 требует как минимум 36
     compileSdk = 37
     // The dependency metadata block in the APK is readable only by Google and
@@ -88,7 +88,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.bropines.tailscaled"
+        applicationId = "io.github.bropines.birdsocks"
         minSdk = 24
         targetSdk = 35
         versionCode = appVersionCode
@@ -104,7 +104,7 @@ android {
         }
         externalNativeBuild {
             ndkBuild {
-                arguments("APP_CFLAGS+=-DPKGNAME=io/github/bropines/tailscaled/core -DCLSNAME=TunVpnService -ffile-prefix-map=${rootDir}=.")
+                arguments("APP_CFLAGS+=-DPKGNAME=io/github/bropines/birdsocks/core -DCLSNAME=TunVpnService -ffile-prefix-map=${rootDir}=.")
                 arguments("APP_LDFLAGS+=-Wl,--build-id=none")
                 // Build only what the app loads. hev-socks5-tunnel/Android.mk also
                 // declares hev-socks5-tunnel-bin, a standalone program from

@@ -50,7 +50,7 @@
     <string name="tailcat_cd_stop">Остановить %1$s</string>
     <string name="tailcat_server_heading">Этот телефон как сервер</string>
     <string name="tailcat_server_title">Этот телефон</string>
-    <string name="tailcat_server_desc">Пускает клиентов tailcat к портам этого телефона или в интернет через его сеть — без аккаунта Tailscale с обеих сторон. Им нужен его адрес; со списком ключей клиентов пускает только их. Поднимается вместе с TailSocks, если был включён.</string>
+    <string name="tailcat_server_desc">Пускает клиентов tailcat к портам этого телефона или в интернет через его сеть — без аккаунта Tailscale с обеих сторон. Им нужен его адрес; со списком ключей клиентов пускает только их. Поднимается вместе с BirdSocks, если был включён.</string>
     <string name="tailcat_server_create">Создать адрес сервера</string>
     <string name="tailcat_server_creating">Выбираю ближайшее реле…</string>
     <string name="tailcat_server_create_failed">Не удалось создать адрес: %1$s</string>
@@ -64,9 +64,9 @@
     <string name="tailcat_server_edit">Настройки сервера</string>
     <string name="tailcat_server_ports_hint">Порты этого телефона, к которым придут клиенты, например 5555 для adb. Несколько — через запятую.</string>
     <string name="tailcat_server_exit_node">Exit node</string>
-    <string name="tailcat_server_exit_node_desc">Клиенты могут ходить на любые адреса через сеть этого телефона — через tailcat socks или порт SOCKS5 в TailSocks. Их трафик выходит с IP этого телефона.</string>
+    <string name="tailcat_server_exit_node_desc">Клиенты могут ходить на любые адреса через сеть этого телефона — через tailcat socks или порт SOCKS5 в BirdSocks. Их трафик выходит с IP этого телефона.</string>
     <string name="tailcat_server_allowed">Разрешённые ключи клиентов</string>
-    <string name="tailcat_server_allowed_hint">nodekey:…, по одному в строке. tailcat genkey --client печатает такой; другой TailSocks показывает свой ключ на этом экране.</string>
+    <string name="tailcat_server_allowed_hint">nodekey:…, по одному в строке. tailcat genkey --client печатает такой; другой BirdSocks показывает свой ключ на этом экране.</string>
     <string name="tailcat_server_allow_all">Пускать всех, у кого есть адрес</string>
     <string name="tailcat_server_allow_all_desc">Без списка ключей любой, кто узнает адрес, получит порты этого телефона, а с exit node — и его сеть.</string>
     <string name="tailcat_server_tag_exit">exit node</string>

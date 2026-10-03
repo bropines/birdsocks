@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">TailSocks</string>
+    <string name="app_name" translatable="false">BirdSocks</string>
 
     <!-- Quick Settings tile -->
     <string name="tile_state_connecting">Connecting…</string>
@@ -21,7 +21,7 @@
     <string name="logs_copied">Logs copied to clipboard</string>
 
     <!-- Widget Descriptions -->
-    <string name="widget_desc_service">Start or stop the TailSocks proxy service</string>
+    <string name="widget_desc_service">Start or stop the BirdSocks proxy service</string>
     <string name="widget_desc_exit">Toggle Exit Node routing on/off</string>
     <string name="widget_desc_stats">Dashboard with connection stats, peers, and traffic</string>
     <string name="widget_desc_serve">Active Serve and Funnel rules overview</string>
@@ -100,7 +100,7 @@
     <!-- Admin: Setup screens -->
     <string name="admin_setup_title">Admin API Setup</string>
     <string name="admin_setup_no_tailnet_title">Tailnet Not Detected</string>
-    <string name="admin_setup_no_tailnet_desc">TailSocks must be connected to the VPN at least once to automatically detect your Tailnet domain.\n\nAlternatively, you can specify your Tailnet domain manually below:</string>
+    <string name="admin_setup_no_tailnet_desc">BirdSocks must be connected to the VPN at least once to automatically detect your Tailnet domain.\n\nAlternatively, you can specify your Tailnet domain manually below:</string>
     <string name="admin_setup_tailnet_label">Tailnet Domain Name</string>
     <string name="admin_setup_tailnet_placeholder">e.g. taila1b2.ts.net</string>
     <string name="admin_setup_tailnet_required">Tailnet domain is required</string>
@@ -126,7 +126,7 @@
     <string name="admin_proxy_mode_label">Proxy Mode</string>
     <string name="admin_proxy_control_plane">Control Server Proxy (Auto)</string>
     <string name="admin_proxy_direct">Direct (No Proxy)</string>
-    <string name="admin_proxy_local_socks5">Tailsocks SOCKS5 Proxy</string>
+    <string name="admin_proxy_local_socks5">Birdsocks SOCKS5 Proxy</string>
     <string name="admin_proxy_custom_socks5">Custom SOCKS5 Proxy</string>
     <string name="admin_proxy_control_plane_desc">Inherits the proxy configured for the Tailscale coordination server (ByeDpi / CP Proxy).</string>
     <string name="admin_proxy_socks5_host">SOCKS5 Host</string>
@@ -439,7 +439,7 @@
     <string name="main_switch_account_title">Switch Account?</string>
     <string name="main_switch_account_text">Switching to \'%1$s\' will restart the core. Are you sure?</string>
     <string name="main_restart_switch">Restart &amp; Switch</string>
-    <string name="main_about_title">About TailSocks</string>
+    <string name="main_about_title">About BirdSocks</string>
     <string name="main_app_version">App Version: %1$s</string>
     <string name="main_core_version">Tailscale Core: %1$s</string>
     <string name="main_new_version">New version: %1$s</string>
@@ -461,7 +461,7 @@
     <string name="main_select_exit_node">Select Exit Node</string>
     <string name="main_exit_node_none">None</string>
     <string name="main_battery_warn_title">Battery Optimization Enabled</string>
-    <string name="main_battery_warn_desc">TailSocks may be killed in the background. Tap to disable.</string>
+    <string name="main_battery_warn_desc">BirdSocks may be killed in the background. Tap to disable.</string>
     <string name="main_network_sync_title">Network Sync Warning</string>
     <string name="main_network_sync_desc">Initial machine map parsing may take 1-3 minutes due to network backoff. Please do not restart.</string>
 
@@ -572,7 +572,7 @@
     <string name="main_add_account_authkey_placeholder" translatable="false">tskey-auth-…</string>
     <string name="main_add_account_authkey_hint">With a key the device registers itself on the first start; leave it empty to sign in through the browser.</string>
     <string name="main_rename_account_title">Rename Account</string>
-    <string name="main_update_available_format">🚀 New TailSocks update available: %1$s</string>
+    <string name="main_update_available_format">🚀 New BirdSocks update available: %1$s</string>
     <string name="main_refreshing_config">Refreshing configuration…</string>
     <string name="main_cannot_open_battery_settings">Cannot open battery settings</string>
     <string name="main_error_socks5_empty">🚫 Error: SOCKS5 address cannot be empty!</string>
@@ -794,7 +794,7 @@
     <string name="settings_backup_saved">Backup saved</string>
 
     <!-- Backup compatibility -->
-    <string name="settings_restore_app_too_new">This backup was made by TailSocks %1$s, which is newer than the installed %2$s. Update the app before restoring it.</string>
+    <string name="settings_restore_app_too_new">This backup was made by BirdSocks %1$s, which is newer than the installed %2$s. Update the app before restoring it.</string>
     <string name="settings_restore_format_too_new">This backup uses format version %1$d; this build supports up to %2$d. Update the app before restoring it.</string>
     <string name="settings_restore_wrong_package">This backup belongs to a different app (%1$s).</string>
     <string name="settings_backup_failed_format">Backup failed: %1$s</string>
@@ -832,7 +832,7 @@
     <string name="settings_taildrop_folder_title">Taildrop Storage Folder</string>
     <string name="settings_taildrop_folder_default">Uses app internal folder</string>
     <string name="settings_autostart_title">Auto-start on Boot</string>
-    <string name="settings_autostart_desc">Start TailSocks when device turns on</string>
+    <string name="settings_autostart_desc">Start BirdSocks when device turns on</string>
 
     <!-- Connection recovery -->
     <string name="settings_auto_reconnect_title">Auto-reconnect</string>
@@ -1009,14 +1009,14 @@
     <string name="settings_proxy_copied">Proxy configuration copied to clipboard!</string>
 
     <string name="main_logged_out_title">Authentication Required</string>
-    <string name="main_logged_out_desc">Your TailSocks node is not logged in. If you are in a restricted network, configure DPI Bypass or Proxy before logging in.</string>
+    <string name="main_logged_out_desc">Your BirdSocks node is not logged in. If you are in a restricted network, configure DPI Bypass or Proxy before logging in.</string>
     <string name="main_logged_out_btn_login">Log In</string>
     <string name="main_logged_out_authkey_label">Auth Key (tskey-auth-…)</string>
 
-    <string name="first_start_welcome_title">Welcome to TailSocks</string>
+    <string name="first_start_welcome_title">Welcome to BirdSocks</string>
     <string name="first_start_welcome_desc">A lightweight and efficient client for Tailscale network. Ready to connect your devices easily.</string>
     <string name="first_start_how_title">How it works</string>
-    <string name="first_start_how_desc">By default, TailSocks operates in userspace-networking mode, which does not require root or special VPN permissions. For transparently routing all device traffic, you can enable TUN mode inside the app settings.</string>
+    <string name="first_start_how_desc">By default, BirdSocks operates in userspace-networking mode, which does not require root or special VPN permissions. For transparently routing all device traffic, you can enable TUN mode inside the app settings.</string>
     <string name="first_start_bypass_title">Censorship Bypass</string>
     <string name="first_start_bypass_desc">Are you experiencing issues connecting to the Tailscale coordination server? Enable ByeByeDPI to automatically bypass censorship and packet inspection.</string>
     <string name="first_start_login_title">Login &amp; Permissions</string>
@@ -1059,7 +1059,7 @@
     <string name="onboarding_perm_battery_title">Ignore Battery Optimization</string>
     <string name="onboarding_perm_battery_desc">Prevents background service from being killed</string>
     <string name="onboarding_perm_battery_configure">Configure</string>
-    <string name="onboarding_perm_battery_toast">Find TailSocks and disable optimization</string>
+    <string name="onboarding_perm_battery_toast">Find BirdSocks and disable optimization</string>
     <string name="onboarding_perm_battery_error">Could not open settings</string>
 
     <string name="main_conn_issue_title">Connection Problem</string>
@@ -1070,7 +1070,7 @@
     <string name="settings_root_kill_daemon_title">Terminate Root Daemon on Stop</string>
     <string name="settings_root_kill_daemon_desc">Send termination signal (SIGTERM/SIGKILL) to libtailscale.so process when clicking Stop.</string>
     <string name="settings_root_warning_dialog_title">Warning: Experimental Root Mode</string>
-    <string name="settings_root_warning_dialog_body">Enabling Root Mode switches TailSocks to direct kernel TUN network interface control using superuser privileges.\n\nNote: This feature is experimental. Project author (bropines) is actively developing and debugging this mode.</string>
+    <string name="settings_root_warning_dialog_body">Enabling Root Mode switches BirdSocks to direct kernel TUN network interface control using superuser privileges.\n\nNote: This feature is experimental. Project author (bropines) is actively developing and debugging this mode.</string>
     <string name="settings_root_warning_dialog_confirm">Got it, Enable</string>
     <string name="settings_root_warning_dialog_cancel">Cancel</string>
     <string name="settings_root_banner_warning">EXPERIMENTAL MODE\nRoot Mode is under active development. Project author (bropines) is still actively testing and debugging this mode.</string>
@@ -1128,10 +1128,10 @@
     <string name="dns_cd_copy_ip">Copy IP</string>
     <string name="admin_error_loading_keys_format">Error loading keys: %1$s</string>
     <string name="notif_channel_alerts">Connection alerts</string>
-    <string name="revive_refused_title">TailSocks is disconnected</string>
+    <string name="revive_refused_title">BirdSocks is disconnected</string>
     <string name="revive_refused_text">The system stopped the service and would not let it start again. Tap to reconnect.</string>
     <string name="perm_ask_title">Stopped in the background</string>
-    <string name="perm_ask_text">The system stopped TailSocks and would not let it start again. Allow autostart so an update or a memory cleanup no longer disconnects you.</string>
+    <string name="perm_ask_text">The system stopped BirdSocks and would not let it start again. Allow autostart so an update or a memory cleanup no longer disconnects you.</string>
     <string name="perm_ask_grant">Allow</string>
     <string name="perm_ask_later">Later</string>
     <string name="perm_ask_never">Don\'t ask</string>
@@ -1221,7 +1221,7 @@
     <string name="settings_tun_uses_socks_title">Forwards into the local SOCKS5 proxy</string>
     <string name="settings_tun_uses_socks_desc">%1$s — shared with proxy mode, Taildrive and the admin API. Tap to change it.</string>
     <string name="settings_tun_warning_title">Take the VPN slot?</string>
-    <string name="settings_tun_warning_body">Android runs one VPN at a time. Turning this on takes the slot, and any VPN or ad blocker that takes it later will disconnect TailSocks in the same way.</string>
+    <string name="settings_tun_warning_body">Android runs one VPN at a time. Turning this on takes the slot, and any VPN or ad blocker that takes it later will disconnect BirdSocks in the same way.</string>
     <string name="settings_tun_warning_body_busy">Another VPN is running right now — an ad blocker, a private DNS app, another tunnel. Turning this on takes the slot from it and it will stop filtering until you switch back.</string>
     <string name="settings_tun_warning_confirm">Turn on</string>
     <string name="main_status_active_root_desc">Routed by the system through tailscale0 • Tap to stop</string>
@@ -1231,9 +1231,9 @@
     <string name="tun_excluded_apps_not_installed">Not installed on this phone</string>
     <!-- Root Mode next to another VPN: the sticky override and what a yield looks like -->
     <string name="settings_root_take_device_title">Take the device anyway</string>
-    <string name="settings_root_take_device_desc">Take the default route and DNS back from another VPN that holds this phone.\n• Off: TailSocks leaves them to that VPN and takes only the apps it keeps outside its tunnel.\n• On: everything comes to TailSocks; that VPN\'s apps lose their tunnel.</string>
+    <string name="settings_root_take_device_desc">Take the default route and DNS back from another VPN that holds this phone.\n• Off: BirdSocks leaves them to that VPN and takes only the apps it keeps outside its tunnel.\n• On: everything comes to BirdSocks; that VPN\'s apps lose their tunnel.</string>
     <string name="settings_root_take_device_dialog_title">Take the device from the other VPN?</string>
-    <string name="settings_root_take_device_dialog_body">Another VPN is holding this phone\'s default route and DNS. Taking them back sends every app\'s traffic and every name lookup through TailSocks, so the apps that VPN protects lose their tunnel and its filtering stops — and it is never told. Turn this off to give the device back.</string>
+    <string name="settings_root_take_device_dialog_body">Another VPN is holding this phone\'s default route and DNS. Taking them back sends every app\'s traffic and every name lookup through BirdSocks, so the apps that VPN protects lose their tunnel and its filtering stops — and it is never told. Turn this off to give the device back.</string>
     <string name="settings_root_take_device_confirm">Take the device</string>
     <string name="settings_root_yielded_banner">Another VPN holds this device.\n• Only tailnet addresses and MagicDNS names are routed.\n• Exit nodes and system-wide DNS are off until it stops.</string>
     <string name="main_root_yielded_title">Tailnet only</string>
@@ -1242,7 +1242,7 @@
     <string name="main_exit_node_inert_label">Exit node not in use</string>
     <string name="main_exit_node_inert_desc">%1$s is selected, but another VPN holds the device</string>
     <!-- Root Mode sharing the device: the other VPN bypasses some apps, we carry those -->
-    <string name="settings_root_shared_banner">Another VPN holds this device but leaves some apps outside its tunnel.\n• Those apps go through TailSocks, exit node and MagicDNS included.\n• The rest stay with that VPN.</string>
+    <string name="settings_root_shared_banner">Another VPN holds this device but leaves some apps outside its tunnel.\n• Those apps go through BirdSocks, exit node and MagicDNS included.\n• The rest stay with that VPN.</string>
     <string name="settings_root_dns_shared_desc">On for the apps the other VPN leaves out. Its own lookups are left to it.</string>
     <string name="main_root_shared_title">Shared with another VPN</string>
     <string name="main_root_shared_desc">It holds the device; the apps it leaves out go through us, with the exit node and MagicDNS.</string>
@@ -1259,7 +1259,7 @@
     <string name="honest_hostinfo_os_android">Android</string>
     <string name="honest_hostinfo_checkbox_desc">Register as an Android device with its real model. Off: as a Linux command-line client, like before. Changing it later means a new profile.</string>
     <!-- The daemon exited on its own; the user still wanted the connection -->
-    <string name="daemon_crashed_title">TailSocks lost the connection</string>
+    <string name="daemon_crashed_title">BirdSocks lost the connection</string>
     <string name="daemon_crashed_text">The daemon stopped on its own. Tap to reconnect.</string>
     <!-- The coordination server refused the node because its reported OS changed -->
     <string name="coordinator_os_refused_title">The coordinator refused this device</string>

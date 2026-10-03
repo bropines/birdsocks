@@ -6,7 +6,7 @@
 
 - `fastlane/metadata/android/{en-US,ru}/` — название, короткое и полное описание, `changelogs/README.txt` (как назвать файл списка изменений), `images/README.txt` (откуда брать скриншоты). Их читают и F-Droid, и IzzyOnDroid.
 - `fastlane/.gitignore` — корневой `.gitignore:68` игнорирует `*.txt`, без этого файла тексты не попадут в коммит.
-- [`distribution/io.github.bropines.tailscaled.yml`](distribution/io.github.bropines.tailscaled.yml) — черновик рецепта для fdroiddata, все допущения помечены `ASSUMPTION` / `OPEN` / `BLOCKER`.
+- [`distribution/io.github.bropines.birdsocks.yml`](distribution/io.github.bropines.birdsocks.yml) — черновик рецепта для fdroiddata, все допущения помечены `ASSUMPTION` / `OPEN` / `BLOCKER`.
 
 Полное описание честно говорит, что приложение при каждом запуске спрашивает GitHub о релизе. Когда проверка станет опциональной, эту фразу нужно убрать в обоих языках.
 
@@ -46,7 +46,7 @@
 - *NonFreeNet* — на усмотрение ревьюера: сервер по умолчанию и консоль Admin API — проприетарный сервис Tailscale; первый заменяется своим Headscale (поле login server), вторая — нет. У `com.tailscale.ipn` этой метки нет, это аргумент.
 - Самообновление: политика запрещает скачивать исполняемый код. Снято так же: с `-PselfUpdate=false` в «О приложении» нет ни проверки, ни скачивания, ни установки, а релизный манифест убирает `REQUEST_INSTALL_PACKAGES`.
 
-**Что мешало сборке** (номер — для ссылок). **С 4.5.2 исправлены все девять**; рецепту в [`distribution/io.github.bropines.tailscaled.yml`](distribution/io.github.bropines.tailscaled.yml) не нужен `sed`. Пункт 5 стал файлом `version.properties` (`VERSION_NAME=4.5.2`, `VERSION_CODE=4050200`; его читают Gradle и `UpdateCheckData` F-Droid, хэш переехал в `BuildConfig.GIT_HASH`); пункт 7 закреплён в `build.sh` на версии anet из `appctr/go.mod`.
+**Что мешало сборке** (номер — для ссылок). **С 4.5.2 исправлены все девять**; рецепту в [`distribution/io.github.bropines.birdsocks.yml`](distribution/io.github.bropines.birdsocks.yml) не нужен `sed`. Пункт 5 стал файлом `version.properties` (`VERSION_NAME=4.5.2`, `VERSION_CODE=4050200`; его читают Gradle и `UpdateCheckData` F-Droid, хэш переехал в `BuildConfig.GIT_HASH`); пункт 7 закреплён в `build.sh` на версии anet из `appctr/go.mod`.
 
 | # | Где | Что | Как чинить |
 |---|---|---|---|
@@ -65,8 +65,8 @@
 **Шаги.**
 
 1. ~~Исправить пункты выше и выпустить релиз~~ — сделано в 4.5.2.
-2. Форкнуть https://gitlab.com/fdroid/fdroiddata, положить черновик в `metadata/io.github.bropines.tailscaled.yml`, поправить `versionName`/`versionCode`/`commit`, убрать ставшие ненужными `sed`.
-3. `fdroid lint`, `fdroid rewritemeta`, `fdroid build -v -l io.github.bropines.tailscaled` — локально или в GitLab CI форка. `rewritemeta` выбрасывает комментарии черновика; CI fdroiddata требует его канонический вид.
+2. Форкнуть https://gitlab.com/fdroid/fdroiddata, положить черновик в `metadata/io.github.bropines.birdsocks.yml`, поправить `versionName`/`versionCode`/`commit`, убрать ставшие ненужными `sed`.
+3. `fdroid lint`, `fdroid rewritemeta`, `fdroid build -v -l io.github.bropines.birdsocks` — локально или в GitLab CI форка. `rewritemeta` выбрасывает комментарии черновика; CI fdroiddata требует его канонический вид.
 4. Открыть MR — сделано: [fdroiddata!50707](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50707), 1 октября 2026, v4.5.3, зелёный pipeline, все четыре ABI воспроизвели релиз. Альтернатива — заявка в https://gitlab.com/fdroid/rfp/-/issues (медленнее). После слияния приложение появляется через 24–48 часов.
 
 Подпись F-Droid отличается от подписи релизов на GitHub: перейти между каналами можно только через удаление, а удаление стирает профили и ключи (спасает резервная копия). Это стоит написать в README.
@@ -78,7 +78,7 @@
 Чего это стоило и что должно оставаться верным:
 
 - **Один APK для всех каналов.** Сборка GitHub и сборка F-Droid ничем не должны отличаться: обновлятор GitHub отключается во время работы, когда приложение поставил магазин (`UpdateChannel`), а не флагом сборки.
-- **Ядро на Go собирается в `/home/vagrant/build/io.github.bropines.tailscaled`** — пути сборки F-Droid, — потому что gomobile пишет абсолютный путь связываемого модуля в `libgojni.so` (директива replace в его собственном `go.mod`, до которой `-trimpath` не дотягивается). CI копирует туда checkout.
+- **Ядро на Go собирается в `/home/vagrant/build/io.github.bropines.birdsocks`** — пути сборки F-Droid, — потому что gomobile пишет абсолютный путь связываемого модуля в `libgojni.so` (директива replace в его собственном `go.mod`, до которой `-trimpath` не дотягивается). CI копирует туда checkout.
 - **Закреплённый NDK и для ядра.** `ANDROID_NDK_HOME` раннера по умолчанию (r27) завалил первое сравнение ровно на трёх Go-библиотеках.
 - **Ровно тот Go, что в `appctr/go.mod`** (`GOTOOLCHAIN=go1.27.1` в CI, srclib с `GOTOOLCHAIN=local` у F-Droid); `-buildvcs=false`, `-buildid=`, версия ядра со временем коммита.
 - **C-библиотеки собирает ndkBuild Gradle** с `-ffile-prefix-map` — и в CI, и у F-Droid.

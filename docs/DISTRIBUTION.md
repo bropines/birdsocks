@@ -6,7 +6,7 @@ Research from 2026-09-30; line numbers are as of commit `730ff4e`. What's alread
 
 - `fastlane/metadata/android/{en-US,ru}/` — title, short and full description, `changelogs/README.txt` (how to name the changelog file), `images/README.txt` (where to source screenshots). Both F-Droid and IzzyOnDroid read these.
 - `fastlane/.gitignore` — the root `.gitignore:68` ignores `*.txt`; without this file the texts would never make it into a commit.
-- [`distribution/io.github.bropines.tailscaled.yml`](distribution/io.github.bropines.tailscaled.yml) — a draft recipe for fdroiddata; every assumption is tagged `ASSUMPTION` / `OPEN` / `BLOCKER`.
+- [`distribution/io.github.bropines.birdsocks.yml`](distribution/io.github.bropines.birdsocks.yml) — a draft recipe for fdroiddata; every assumption is tagged `ASSUMPTION` / `OPEN` / `BLOCKER`.
 
 The full description is upfront about the app asking GitHub for the latest release on every launch. Once that check becomes optional, drop the sentence in both languages.
 
@@ -46,7 +46,7 @@ Optionally, add a config to the shared catalog at https://apps.obtainium.imranr.
 - *NonFreeNet* — up to the reviewer: the default coordination server and the Admin API console are Tailscale's proprietary service; the former can be swapped for a self-hosted Headscale (the login-server field), the latter can't. `com.tailscale.ipn` doesn't carry this label, which is an argument in our favor.
 - Self-update: policy bans downloading executable code. Cleared the same way: with `-PselfUpdate=false` the About screen has no check, download or install, and a release manifest removes `REQUEST_INSTALL_PACKAGES`.
 
-**What blocked the build** (numbered for cross-referencing). **All nine are fixed as of 4.5.2**; the recipe in [`distribution/io.github.bropines.tailscaled.yml`](distribution/io.github.bropines.tailscaled.yml) needs no `sed`. Item 5 became `version.properties` (`VERSION_NAME=4.5.2`, `VERSION_CODE=4050200`, read by Gradle and by F-Droid's `UpdateCheckData`; the hash moved to `BuildConfig.GIT_HASH`); item 7 is pinned in `build.sh` to the anet version in `appctr/go.mod`.
+**What blocked the build** (numbered for cross-referencing). **All nine are fixed as of 4.5.2**; the recipe in [`distribution/io.github.bropines.birdsocks.yml`](distribution/io.github.bropines.birdsocks.yml) needs no `sed`. Item 5 became `version.properties` (`VERSION_NAME=4.5.2`, `VERSION_CODE=4050200`, read by Gradle and by F-Droid's `UpdateCheckData`; the hash moved to `BuildConfig.GIT_HASH`); item 7 is pinned in `build.sh` to the anet version in `appctr/go.mod`.
 
 | # | Where | What | Fix |
 |---|---|---|---|
@@ -65,8 +65,8 @@ Not a blocker: `jvmToolchain(17)` made the recipe install JDK 17 from bookworm o
 **Steps.**
 
 1. ~~Fix the items above and cut a release~~ — done in 4.5.2.
-2. Fork https://gitlab.com/fdroid/fdroiddata, drop the draft into `metadata/io.github.bropines.tailscaled.yml`, update `versionName`/`versionCode`/`commit`, and remove any `sed` steps that are no longer needed.
-3. Run `fdroid lint`, `fdroid rewritemeta`, `fdroid build -v -l io.github.bropines.tailscaled` — locally or in the fork's GitLab CI. `rewritemeta` drops the draft's comments; fdroiddata's CI wants its canonical form.
+2. Fork https://gitlab.com/fdroid/fdroiddata, drop the draft into `metadata/io.github.bropines.birdsocks.yml`, update `versionName`/`versionCode`/`commit`, and remove any `sed` steps that are no longer needed.
+3. Run `fdroid lint`, `fdroid rewritemeta`, `fdroid build -v -l io.github.bropines.birdsocks` — locally or in the fork's GitLab CI. `rewritemeta` drops the draft's comments; fdroiddata's CI wants its canonical form.
 4. Open an MR — done: [fdroiddata!50707](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50707), 2026-10-01, v4.5.3, green pipeline with all four ABIs reproducing the release. Alternative: file a request at https://gitlab.com/fdroid/rfp/-/issues (slower). After the merge, the app shows up in 24–48 hours.
 
 F-Droid's signature differs from the GitHub release signature: switching channels means uninstalling first, and uninstalling wipes profiles and keys (a backup saves you). This is worth spelling out in the README.
@@ -78,7 +78,7 @@ F-Droid's signature differs from the GitHub release signature: switching channel
 What it took, and what must stay true:
 
 - **One APK for every channel.** Nothing may differ between the GitHub build and F-Droid's: the GitHub updater is switched off at run time when a store installed the app (`UpdateChannel`), not by a build flag.
-- **The Go core is built in `/home/vagrant/build/io.github.bropines.tailscaled`** — F-Droid's build path — because gomobile writes the absolute path of the bound module into `libgojni.so` (a replace directive in its own `go.mod`, which `-trimpath` does not reach). CI copies the checkout there.
+- **The Go core is built in `/home/vagrant/build/io.github.bropines.birdsocks`** — F-Droid's build path — because gomobile writes the absolute path of the bound module into `libgojni.so` (a replace directive in its own `go.mod`, which `-trimpath` does not reach). CI copies the checkout there.
 - **The pinned NDK for the core too.** The runner's default `ANDROID_NDK_HOME` (r27) made the first comparison fail in exactly the three Go libraries.
 - **Exactly the Go of `appctr/go.mod`** (`GOTOOLCHAIN=go1.27.1` in CI, the srclib with `GOTOOLCHAIN=local` at F-Droid); `-buildvcs=false`, `-buildid=`, the core version stamped with the commit's time.
 - **The C libraries built by Gradle's ndkBuild** with `-ffile-prefix-map`, in CI as at F-Droid.

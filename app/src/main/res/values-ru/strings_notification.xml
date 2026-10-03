@@ -5,7 +5,7 @@
 
     <string name="notif_connected">Подключено</string>
     <string name="notif_connecting">Подключение…</string>
-    <string name="notif_needs_login_text">Откройте TailSocks, чтобы войти</string>
+    <string name="notif_needs_login_text">Откройте BirdSocks, чтобы войти</string>
     <string name="notif_awaiting_approval">Жду одобрения</string>
     <string name="notif_awaiting_approval_text">Одобрите это устройство в админ-консоли</string>
     <string name="notif_os_refused_text">Выйдите и войдите снова или выключите «Сообщать настоящую ОС»</string>

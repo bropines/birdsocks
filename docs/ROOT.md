@@ -10,7 +10,7 @@ TailSocks supports advanced **Root Mode** for Android devices running root solut
 * **Path:** `/data/adb/service.d/tailscaled.sh`
 * **Execution:** Executed automatically by Magisk / KernelSU / APatch during early boot (`late_start` service phase) under `root` (UID 0).
 * **State directory:** the active profile the app recorded in the env file below (`TAILSOCKS_STATE_DIR`); on an install that never started Root Mode from the app it falls back to `files/states/default`, then to the first `tailscaled.state` it finds, then to `states/root`. With several profiles only the recorded one is unambiguous.
-* **Socket, state and log modes:** `/data/data/io.github.bropines.tailscaled/files/tailscaled.sock` is `0666` (the TailSocks safesocket patch, and the script sets the same), the state directory `0700`, the log `0644` — the same modes the app sets when it starts the daemon itself. Up to 4.1.0 the script left them at `777`/`777`/`666` until the app next started the daemon. Log rotation (`tailscaled.log`) happens when the file exceeds 2 MB.
+* **Socket, state and log modes:** `/data/data/io.github.bropines.birdsocks/files/tailscaled.sock` is `0666` (the TailSocks safesocket patch, and the script sets the same), the state directory `0700`, the log `0644` — the same modes the app sets when it starts the daemon itself. Up to 4.1.0 the script left them at `777`/`777`/`666` until the app next started the daemon. Log rotation (`tailscaled.log`) happens when the file exceeds 2 MB.
 * **The same daemon the app would start:** the script reads the root-owned file `/data/adb/tailsocks/control_proxy.env`, which the app writes through `su` on every Root Mode start — its own launch and the attach to a daemon this script started — with the control proxy (`ALL_PROXY`, `HTTP_PROXY`, `HTTPS_PROXY`, pre-resolved `TS_STATIC_HOSTS`), the daemon variables (`TS_DNS_FALLBACK`, `TS_VPN_BYPASS`, `TS_SOCKS5_USER`/`TS_SOCKS5_PASS`, `TS_TAILDROP_DIR`, the Hostinfo switch) and what the command line needs: the state directory, the SOCKS5/HTTP listen addresses and the tunnel mode (`tailscale0` or `userspace-networking`). Up to 4.1.0 a boot-started daemon had no proxy listeners at all, so Taildrive in the Files app and LAN clients were dead until a manual restart. The script only accepts `export NAME='value'` lines — an unquoted line is dropped, which is how *Ignore other VPNs* used to revert after every reboot — and never executes anything from the app's own data directory, which the app (or a restored backup) could write to.
 * **Boot-time routing:** Once `tailscale0` appears, the script installs tier T1 and nothing else (section 4): the tailnet rules — masked fwmark `0x1000000/0x1000000` → table `53`, the destination rules for the tailnet ranges, the `TAILSOCKS_MARK` chain and the `tailscale0` FORWARD pair, IPv4 and IPv6 — plus the removal of leftovers from 3.5.x (bare mark `1099`, direct `OUTPUT` entries). It installs **no** exit-node catch-all and **no** system-wide DNS redirect, because it cannot install what makes those two safe: the LAN `throw` routes and the per-app exclusions need packages resolved to uids, there is no `PackageManager` at `late_start`, and no other VPN client has started yet either, so a coexistence check made here would answer "the device is free" every time. A claim without its exemptions is worse than no claim — that is how a reboot with an exit node selected used to take the local network and the user's excluded apps with it. The app installs both device-wide tiers, with their exemptions and after the coexistence check, on its first `Running` tick (sections 4 and 5). **The cost:** with **Keep the connection awake** off, the app is not started at boot at all, so after a reboot there is no exit node and no system-wide MagicDNS until you open TailSocks — the node is up and the tailnet is reachable, but nothing else on the device is routed through it. The `service.d` copy of the script is refreshed automatically on app update (section 3).
 
@@ -20,7 +20,7 @@ TailSocks supports advanced **Root Mode** for Android devices running root solut
   * `/data/adb/modules/tailscaled/system/bin/tailscale` (Magisk system overlay module)
   * `/product/bin/tailscale` (Live product partition overlay)
   * `/system/bin/tailscale` (Direct system link if partition is writable)
-* **Functionality:** Wraps the native `libtailscale_cli.so` binary extracted from the app package, automatically appending `--socket=/data/data/io.github.bropines.tailscaled/files/tailscaled.sock` to any command.
+* **Functionality:** Wraps the native `libtailscale_cli.so` binary extracted from the app package, automatically appending `--socket=/data/data/io.github.bropines.birdsocks/files/tailscaled.sock` to any command.
 * **Usage:** Allows running standard `tailscale` CLI commands in Termux, `su` shell, ADB shell, or scripts.
 
 ### 3. Automatic Update & Boot Sync (`BootReceiver`)
@@ -674,8 +674,8 @@ su -c tailscale version
 
 ## 🪵 Log & Troubleshooting
 
-* **Daemon Logs:** Saved at `/data/data/io.github.bropines.tailscaled/logs/tailscaled.log`
-* **Socket File:** Located at `/data/data/io.github.bropines.tailscaled/files/tailscaled.sock`
+* **Daemon Logs:** Saved at `/data/data/io.github.bropines.birdsocks/logs/tailscaled.log`
+* **Socket File:** Located at `/data/data/io.github.bropines.birdsocks/files/tailscaled.sock`
 * **Magisk Module Prop:** `/data/adb/modules/tailscaled/module.prop`
 * **In-app:** Logs screen — the daemon's output under the **TAILSCALE** tab (the same tab it fills in Proxy mode), the app's routing decisions under **ROOT**; the Clear button asks whether to empty the app log, the daemon log or both — and **Settings → Diagnostics & developer → Check Routing**.
 
@@ -683,13 +683,13 @@ su -c tailscale version
 
 ```bash
 # View live tailscaled logs
-su -c tail -f /data/data/io.github.bropines.tailscaled/logs/tailscaled.log
+su -c tail -f /data/data/io.github.bropines.birdsocks/logs/tailscaled.log
 
 # Check if tailscaled process is running under root
 su -c ps -ef | grep tailscaled
 
 # Verify socket permissions
-su -c ls -la /data/data/io.github.bropines.tailscaled/files/tailscaled.sock
+su -c ls -la /data/data/io.github.bropines.birdsocks/files/tailscaled.sock
 
 # Inspect the rules TailSocks owns (100: tailnet; 190: excluded apps; 200: exit-node
 # catch-all — device-wide when nothing else holds the VPN slot, one rule per carried
@@ -704,8 +704,8 @@ su -c ip route show table 52                 # peers, subnet routes, 'default de
 su -c ip route get 8.8.8.8                   # tailscale0 with an exit node and the device ours, Wi-Fi/cellular otherwise
 su -c ip rule show | grep '^200:'            # empty is correct while another VPN holds the device
 su -c ip route get 8.8.8.8 mark 0x2000000    # the daemon's own path: always the physical network
-su -c grep -n 'TailSocks: daemon start' /data/data/io.github.bropines.tailscaled/logs/tailscaled.log | tail -n 1   # where the current run begins
-su -c grep 'netns: SO_MARK' /data/data/io.github.bropines.tailscaled/logs/tailscaled.log   # expected after that line: '... set on tailscaled sockets (root bypass)'
+su -c grep -n 'TailSocks: daemon start' /data/data/io.github.bropines.birdsocks/logs/tailscaled.log | tail -n 1   # where the current run begins
+su -c grep 'netns: SO_MARK' /data/data/io.github.bropines.birdsocks/logs/tailscaled.log   # expected after that line: '... set on tailscaled sockets (root bypass)'
 ```
 
 ### Diagnostic scripts (`tools/`)

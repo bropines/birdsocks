@@ -3,7 +3,7 @@
     Cleartext is denied everywhere except one destination.
 
     Allowed: 100.100.100.100 - the tailnet service address. TaildriveClient
-    (core/TailsocksFileProvider.kt, getUrl) speaks WebDAV to
+    (core/BirdsocksFileProvider.kt, getUrl) speaks WebDAV to
     http://100.100.100.100:8080 through the daemon's local SOCKS5 proxy. The
     request never leaves the device in the clear: it is carried inside the
     WireGuard tunnel, and the endpoint is the daemon itself.

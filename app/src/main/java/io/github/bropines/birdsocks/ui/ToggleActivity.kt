@@ -1,0 +1,34 @@
+package io.github.bropines.birdsocks.ui
+import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.BuildConfig
+
+import io.github.bropines.birdsocks.admin.*
+import io.github.bropines.birdsocks.core.*
+import io.github.bropines.birdsocks.models.*
+
+import android.app.Activity
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+
+class ToggleActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        val intent = Intent(this, TailscaledService::class.java)
+        if (ProxyState.isActualRunning()) {
+            intent.action = "STOP_ACTION"
+        } else {
+            intent.action = "START_ACTION"
+        }
+        
+        // startForegroundService is API 26. Below it the plain start is the
+        // foreground start: the service promotes itself in onCreate either way.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+        finish()
+    }
+}

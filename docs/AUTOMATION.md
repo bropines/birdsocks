@@ -22,8 +22,8 @@ Every intent must carry the token in one of the following string extras (checked
 ## 🎯 Supported Intent Actions
 
 ### Target Receiver Specification
-* **Package Name:** `io.github.bropines.tailscaled`
-* **Component Class:** `io.github.bropines.tailscaled.core.TaskerReceiver` *(optional; recommended on Android 8+, where implicit broadcasts to manifest receivers are not delivered)*
+* **Package Name:** `io.github.bropines.birdsocks`
+* **Component Class:** `io.github.bropines.birdsocks.core.TaskerReceiver` *(optional; recommended on Android 8+, where implicit broadcasts to manifest receivers are not delivered)*
 * **Target Type:** Broadcast Receiver
 * **Always add:** string extra `secret` (or `token` / `key`) with your token.
 
@@ -31,15 +31,15 @@ Every intent must carry the token in one of the following string extras (checked
 
 | Action | Short Alias | Extras / Parameters | Description |
 |--------|-------------|---------------------|-------------|
-| `io.github.bropines.tailscaled.action.CONNECT` | `io.github.bropines.tailscaled.START` | — | Starts the background daemon and connects TailSocks. |
-| `io.github.bropines.tailscaled.action.DISCONNECT` | `io.github.bropines.tailscaled.STOP` | — | Disconnects and stops the background daemon. Equivalent to a manual **Stop**: nothing revives the service afterwards (see [Background behaviour](#-background-behaviour)). |
-| `io.github.bropines.tailscaled.action.TOGGLE` | `io.github.bropines.tailscaled.TOGGLE` | — | Starts if stopped, stops if running. |
-| `io.github.bropines.tailscaled.action.RESTART` | `io.github.bropines.tailscaled.RESTART` | — | Restarts the daemon in place. |
-| `io.github.bropines.tailscaled.action.GET_STATUS` | `io.github.bropines.tailscaled.GET_STATUS` | — | Refreshes the widgets / tile state. The resulting `STATUS_CHANGED` broadcast is not visible to other apps (see below). |
-| `io.github.bropines.tailscaled.action.SET_EXIT_NODE` | `io.github.bropines.tailscaled.SET_EXIT_NODE` | `exit_node` (String; alias `exit_node_ip`). Tailscale IP of the peer, or `none` / `disabled` / `off` to clear. | Sets the exit node of the active profile and applies it live if the daemon is running. |
-| `io.github.bropines.tailscaled.action.SWITCH_ACCOUNT` | `io.github.bropines.tailscaled.SWITCH_ACCOUNT` | `account` (String; aliases `account_id`, `account_name`). Profile ID or name, case-insensitive. | Switches the active profile; the daemon is restarted if it was running. Unknown names are logged and ignored. |
-| `io.github.bropines.tailscaled.action.SET_BYEDPI` | `io.github.bropines.tailscaled.SET_BYEDPI` | `enabled` (Boolean, optional), `flags` (String, optional) | Enables/disables the ByeDPI control-plane bypass and/or replaces its flags, then re-applies settings. |
-| `io.github.bropines.tailscaled.action.SET_TUN` | `io.github.bropines.tailscaled.SET_TUN` | `enabled` (Boolean, required) | Switches transparent TUN mode on or off and re-applies settings. Ignored without the `enabled` extra. |
+| `io.github.bropines.birdsocks.action.CONNECT` | `io.github.bropines.birdsocks.START` | — | Starts the background daemon and connects TailSocks. |
+| `io.github.bropines.birdsocks.action.DISCONNECT` | `io.github.bropines.birdsocks.STOP` | — | Disconnects and stops the background daemon. Equivalent to a manual **Stop**: nothing revives the service afterwards (see [Background behaviour](#-background-behaviour)). |
+| `io.github.bropines.birdsocks.action.TOGGLE` | `io.github.bropines.birdsocks.TOGGLE` | — | Starts if stopped, stops if running. |
+| `io.github.bropines.birdsocks.action.RESTART` | `io.github.bropines.birdsocks.RESTART` | — | Restarts the daemon in place. |
+| `io.github.bropines.birdsocks.action.GET_STATUS` | `io.github.bropines.birdsocks.GET_STATUS` | — | Refreshes the widgets / tile state. The resulting `STATUS_CHANGED` broadcast is not visible to other apps (see below). |
+| `io.github.bropines.birdsocks.action.SET_EXIT_NODE` | `io.github.bropines.birdsocks.SET_EXIT_NODE` | `exit_node` (String; alias `exit_node_ip`). Tailscale IP of the peer, or `none` / `disabled` / `off` to clear. | Sets the exit node of the active profile and applies it live if the daemon is running. |
+| `io.github.bropines.birdsocks.action.SWITCH_ACCOUNT` | `io.github.bropines.birdsocks.SWITCH_ACCOUNT` | `account` (String; aliases `account_id`, `account_name`). Profile ID or name, case-insensitive. | Switches the active profile; the daemon is restarted if it was running. Unknown names are logged and ignored. |
+| `io.github.bropines.birdsocks.action.SET_BYEDPI` | `io.github.bropines.birdsocks.SET_BYEDPI` | `enabled` (Boolean, optional), `flags` (String, optional) | Enables/disables the ByeDPI control-plane bypass and/or replaces its flags, then re-applies settings. |
+| `io.github.bropines.birdsocks.action.SET_TUN` | `io.github.bropines.birdsocks.SET_TUN` | `enabled` (Boolean, required) | Switches transparent TUN mode on or off and re-applies settings. Ignored without the `enabled` extra. |
 
 Both the long `…action.X` form and the short alias are declared in the manifest and behave identically.
 
@@ -47,7 +47,7 @@ Both the long `…action.X` form and the short alias are declared in the manifes
 
 ## 📡 Automatic Status Broadcasts (Events)
 
-Whenever TailSocks status changes or `GET_STATUS` is requested, TailSocks broadcasts an event intent to **`io.github.bropines.tailscaled.STATUS_CHANGED`** (alias **`io.github.bropines.tailscaled.STATUS`**). The broadcast is scoped to the app's own package (`setPackage`), so it is only delivered to TailSocks' own widgets and Quick Settings tile; **third-party apps such as Tasker cannot receive it**. `GET_STATUS` therefore only refreshes the in-app widgets. To read the state from another app, use the `getStatus()` AppFunction on Android 16+ (see below). For reference, the extras carried by the internal broadcast are:
+Whenever TailSocks status changes or `GET_STATUS` is requested, TailSocks broadcasts an event intent to **`io.github.bropines.birdsocks.STATUS_CHANGED`** (alias **`io.github.bropines.birdsocks.STATUS`**). The broadcast is scoped to the app's own package (`setPackage`), so it is only delivered to TailSocks' own widgets and Quick Settings tile; **third-party apps such as Tasker cannot receive it**. `GET_STATUS` therefore only refreshes the in-app widgets. To read the state from another app, use the `getStatus()` AppFunction on Android 16+ (see below). For reference, the extras carried by the internal broadcast are:
 
 | Extra Key | Type | Description | Example |
 |-----------|------|-------------|---------|
@@ -65,33 +65,33 @@ Whenever TailSocks status changes or `GET_STATUS` is requested, TailSocks broadc
 
 ### 1. MacroDroid / Tasker
 * **Target:** Broadcast Receiver
-* **Action:** `io.github.bropines.tailscaled.action.CONNECT`
-* **Package Name:** `io.github.bropines.tailscaled`
-* **Class:** `io.github.bropines.tailscaled.core.TaskerReceiver`
+* **Action:** `io.github.bropines.birdsocks.action.CONNECT`
+* **Package Name:** `io.github.bropines.birdsocks`
+* **Class:** `io.github.bropines.birdsocks.core.TaskerReceiver`
 * **Extra 1:** Key: `secret`, Value: `YOUR_TOKEN`
 
 ### 2. ADB Command Examples
 
 ```bash
 # Disconnect (the token is mandatory for every action)
-adb shell am broadcast -a io.github.bropines.tailscaled.action.DISCONNECT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.DISCONNECT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 
 # Connect
-adb shell am broadcast -a io.github.bropines.tailscaled.action.CONNECT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.CONNECT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 
 # Refresh the widgets / tile (the resulting STATUS_CHANGED broadcast stays inside the app)
-adb shell am broadcast -a io.github.bropines.tailscaled.action.GET_STATUS -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN
+adb shell am broadcast -a io.github.bropines.birdsocks.action.GET_STATUS -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN
 
 # Set Exit Node / clear it
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_EXIT_NODE -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node 100.64.0.1
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_EXIT_NODE -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node none
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_EXIT_NODE -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node 100.64.0.1
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_EXIT_NODE -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --es exit_node none
 
 # Switch Profile
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SWITCH_ACCOUNT -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --es account Work
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SWITCH_ACCOUNT -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --es account Work
 
 # Toggle TUN mode / ByeDPI (boolean extras use --ez)
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_TUN -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true
-adb shell am broadcast -a io.github.bropines.tailscaled.action.SET_BYEDPI -n io.github.bropines.tailscaled/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true --es flags "-s 1 -d split -r"
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_TUN -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true
+adb shell am broadcast -a io.github.bropines.birdsocks.action.SET_BYEDPI -n io.github.bropines.birdsocks/.core.TaskerReceiver --es secret YOUR_TOKEN --ez enabled true --es flags "-s 1 -d split -r"
 ```
 
 ---

@@ -20,7 +20,7 @@
     <string name="logs_copied">Логи скопированы в буфер обмена</string>
 
     <!-- Widget Descriptions -->
-    <string name="widget_desc_service">Запустить или остановить прокси-сервис TailSocks</string>
+    <string name="widget_desc_service">Запустить или остановить прокси-сервис BirdSocks</string>
     <string name="widget_desc_exit">Включить/выключить маршрутизацию через выходной узел</string>
     <string name="widget_desc_stats">Панель с статистикой подключения, узлами и трафиком</string>
     <string name="widget_desc_serve">Обзор активных правил Serve и Funnel</string>
@@ -98,7 +98,7 @@
     <!-- Admin: Setup screens -->
     <string name="admin_setup_title">Настройка Admin API</string>
     <string name="admin_setup_no_tailnet_title">Tailnet не обнаружен</string>
-    <string name="admin_setup_no_tailnet_desc">TailSocks должен быть хотя бы раз подключён к VPN для автоматического определения домена Tailnet.\n\nВы также можете указать домен Tailnet вручную ниже:</string>
+    <string name="admin_setup_no_tailnet_desc">BirdSocks должен быть хотя бы раз подключён к VPN для автоматического определения домена Tailnet.\n\nВы также можете указать домен Tailnet вручную ниже:</string>
     <string name="admin_setup_tailnet_label">Доменное имя Tailnet</string>
     <string name="admin_setup_tailnet_placeholder">например: taila1b2.ts.net</string>
     <string name="admin_setup_tailnet_required">Требуется доменное имя Tailnet</string>
@@ -122,7 +122,7 @@
     <string name="admin_proxy_mode_label">Режим прокси</string>
     <string name="admin_proxy_control_plane">Прокси управляющего сервера (Авто)</string>
     <string name="admin_proxy_direct">Прямое подключение (без прокси)</string>
-    <string name="admin_proxy_local_socks5">Прокси SOCKS5 Tailsocks</string>
+    <string name="admin_proxy_local_socks5">Прокси SOCKS5 Birdsocks</string>
     <string name="admin_proxy_custom_socks5">Пользовательский SOCKS5</string>
     <string name="admin_proxy_control_plane_desc">Использовать прокси, настроенный для управляющего сервера (ByeDpi / CP Proxy).</string>
     <string name="admin_proxy_socks5_host">Хост SOCKS5</string>
@@ -430,7 +430,7 @@
     <string name="main_switch_account_title">Переключить аккаунт?</string>
     <string name="main_switch_account_text">Переключение на \'%1$s\' перезапустит ядро. Вы уверены?</string>
     <string name="main_restart_switch">Перезапустить и переключить</string>
-    <string name="main_about_title">О TailSocks</string>
+    <string name="main_about_title">О BirdSocks</string>
     <string name="main_app_version">Версия приложения: %1$s</string>
     <string name="main_core_version">Tailscale Core: %1$s</string>
     <string name="main_new_version">Новая версия: %1$s</string>
@@ -452,7 +452,7 @@
     <string name="main_select_exit_node">Выбрать выходной узел</string>
     <string name="main_exit_node_none">Нет</string>
     <string name="main_battery_warn_title">Оптимизация батареи включена</string>
-    <string name="main_battery_warn_desc">TailSocks может быть завершён в фоне. Нажмите для отключения.</string>
+    <string name="main_battery_warn_desc">BirdSocks может быть завершён в фоне. Нажмите для отключения.</string>
     <string name="main_network_sync_title">Предупреждение синхронизации сети</string>
     <string name="main_network_sync_desc">Первоначальный разбор карты сети может занять 1-3 минуты из-за сетевого отката. Пожалуйста, не перезапускайте.</string>
 
@@ -561,7 +561,7 @@
     <string name="main_add_account_authkey_label">Ключ авторизации — необязательно</string>
     <string name="main_add_account_authkey_hint">С ключом устройство зарегистрируется само при первом запуске; оставьте пустым, чтобы войти через браузер.</string>
     <string name="main_rename_account_title">Переименовать аккаунт</string>
-    <string name="main_update_available_format">🚀 Доступно обновление TailSocks: %1$s</string>
+    <string name="main_update_available_format">🚀 Доступно обновление BirdSocks: %1$s</string>
     <string name="main_refreshing_config">Обновление конфигурации…</string>
     <string name="main_cannot_open_battery_settings">Не удалось открыть настройки батареи</string>
     <string name="main_error_socks5_empty">🚫 Ошибка: SOCKS5-адрес не может быть пустым!</string>
@@ -779,7 +779,7 @@
     <string name="settings_backup_saved">Резервная копия сохранена</string>
 
     <!-- Backup compatibility -->
-    <string name="settings_restore_app_too_new">Бэкап создан в TailSocks %1$s — это новее установленной %2$s. Обновите приложение, прежде чем восстанавливать.</string>
+    <string name="settings_restore_app_too_new">Бэкап создан в BirdSocks %1$s — это новее установленной %2$s. Обновите приложение, прежде чем восстанавливать.</string>
     <string name="settings_restore_format_too_new">Формат бэкапа версии %1$d, эта сборка понимает до %2$d. Обновите приложение, прежде чем восстанавливать.</string>
     <string name="settings_restore_wrong_package">Бэкап принадлежит другому приложению (%1$s).</string>
     <string name="settings_backup_failed_format">Ошибка резервного копирования: %1$s</string>
@@ -817,7 +817,7 @@
     <string name="settings_taildrop_folder_title">Папка для Taildrop</string>
     <string name="settings_taildrop_folder_default">Используется внутренняя папка приложения</string>
     <string name="settings_autostart_title">Автозапуск при загрузке</string>
-    <string name="settings_autostart_desc">Запускать TailSocks при включении устройства</string>
+    <string name="settings_autostart_desc">Запускать BirdSocks при включении устройства</string>
 
     <!-- Connection recovery -->
     <string name="settings_auto_reconnect_title">Автопереподключение</string>
@@ -991,10 +991,10 @@
     <string name="main_logged_out_btn_login">Войти в аккаунт</string>
     <string name="main_logged_out_authkey_label">Ключ авторизации (tskey-auth-…)</string>
 
-    <string name="first_start_welcome_title">Добро пожаловать в TailSocks</string>
+    <string name="first_start_welcome_title">Добро пожаловать в BirdSocks</string>
     <string name="first_start_welcome_desc">Легкий и эффективный клиент для сети Tailscale. Готов к простому подключению ваших устройств.</string>
     <string name="first_start_how_title">Как это работает</string>
-    <string name="first_start_how_desc">По умолчанию TailSocks работает в режиме userspace-сети, что не требует root или специальных разрешений VPN. Для прозрачной маршрутизации всего трафика устройства вы можете включить режим TUN в настройках.</string>
+    <string name="first_start_how_desc">По умолчанию BirdSocks работает в режиме userspace-сети, что не требует root или специальных разрешений VPN. Для прозрачной маршрутизации всего трафика устройства вы можете включить режим TUN в настройках.</string>
     <string name="first_start_bypass_title">Обход блокировок</string>
     <string name="first_start_bypass_desc">Испытываете проблемы с подключением к серверу координации Tailscale? Включите ByeByeDPI для автоматического обхода цензуры и инспекции пакетов (DPI).</string>
     <string name="first_start_login_title">Вход и разрешения</string>
@@ -1042,13 +1042,13 @@
     <string name="onboarding_perm_battery_title">Игнорировать батарею</string>
     <string name="onboarding_perm_battery_desc">Предотвращает закрытие службы в фоне</string>
     <string name="onboarding_perm_battery_configure">Настроить</string>
-    <string name="onboarding_perm_battery_toast">Найдите TailSocks и отключите оптимизацию</string>
+    <string name="onboarding_perm_battery_toast">Найдите BirdSocks и отключите оптимизацию</string>
     <string name="onboarding_perm_battery_error">Не удалось открыть настройки</string>
 
     <string name="settings_root_kill_daemon_title">Завершать Root-демон при остановке</string>
     <string name="settings_root_kill_daemon_desc">Отправлять сигнал завершения (SIGTERM/SIGKILL) процессу libtailscale.so при клике на кнопку «Отключить».</string>
     <string name="settings_root_warning_dialog_title">Внимание: Экспериментальный режим</string>
-    <string name="settings_root_warning_dialog_body">Включение Root-режима переводит TailSocks в режим прямой работы с TUN-интерфейсом ядра Android через системные привилегии superuser.\n\nОбратите внимание: Данная функция является экспериментальной. Автор проекта (bropines) еще не все проверил и отлаживает этот режим.</string>
+    <string name="settings_root_warning_dialog_body">Включение Root-режима переводит BirdSocks в режим прямой работы с TUN-интерфейсом ядра Android через системные привилегии superuser.\n\nОбратите внимание: Данная функция является экспериментальной. Автор проекта (bropines) еще не все проверил и отлаживает этот режим.</string>
     <string name="settings_root_warning_dialog_confirm">Понятно, включить</string>
     <string name="settings_root_warning_dialog_cancel">Отмена</string>
     <string name="settings_root_banner_warning">ЭКСПЕРИМЕНТАЛЬНЫЙ РЕЖИМ\nRoot-режим находится в стадии разработки. Автор bropines еще не все проверил и отлаживает этот режим.</string>
@@ -1106,10 +1106,10 @@
     <string name="dns_cd_copy_ip">Скопировать IP</string>
     <string name="admin_error_loading_keys_format">Ошибка загрузки ключей: %1$s</string>
     <string name="notif_channel_alerts">Оповещения о соединении</string>
-    <string name="revive_refused_title">TailSocks отключён</string>
+    <string name="revive_refused_title">BirdSocks отключён</string>
     <string name="revive_refused_text">Система остановила службу и не дала запустить её снова. Нажмите, чтобы подключиться.</string>
     <string name="perm_ask_title">Остановлен в фоне</string>
-    <string name="perm_ask_text">Система выгрузила TailSocks и не дала ему запуститься снова. Разрешите автозапуск — тогда обновление или чистка памяти не будут обрывать соединение.</string>
+    <string name="perm_ask_text">Система выгрузила BirdSocks и не дала ему запуститься снова. Разрешите автозапуск — тогда обновление или чистка памяти не будут обрывать соединение.</string>
     <string name="perm_ask_grant">Разрешить</string>
     <string name="perm_ask_later">Позже</string>
     <string name="perm_ask_never">Не спрашивать</string>
@@ -1198,7 +1198,7 @@
     <string name="settings_tun_uses_socks_title">Отдаёт трафик в локальный SOCKS5</string>
     <string name="settings_tun_uses_socks_desc">%1$s — общий с режимом прокси, Taildrive и админ-API. Нажмите, чтобы изменить.</string>
     <string name="settings_tun_warning_title">Занять слот VPN?</string>
-    <string name="settings_tun_warning_body">Android держит только один VPN одновременно. Включение займёт слот, и любой VPN или блокировщик рекламы, который займёт его следующим, точно так же отключит TailSocks.</string>
+    <string name="settings_tun_warning_body">Android держит только один VPN одновременно. Включение займёт слот, и любой VPN или блокировщик рекламы, который займёт его следующим, точно так же отключит BirdSocks.</string>
     <string name="settings_tun_warning_body_busy">Сейчас работает другой VPN — блокировщик рекламы, приложение приватного DNS или ещё один туннель. Включение заберёт слот у него, и он перестанет фильтровать, пока вы не вернётесь обратно.</string>
     <string name="settings_tun_warning_confirm">Включить</string>
     <string name="main_status_active_root_desc">Система идёт через tailscale0 • Нажмите для остановки</string>
@@ -1208,9 +1208,9 @@
     <string name="tun_excluded_apps_not_installed">Не установлено на этом телефоне</string>
     <!-- Root Mode next to another VPN: the sticky override and what a yield looks like -->
     <string name="settings_root_take_device_title">Всё равно занять устройство</string>
-    <string name="settings_root_take_device_desc">Забрать маршрут по умолчанию и DNS у другого VPN, который держит телефон.\n• Выкл: TailSocks оставляет их тому VPN и берёт только приложения, которые тот держит вне своего туннеля.\n• Вкл: всё уходит в TailSocks, приложения того VPN остаются без туннеля.</string>
+    <string name="settings_root_take_device_desc">Забрать маршрут по умолчанию и DNS у другого VPN, который держит телефон.\n• Выкл: BirdSocks оставляет их тому VPN и берёт только приложения, которые тот держит вне своего туннеля.\n• Вкл: всё уходит в BirdSocks, приложения того VPN остаются без туннеля.</string>
     <string name="settings_root_take_device_dialog_title">Забрать устройство у другого VPN?</string>
-    <string name="settings_root_take_device_dialog_body">Маршрут по умолчанию и DNS телефона сейчас держит другой VPN. Если забрать их, весь трафик и все запросы имён пойдут через TailSocks: приложения, которые тот VPN защищал, останутся без туннеля, а его фильтрация перестанет работать — и он об этом не узнает. Выключите переключатель, чтобы вернуть устройство.</string>
+    <string name="settings_root_take_device_dialog_body">Маршрут по умолчанию и DNS телефона сейчас держит другой VPN. Если забрать их, весь трафик и все запросы имён пойдут через BirdSocks: приложения, которые тот VPN защищал, останутся без туннеля, а его фильтрация перестанет работать — и он об этом не узнает. Выключите переключатель, чтобы вернуть устройство.</string>
     <string name="settings_root_take_device_confirm">Занять устройство</string>
     <string name="settings_root_yielded_banner">Устройство держит другой VPN.\n• Маршрутизируются только адреса тейлнета и имена MagicDNS.\n• Выходной узел и системный DNS выключены, пока он работает.</string>
     <string name="main_root_yielded_title">Только тейлнет</string>
@@ -1219,7 +1219,7 @@
     <string name="main_exit_node_inert_label">Выходной узел не используется</string>
     <string name="main_exit_node_inert_desc">Выбран %1$s, но устройство держит другой VPN</string>
     <!-- Root Mode sharing the device: the other VPN bypasses some apps, we carry those -->
-    <string name="settings_root_shared_banner">Устройство держит другой VPN, но часть приложений оставил вне своего туннеля.\n• Эти приложения идут через TailSocks — с выходным узлом и MagicDNS.\n• Остальные остаются у него.</string>
+    <string name="settings_root_shared_banner">Устройство держит другой VPN, но часть приложений оставил вне своего туннеля.\n• Эти приложения идут через BirdSocks — с выходным узлом и MagicDNS.\n• Остальные остаются у него.</string>
     <string name="settings_root_dns_shared_desc">Включён для приложений, которые не забрал другой VPN. Его собственные запросы оставлены ему.</string>
     <string name="main_root_shared_title">Делим с другим VPN</string>
     <string name="main_root_shared_desc">Устройство держит он, а приложения, которые он не забрал, идут через нас — с выходным узлом и MagicDNS.</string>
@@ -1236,7 +1236,7 @@
     <string name="honest_hostinfo_os_android">Android</string>
     <string name="honest_hostinfo_checkbox_desc">Регистрировать как Android-устройство с настоящей моделью. Выключено: как Linux-клиент командной строки, как раньше. Сменить потом можно только новым профилем.</string>
     <!-- The daemon exited on its own; the user still wanted the connection -->
-    <string name="daemon_crashed_title">TailSocks потерял соединение</string>
+    <string name="daemon_crashed_title">BirdSocks потерял соединение</string>
     <string name="daemon_crashed_text">Демон остановился сам. Нажмите, чтобы переподключиться.</string>
     <!-- The coordination server refused the node because its reported OS changed -->
     <string name="coordinator_os_refused_title">Координатор отверг это устройство</string>

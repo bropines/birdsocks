@@ -1,0 +1,283 @@
+package io.github.bropines.birdsocks.ui
+import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.BuildConfig
+
+import io.github.bropines.birdsocks.admin.*
+import io.github.bropines.birdsocks.core.*
+import io.github.bropines.birdsocks.models.*
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import appctr.Appctr
+import androidx.compose.ui.res.stringResource
+import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
+import io.github.bropines.birdsocks.core.AppJson
+import kotlinx.serialization.decodeFromString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+
+class ShareActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(wrapContextWithLocale(newBase))
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val fileUris = when (intent.action) {
+            Intent.ACTION_SEND -> androidx.core.content.IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.let { listOf(it) }
+            Intent.ACTION_SEND_MULTIPLE -> androidx.core.content.IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            else -> null
+        }
+        if (fileUris.isNullOrEmpty()) { finish(); return }
+        setContent { BirdSocksTheme { ShareOverlay(fileUris = fileUris, onDismiss = { finish() }) } }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ShareOverlay(fileUris: List<Uri>, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val sheetState = rememberFullSheetState()
+    
+    var currentAccount by remember { mutableStateOf(AccountManager.getActiveAccount(context)) }
+    val accounts = remember { AccountManager.getAccounts(context) }
+    var peers by remember { mutableStateOf<List<PeerData>>(emptyList()) }
+    var isLoadingPeers by remember { mutableStateOf(true) }
+    var isSending by remember { mutableStateOf(false) }
+    var sendProgressText by remember { mutableStateOf("") }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var accountMenuExpanded by remember { mutableStateOf(false) }
+    // The daemon's verdict per peer, in the app's language: the sheet's own window follows
+    // the system locale, so the words are resolved out here, once.
+    val taildropStrings = remember { TaildropReasonStrings.from(context) }
+
+    fun loadPeers() {
+        isLoadingPeers = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                val json = Appctr.getStatusFromAPI()
+                if (json.isBlank() || json.startsWith("Error")) throw Exception(if (json.isBlank()) "Empty status" else json)
+                val status = AppJson.decodeFromString<StatusResponse>(json)
+                // Same list and order as the Files hub picker; a peer the daemon refuses is
+                // listed disabled with the reason, so what is offered is what will be accepted.
+                peers = taildropPickerPeers(status, taildropStrings)
+                withContext(Dispatchers.Main) { isLoadingPeers = false; errorMsg = null }
+            } catch (e: Exception) { withContext(Dispatchers.Main) { errorMsg = e.message; isLoadingPeers = false } }
+        }
+    }
+
+    LaunchedEffect(currentAccount) { loadPeers() }
+
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val maxHeight = (configuration.screenHeightDp * 0.85f).dp
+
+    // Strings come from the parent context, not stringResource() — see wrapContextWithLocale().
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxHeight)
+                .navigationBarsPadding()
+        ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(context.getString(R.string.share_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(context.getString(R.string.share_files_count_format, fileUris.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = { loadPeers() }) {
+                    Icon(Icons.Default.Refresh, contentDescription = context.getString(R.string.action_refresh))
+                }
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    onClick = { accountMenuExpanded = true },
+                    shape = MaterialTheme.shapes.medium,
+                    color = Color.Transparent,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.5.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.AccountCircle, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(6.dp))
+                        // Free-text account name: capped, or the chip grows over
+                        // the sheet title and past its own caret.
+                        Text(
+                            currentAccount.name,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 120.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+
+            if (accountMenuExpanded) {
+                // The same choice as the main screen's account switcher, so the same
+                // shape: a sheet over this one rather than a menu hanging off the chip.
+                // The server line tells apart two accounts that share a name. Read once
+                // per opening: it comes from each account's preferences, and this
+                // sheet recomposes with every line of send progress.
+                val accountOptions = remember(accounts) {
+                    accounts.map { acc ->
+                        PickerOption(
+                            value = acc,
+                            label = acc.name,
+                            icon = Icons.Default.AccountCircle,
+                            supporting = AccountManager.facts(context, acc.id).loginServer
+                        )
+                    }
+                }
+                PickerSheet(
+                    title = context.getString(R.string.accounts_sheet_title),
+                    options = accountOptions,
+                    selected = accounts.firstOrNull { it.id == currentAccount.id },
+                    onPick = { acc ->
+                        if (acc.id != currentAccount.id) {
+                            AccountManager.setActiveAccount(context, acc.id)
+                            currentAccount = acc
+                            context.startService(Intent(context, TailscaledService::class.java).apply { action = "RESTART_ACTION" })
+                        }
+                    },
+                    onDismiss = { accountMenuExpanded = false }
+                )
+            }
+
+            if (isLoadingPeers) Box(Modifier.fillMaxWidth().height(200.dp), Alignment.Center) { LoadingIndicator() }
+            else if (errorMsg != null) Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(errorMsg!!, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center); Button(onClick = { loadPeers() }) { Text(context.getString(R.string.action_retry)) }
+            } else Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                    ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(peers) { p -> 
+                            PeerShareItem(p, !isSending, taildropStatusOf(p, taildropStrings)) {
+                                isSending = true
+                                scope.launch(Dispatchers.IO) {
+                                    val failures = sendFilesWithProgress(context, fileUris, p) { sendProgressText = it }
+                                    withContext(Dispatchers.Main) {
+                                        isSending = false
+                                        // The sheet closes right here, so the progress card
+                                        // is gone before anyone reads it: a toast outlives it.
+                                        if (failures.isNotEmpty()) {
+                                            Toast.makeText(context, failures.joinToString("\n"), Toast.LENGTH_LONG).show()
+                                        }
+                                        onDismiss()
+                                    }
+                                }
+                            } 
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (isSending) Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.5f)), contentAlignment = Alignment.Center) {
+        Card(shape = MaterialTheme.shapes.large) {
+            Column(modifier = Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                LoadingIndicator(); Spacer(Modifier.height(20.dp))
+                Text(stringResource(R.string.share_sending), fontWeight = FontWeight.Bold)
+                Text(sendProgressText, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+/**
+ * Sends every file in turn and returns one line per file that did not arrive, already in
+ * the user's words, for the caller to show once the sheet is gone.
+ */
+private suspend fun sendFilesWithProgress(context: Context, uris: List<Uri>, peer: PeerData, onProgress: (String) -> Unit): List<String> {
+    val failures = mutableListOf<String>()
+    uris.forEachIndexed { i, uri ->
+        val originalName = getFileName(context, uri) ?: "file_${System.currentTimeMillis()}"
+        onProgress("${i + 1}/${uris.size}\n$originalName")
+        try {
+            // The daemon looks the peer up by StableNodeID alone (localapi file-put): a
+            // hostname or DNS name in its place is a guaranteed 404, so a peer that came
+            // without an ID is an error to report, not something to paper over.
+            val target = taildropTargetId(context, peer)
+            val outDir = File(context.cacheDir, "share_out").apply { mkdirs() }
+            val tmp = File(outDir, originalName)
+            context.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { output -> input.copyTo(output); output.flush() } }
+            val res = Appctr.sendFileFromAPI(target, tmp.absolutePath)
+            tmp.delete()
+            // "OK" is the bridge's word for a 2xx from the peer itself; anything else starts
+            // with "Error" and carries the peer's HTTP status and body, or the local failure.
+            if (res == "OK") {
+                logSentFile(context, originalName, peer.getDisplayName())
+            } else {
+                val why = res.removePrefix("Error: ")
+                onProgress(context.getString(R.string.share_failed_format, originalName, why))
+                failures += context.getString(R.string.share_failed_format, originalName, why)
+            }
+        } catch (e: Exception) {
+            val why = e.message ?: e.javaClass.simpleName
+            onProgress(context.getString(R.string.share_failed_format, originalName, why))
+            failures += context.getString(R.string.share_failed_format, originalName, why)
+        }
+    }
+    return failures
+}
+
+/**
+ * The StableNodeID sendFileFromAPI needs, or an exception with the message to show. Shared
+ * by the three send sites (Share sheet, peer sheet, Files hub).
+ */
+fun taildropTargetId(context: Context, peer: PeerData): String =
+    peer.id?.takeIf { it.isNotEmpty() }
+        ?: throw IllegalStateException(context.getString(R.string.files_peer_no_id, peer.getDisplayName()))

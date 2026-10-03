@@ -17,7 +17,7 @@
 set -u
 
 SERIAL="${1:?usage: $0 <adb-serial> [package]}"
-PKG="${2:-io.github.bropines.tailscaled}"
+PKG="${2:-io.github.bropines.birdsocks}"
 ADB=(adb -s "$SERIAL")
 STAMP=$(date +%Y%m%d-%H%M%S)
 OUT="root-debug-$STAMP"

@@ -10,7 +10,7 @@
 # actually being hit?", which is what separates "the rule is missing" from
 # "the rule is there and the traffic never reaches it".
 
-PKG="io.github.bropines.tailscaled"
+PKG="io.github.bropines.birdsocks"
 [ -n "$1" ] && PKG="$1"
 DATA="/data/data/$PKG"
 SOCK="$DATA/files/tailscaled.sock"
