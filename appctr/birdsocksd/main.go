@@ -7,7 +7,8 @@
 // and builds it there, so it compiles against NetBird's own go.mod and may
 // use the client's internal packages.
 //
-// The app starts it (appctr/daemon.go) with NB_STATE_DIR pointing at its
+// It is a Linux binary, not an Android one (resolver.go says why). The app
+// starts it (appctr/core.go) with NB_STATE_DIR pointing at its
 // files, so profiles and state live there and not in /var/lib/netbird, and
 // with NB_USE_NETSTACK_MODE=true and the SOCKS5 settings in the environment:
 // the tunnel is a userspace netstack, not a kernel TUN.
@@ -21,6 +22,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	// Android has no /usr/share/zoneinfo for a Linux binary; TZ comes from the app.
+	_ "time/tzdata"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -38,6 +41,7 @@ func main() {
 	config := flag.String("config", "", "the default profile's config file")
 	logFile := flag.String("log-file", "console", "where the log goes: a path or console")
 	logLevel := flag.String("log-level", "info", "log level")
+	dnsServers := flag.String("dns-file", "", "the network's DNS servers, one per line, kept current by the app")
 	flag.Parse()
 	if *socket == "" || *config == "" {
 		fmt.Fprintln(os.Stderr, "birdsocksd: -socket and -config are required")
@@ -47,6 +51,10 @@ func main() {
 	if err := util.InitLog(*logLevel, *logFile); err != nil {
 		fmt.Fprintf(os.Stderr, "birdsocksd: log: %v\n", err)
 		os.Exit(1)
+	}
+
+	if *dnsServers != "" {
+		installResolver(*dnsServers)
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

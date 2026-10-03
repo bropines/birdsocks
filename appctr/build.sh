@@ -52,7 +52,10 @@ fi
 
 # Our entry point builds inside the NetBird module, so it uses NetBird's
 # go.mod and may import the client's internal packages.
-rm -rf netbird_src/client/birdsocksd && cp -r birdsocksd netbird_src/client/birdsocksd
+# Only the Go files: birdsocksd/go.mod exists to keep the directory out of the
+# appctr module, and inside NetBird's tree it would wall it off from client/internal.
+rm -rf netbird_src/client/birdsocksd && mkdir -p netbird_src/client/birdsocksd
+cp birdsocksd/*.go netbird_src/client/birdsocksd/
 
 export GOTOOLCHAIN=${GOTOOLCHAIN:-auto}
 # Reproducible: no VCS stamp, no build paths, no build ID.
@@ -60,7 +63,6 @@ export GOFLAGS=-buildvcs=false
 
 TS_ABIS=${TS_ABIS:-"armeabi-v7a arm64-v8a x86 x86_64"}
 abi_goarch() { case $1 in armeabi-v7a) echo arm;; arm64-v8a) echo arm64;; x86) echo 386;; x86_64) echo amd64;; *) return 1;; esac; }
-abi_clang()  { case $1 in armeabi-v7a) echo armv7a-linux-androideabi21;; arm64-v8a) echo aarch64-linux-android21;; x86) echo i686-linux-android21;; x86_64) echo x86_64-linux-android21;; esac; }
 
 NB_LDFLAGS="-s -w -buildid= -checklinkname=0 -X github.com/netbirdio/netbird/version.version=${NB_VERSION#v}"
 GOMOBILE_TARGETS=""
@@ -68,16 +70,14 @@ mkdir -p netbird_src/tmp
 for ABI in $TS_ABIS; do
     GOARCH_ABI=$(abi_goarch "$ABI") || { echo "Unknown ABI: $ABI" >&2; exit 1; }
     GOMOBILE_TARGETS="${GOMOBILE_TARGETS:+$GOMOBILE_TARGETS,}android/$GOARCH_ABI"
-    # cgo, so names resolve through bionic like any app's: a pure-Go
-    # resolver reads /etc/resolv.conf, which Android does not have.
-    export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/$(abi_clang "$ABI")-clang"
-    export CGO_ENABLED=1
     if [ "$GOARCH_ABI" = arm ]; then export GOARM=7; else unset GOARM; fi
     echo "-> Compiling birdsocksd [$ABI]..."
-    (cd netbird_src && GOOS=android GOARCH=$GOARCH_ABI go build -buildmode=pie -trimpath \
+    # A static Linux binary, no cgo: NetBird's Linux netstack mode is the
+    # unprivileged one, its android paths need its own app (birdsocksd/resolver.go).
+    (cd netbird_src && CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH_ABI go build -trimpath \
         -ldflags="$NB_LDFLAGS" -o "tmp/libnetbird_${ABI}.so" ./client/birdsocksd)
 done
-unset CC GOARM
+unset GOARM
 
 echo "-> Building appctr.aar (gomobile bridge)..."
 GIT_HASH=$(git rev-parse --short=7 HEAD 2>/dev/null || echo dev)

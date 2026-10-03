@@ -155,21 +155,14 @@ func (h *dualHandler) Handle(ctx context.Context, r slog.Record) error {
 	timestamp := r.Time.Local().Format("15:04:05")
 	lowerMsg := strings.ToLower(msg)
 
-	// Category is the source: TAILSCALE is the daemon (its stdout here, its
-	// file in Root Mode, which the Logs screen parses the same way), CORE is
-	// the app, and ERROR keeps the app's own error-level lines red. The level
-	// of a daemon line is read off the text, as the Logs screen does for the file.
+	// Category is the source: NETBIRD is the daemon (its stdout, with the
+	// level its own line carried — pipeDaemonLog parses it), CORE is the app,
+	// and ERROR keeps the app's own error-level lines red.
 	category := "CORE"
 	level := r.Level.String()
 	switch {
 	case source == "daemon":
-		category = "TAILSCALE"
-		switch {
-		case strings.Contains(lowerMsg, "error") || strings.Contains(lowerMsg, "failed") || strings.Contains(lowerMsg, "panic"):
-			level = "ERROR"
-		case strings.Contains(lowerMsg, "warn"):
-			level = "WARN"
-		}
+		category = "NETBIRD"
 	case r.Level >= slog.LevelError || strings.Contains(lowerMsg, "error") || strings.Contains(lowerMsg, "failed"):
 		category = "ERROR"
 	}
