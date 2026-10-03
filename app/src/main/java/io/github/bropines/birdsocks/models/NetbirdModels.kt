@@ -191,3 +191,19 @@ data class NbConfig(
     val blockLanAccess: Boolean = false,
     val disableIpv6: Boolean = false
 )
+
+/** One NetBird profile: an account on a server, with its own keys and settings. */
+@Serializable
+data class NbProfile(
+    val name: String = "",
+    val isActive: Boolean = false,
+    val id: String = ""
+) {
+    val isDefault: Boolean get() = name == "default"
+}
+
+@Serializable
+data class NbProfiles(val profiles: List<NbProfile> = emptyList())
+
+@Serializable
+data class NbActiveProfile(val profileName: String = "", val id: String = "")

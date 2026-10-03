@@ -119,4 +119,12 @@
     <string name="nb_settings_about">About</string>
     <string name="nb_settings_daemon_version">Daemon %1$s</string>
     <string name="nb_settings_about_desc">BirdSocks runs the NetBird client as a userspace node and hands its network to apps through a SOCKS5 proxy, without taking the VPN slot. Not affiliated with NetBird GmbH.</string>
+    <string name="nb_accounts_title">Accounts</string>
+    <string name="nb_accounts_add">Add account</string>
+    <string name="nb_accounts_name">Name</string>
+    <string name="nb_accounts_name_hint">Work, home…</string>
+    <string name="nb_accounts_active">Active</string>
+    <string name="nb_accounts_rename">Rename</string>
+    <string name="nb_accounts_remove">Remove account</string>
+    <string name="nb_accounts_remove_confirm">%1$s: its keys and settings are deleted from this phone. The peer stays in the dashboard; remove it there.</string>
 </resources>

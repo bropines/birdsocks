@@ -53,8 +53,10 @@ VPN slot.
   `LoginFlow` runs it in the app's scope so the browser taking the screen does
   not cancel the wait. The tile and boot paths cannot sign in; they show
   "Sign-in needed".
-* **One profile for now** (`default`). NetBird's profile RPCs want a username for
-  the others; profiles come later.
+* **Accounts are NetBird profiles.** `default` is addressed without a username;
+  every other profile under the user the daemon runs as (`USER=birdsocks`,
+  `Netbird.USER`), stored in `files/netbird/birdsocks/`. Calls that take a
+  profile (GetConfig, SetConfig) address the active one.
 
 ---
 

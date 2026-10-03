@@ -111,4 +111,12 @@
     <string name="nb_settings_about">О приложении</string>
     <string name="nb_settings_daemon_version">Демон %1$s</string>
     <string name="nb_settings_about_desc">BirdSocks запускает клиент NetBird как узел в пространстве пользователя и отдаёт его сеть приложениям через прокси SOCKS5, не занимая слот VPN. Не связан с NetBird GmbH.</string>
+    <string name="nb_accounts_title">Аккаунты</string>
+    <string name="nb_accounts_add">Добавить аккаунт</string>
+    <string name="nb_accounts_name">Название</string>
+    <string name="nb_accounts_name_hint">Работа, дом…</string>
+    <string name="nb_accounts_active">Активен</string>
+    <string name="nb_accounts_rename">Переименовать</string>
+    <string name="nb_accounts_remove">Удалить аккаунт</string>
+    <string name="nb_accounts_remove_confirm">%1$s: ключи и настройки аккаунта будут удалены с телефона. Узел в панели останется — удалите его там.</string>
 </resources>

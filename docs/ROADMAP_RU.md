@@ -15,7 +15,6 @@
 - **Прокси для управляющих соединений и обход DPI.** У номеронабирателей NetBird
   нет поддержки прокси; патч `client/net.Dialer` для management, signal и relay,
   вернуть ByeDPI. `NB_RELAY_TRANSPORT=ws` уже переводит relay на WebSocket.
-- **Профили**: несколько аккаунтов или серверов NetBird с переключением с главного экрана.
 - **Истечение сессии**: предупреждения приходят в SubscribeEvents; показывать их
   и предлагать `RequestExtendAuthSession`.
 - **HTTP-прокси** рядом с SOCKS5 — для приложений, которые умеют только HTTP.

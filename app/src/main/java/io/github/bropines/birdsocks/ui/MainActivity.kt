@@ -141,12 +141,18 @@ fun MainScreen() {
         networks = if (card == CardState.Connected) runCatching { Netbird.networks() }.getOrDefault(emptyList()) else emptyList()
     }
     var showExitPicker by remember { mutableStateOf(false) }
+    var showAccounts by remember { mutableStateOf(false) }
+    val profile by NetbirdState.profile.collectAsState()
+    val accounts by rememberAccounts(profile)
+    val accountLabel = accounts.firstOrNull { it.profile.name == profile }?.label
 
     Scaffold(
         topBar = {
             AppTopBar(
                 title = stringResource(R.string.app_name),
-                subtitle = status?.fullStatus?.localPeerState?.fqdn?.takeIf { it.isNotEmpty() },
+                subtitle = listOfNotNull(accountLabel, status?.fullStatus?.localPeerState?.fqdn?.substringBefore('.')?.takeIf { it.isNotEmpty() })
+                    .joinToString(" · ").ifEmpty { null },
+                onTitleClick = if (daemon == NetbirdState.Daemon.Running) ({ showAccounts = true }) else null,
                 actions = {
                     IconButton(onClick = { context.startActivity(Intent(context, SettingsActivity::class.java)) }) {
                         Icon(Icons.Default.Settings, stringResource(R.string.menu_settings))
@@ -208,6 +214,8 @@ fun MainScreen() {
             }
         }
     }
+
+    if (showAccounts) AccountSheet(onDismiss = { showAccounts = false })
 
     if (showExitPicker) {
         val exitNodes = networks.filter { it.isExitNode }

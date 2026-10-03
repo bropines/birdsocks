@@ -161,6 +161,7 @@ class NetbirdService : Service() {
                 Appctr.start(startOptions())
                 Appctr.waitReady(15_000)
                 NetbirdState.daemonFlow.value = NetbirdState.Daemon.Running
+                NetbirdState.profileFlow.value = runCatching { Netbird.activeProfile() }.getOrNull()
                 followStatus()
             } catch (e: Exception) {
                 Log.e(TAG, "start failed", e)

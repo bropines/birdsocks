@@ -8,6 +8,9 @@ import io.github.bropines.birdsocks.models.NbConfig
 import io.github.bropines.birdsocks.models.NbLoginResponse
 import io.github.bropines.birdsocks.models.NbNetwork
 import io.github.bropines.birdsocks.models.NbNetworks
+import io.github.bropines.birdsocks.models.NbActiveProfile
+import io.github.bropines.birdsocks.models.NbProfile
+import io.github.bropines.birdsocks.models.NbProfiles
 import io.github.bropines.birdsocks.models.NbStatus
 import io.github.bropines.birdsocks.models.NbWaitSsoResponse
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +31,15 @@ import kotlinx.serialization.json.add
  * run on Dispatchers.IO; a failure throws with the daemon's own message.
  */
 object Netbird {
-    /** The profile every call addresses; profiles beyond it come later. */
-    private const val PROFILE = "default"
+    /**
+     * The user the daemon files profiles under: the USER it is started with
+     * (appctr/core.go). The default profile needs none; every other one lives
+     * in files/netbird/<user>/.
+     */
+    private const val USER = "birdsocks"
+    private const val DEFAULT_PROFILE = "default"
+
+    private fun userFor(profile: String) = if (profile == DEFAULT_PROFILE) "" else USER
 
     suspend fun call(method: String, request: String = "", timeoutMs: Long = 15_000): String =
         withContext(Dispatchers.IO) { Appctr.call(method, request, timeoutMs) }
@@ -88,13 +98,64 @@ object Netbird {
         }.toString())
     }
 
-    suspend fun config(): NbConfig = callAs("GetConfig", """{"profileName":"$PROFILE"}""")
+    /** The active profile's settings, or [profile]'s. */
+    suspend fun config(profile: String? = null): NbConfig {
+        val name = profile ?: activeProfile()
+        return callAs("GetConfig", buildJsonObject {
+            put("profileName", name)
+            put("username", userFor(name))
+        }.toString())
+    }
 
-    /** Changes the profile's settings; they apply on the next connect (see [reconnect]). */
+    /** Changes the active profile's settings; they apply on the next connect (see [reconnect]). */
     suspend fun setConfig(fields: JsonObjectBuilder.() -> Unit) {
+        val name = activeProfile()
         call("SetConfig", buildJsonObject {
-            put("profileName", PROFILE)
+            put("profileName", name)
+            put("username", userFor(name))
             fields()
+        }.toString())
+    }
+
+    // --- Profiles: one per account ---
+
+    suspend fun profiles(): List<NbProfile> =
+        callAs<NbProfiles>("ListProfiles", buildJsonObject { put("username", USER) }.toString()).profiles
+
+    suspend fun activeProfile(): String =
+        callAs<NbActiveProfile>("GetActiveProfile").profileName.ifEmpty { DEFAULT_PROFILE }
+
+    suspend fun addProfile(name: String) {
+        call("AddProfile", buildJsonObject {
+            put("username", USER)
+            put("profileName", name.trim())
+        }.toString())
+    }
+
+    /** Makes [name] the active profile and connects it; one not logged in yet asks for a login. */
+    suspend fun switchProfile(name: String) {
+        runCatching { down() }
+        call("SwitchProfile", buildJsonObject {
+            put("profileName", name)
+            put("username", userFor(name))
+        }.toString())
+        NetbirdState.profileFlow.value = name
+        up()
+    }
+
+    /** Removes [name], its keys and settings; never the active or the default one. */
+    suspend fun removeProfile(name: String) {
+        call("RemoveProfile", buildJsonObject {
+            put("username", USER)
+            put("profileName", name)
+        }.toString())
+    }
+
+    suspend fun renameProfile(name: String, newName: String) {
+        call("RenameProfile", buildJsonObject {
+            put("username", USER)
+            put("handle", name)
+            put("newProfileName", newName.trim())
         }.toString())
     }
 
@@ -125,6 +186,10 @@ object NetbirdState {
     internal val statusFlow = MutableStateFlow<NbStatus?>(null)
     /** The last status the daemon streamed, null while it is not running. */
     val status: StateFlow<NbStatus?> = statusFlow.asStateFlow()
+
+    internal val profileFlow = MutableStateFlow<String?>(null)
+    /** The active NetBird profile's name, null until the daemon has said. */
+    val profile: StateFlow<String?> = profileFlow.asStateFlow()
 
     internal val errorFlow = MutableStateFlow<String?>(null)
     /** Why the daemon is not running when it should be: a failed start, a crash. */

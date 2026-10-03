@@ -15,7 +15,6 @@ roughly in order.
 - **Control-plane proxy and DPI bypass.** NetBird's dialers have no proxy support;
   patch `client/net.Dialer` for management, signal and relay, and bring back
   ByeDPI. `NB_RELAY_TRANSPORT=ws` already moves the relay to WebSocket.
-- **Profiles**: several NetBird accounts or servers, switched from the main screen.
 - **Session expiry**: SubscribeEvents carries the warnings; show them and offer
   `RequestExtendAuthSession`.
 - **HTTP proxy** next to SOCKS5, for apps that only speak HTTP.

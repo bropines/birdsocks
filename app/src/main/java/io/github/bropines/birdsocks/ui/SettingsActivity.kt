@@ -170,6 +170,8 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 ) { confirmLogout = true }
             }
 
+            if (running) AccountsCard()
+
             // --- The SOCKS5 proxy ---
             SettingsCard(stringResource(R.string.nb_socks_title)) {
                 var port by remember { mutableStateOf(GlobalSettings.getSocksPort(context).toString()) }
