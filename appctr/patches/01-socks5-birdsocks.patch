@@ -1,0 +1,276 @@
+--- netbird_orig/client/iface/netstack/env.go
++++ netbird_src/client/iface/netstack/env.go
+@@ -24,6 +24,12 @@
+ 	// address.
+ 	EnvSocks5ListenerAddress = "NB_SOCKS5_LISTENER_ADDRESS"
+ 
++	// EnvSocks5User and EnvSocks5Pass, when both are set, make the SOCKS5
++	// proxy ask for that username and password (BirdSocks: any app on an
++	// Android device can find an open proxy on localhost).
++	EnvSocks5User = "NB_SOCKS5_USER"
++	EnvSocks5Pass = "NB_SOCKS5_PASS"
++
+ 	// defaultSocks5Host is the loopback address the SOCKS5 proxy binds to unless
+ 	// overridden via EnvSocks5ListenerAddress.
+ 	defaultSocks5Host = "127.0.0.1"
+@@ -72,3 +78,10 @@
+ 
+ 	return port
+ }
++
++// socks5Credentials is the username and password the proxy asks for, or ok
++// false when it asks for none.
++func socks5Credentials() (user, pass string, ok bool) {
++	user, pass = os.Getenv(EnvSocks5User), os.Getenv(EnvSocks5Pass)
++	return user, pass, user != "" && pass != ""
++}
+--- netbird_orig/client/iface/netstack/proxy.go
++++ netbird_src/client/iface/netstack/proxy.go
+@@ -20,10 +20,15 @@
+ 	closed   bool
+ }
+ 
+-func NewSocks5(dialer Dialer) (*Proxy, error) {
+-	server := socks5.NewServer(
+-		socks5.WithDial(dialer.Dial),
+-	)
++func NewSocks5(dialer Dialer, resolver socks5.NameResolver) (*Proxy, error) {
++	opts := []socks5.Option{socks5.WithDial(dialer.Dial)}
++	if resolver != nil {
++		opts = append(opts, socks5.WithResolver(resolver))
++	}
++	if user, pass, ok := socks5Credentials(); ok {
++		opts = append(opts, socks5.WithCredential(socks5.StaticCredentials{user: pass}))
++	}
++	server := socks5.NewServer(opts...)
+ 
+ 	return &Proxy{
+ 		server: server,
+--- netbird_orig/client/iface/netstack/tun.go
++++ netbird_src/client/iface/netstack/tun.go
+@@ -53,7 +53,7 @@
+ 	}
+ 
+ 	dialer := NewNSDialer(tunNet)
+-	t.proxy, err = NewSocks5(dialer)
++	t.proxy, err = NewSocks5(dialer, newNSResolver(tunNet))
+ 	if err != nil {
+ 		_ = t.tundev.Close()
+ 		return nil, nil, err
+--- netbird_orig/client/iface/netstack/dialer.go
++++ netbird_src/client/iface/netstack/dialer.go
+@@ -22,9 +22,19 @@
+ 	}
+ }
+ 
++// Dial reaches addr through the tunnel when a peer carries it — a peer's own
++// address, a network it routes, everything when an exit node is in use —
++// and over the host's network otherwise (BirdSocks: the proxy is all an app
++// has, so the rest of the internet must not end in the tunnel with nowhere
++// to go).
+ func (d *NSDialer) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
++	if !overlayDestination(addr) {
++		log.Debugf("dialing %s %s directly", network, addr)
++		var hd net.Dialer
++		return hd.DialContext(ctx, network, addr)
++	}
+ 	log.Debugf("dialing %s %s", network, addr)
+-	conn, err := d.net.Dial(network, addr)
++	conn, err := d.net.DialContext(ctx, network, addr)
+ 	if err != nil {
+ 		log.Debugf("failed to deal connection: %s", err)
+ 	}
+--- netbird_orig/client/iface/netstack/route.go
++++ netbird_src/client/iface/netstack/route.go
+@@ -0,0 +1,138 @@
++package netstack
++
++// route.go — BirdSocks: which destinations the SOCKS5 proxy sends through
++// the tunnel. Upstream sends everything there, which leaves an app with no
++// way out to the internet unless an exit node is in use.
++
++import (
++	"bufio"
++	"context"
++	"net"
++	"net/netip"
++	"strings"
++	"sync"
++	"time"
++
++	log "github.com/sirupsen/logrus"
++	"golang.zx2c4.com/wireguard/tun/netstack"
++)
++
++// routeRefresh bounds how stale the cached peer routes may be.
++const routeRefresh = 2 * time.Second
++
++var routes struct {
++	sync.Mutex
++	overlay  netip.Prefix           // the NetBird network: peers, and its DNS address
++	dump     func() (string, error) // the WireGuard device's peer dump (IpcGet)
++	prefixes []netip.Prefix         // allowed IPs of every peer, at last read
++	read     time.Time
++}
++
++// SetRouteSource tells the proxy the NetBird network and how to read the
++// WireGuard device's peers; the netstack device calls it once it exists.
++// Until it does, everything goes through the tunnel, as upstream.
++func SetRouteSource(overlay netip.Prefix, dump func() (string, error)) {
++	routes.Lock()
++	defer routes.Unlock()
++	routes.overlay, routes.dump, routes.prefixes, routes.read = overlay, dump, nil, time.Time{}
++}
++
++// overlayDestination reports whether addr ("ip:port") is reached through
++// the tunnel.
++func overlayDestination(addr string) bool {
++	host, _, err := net.SplitHostPort(addr)
++	if err != nil {
++		return true
++	}
++	ip, err := netip.ParseAddr(host)
++	if err != nil {
++		return true
++	}
++	ip = ip.Unmap()
++	routes.Lock()
++	defer routes.Unlock()
++	if routes.dump == nil {
++		return true
++	}
++	if routes.overlay.IsValid() && routes.overlay.Contains(ip) {
++		return true
++	}
++	if time.Since(routes.read) > routeRefresh {
++		routes.prefixes = allowedIPs(routes.dump)
++		routes.read = time.Now()
++	}
++	for _, p := range routes.prefixes {
++		if p.Contains(ip) {
++			return true
++		}
++	}
++	return false
++}
++
++// allowedIPs reads every peer's allowed_ip lines from a UAPI dump.
++func allowedIPs(dump func() (string, error)) []netip.Prefix {
++	text, err := dump()
++	if err != nil {
++		log.Debugf("socks5: peer routes not read: %v", err)
++		return nil
++	}
++	var out []netip.Prefix
++	sc := bufio.NewScanner(strings.NewReader(text))
++	for sc.Scan() {
++		v, ok := strings.CutPrefix(sc.Text(), "allowed_ip=")
++		if !ok {
++			continue
++		}
++		if p, err := netip.ParsePrefix(v); err == nil {
++			out = append(out, p.Masked())
++		}
++	}
++	return out
++}
++
++// nsResolver resolves names for the proxy with NetBird's DNS first — peer
++// names and the account's zones are only there — and the host's resolver
++// when that has no answer. Upstream asked the host only, so no peer name
++// resolved through the proxy.
++type nsResolver struct{ net *netstack.Net }
++
++func newNSResolver(n *netstack.Net) *nsResolver { return &nsResolver{net: n} }
++
++func (r *nsResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
++	tctx, cancel := context.WithTimeout(ctx, 3*time.Second)
++	addrs, err := r.net.LookupContextHost(tctx, name)
++	cancel()
++	if err == nil {
++		if ip := pickIP(addrs); ip != nil {
++			return ctx, ip, nil
++		}
++	}
++	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", name)
++	if err != nil {
++		return ctx, nil, err
++	}
++	for _, ip := range ips {
++		if ip.To4() != nil {
++			return ctx, ip, nil
++		}
++	}
++	return ctx, ips[0], nil
++}
++
++// pickIP prefers an IPv4 address, as NetBird networks are IPv4 first.
++func pickIP(addrs []string) net.IP {
++	var first net.IP
++	for _, a := range addrs {
++		ip := net.ParseIP(a)
++		if ip == nil {
++			continue
++		}
++		if ip.To4() != nil {
++			return ip
++		}
++		if first == nil {
++			first = ip
++		}
++	}
++	return first
++}
+--- netbird_orig/client/iface/netstack/route_test.go
++++ netbird_src/client/iface/netstack/route_test.go
+@@ -0,0 +1,37 @@
++package netstack
++
++import (
++	"net/netip"
++	"testing"
++)
++
++func TestOverlayDestination(t *testing.T) {
++	dump := "private_key=00\npublic_key=aa\nallowed_ip=100.90.1.2/32\nallowed_ip=10.10.0.0/16\npublic_key=bb\nallowed_ip=100.90.1.3/32\n"
++	SetRouteSource(netip.MustParsePrefix("100.90.0.0/16"), func() (string, error) { return dump, nil })
++	defer SetRouteSource(netip.Prefix{}, nil)
++
++	for addr, want := range map[string]bool{
++		"100.90.1.2:80":     true,  // a peer
++		"100.90.255.254:53": true,  // the network's DNS address, no peer carries it
++		"10.10.5.5:443":     true,  // a routed network
++		"1.1.1.1:443":       false, // the internet, no exit node
++		"[::1]:80":          false,
++	} {
++		if got := overlayDestination(addr); got != want {
++			t.Errorf("%s: got %v, want %v", addr, got, want)
++		}
++	}
++
++	dump += "public_key=cc\nallowed_ip=0.0.0.0/0\n"
++	SetRouteSource(netip.MustParsePrefix("100.90.0.0/16"), func() (string, error) { return dump, nil })
++	if !overlayDestination("1.1.1.1:443") {
++		t.Error("with an exit node the internet goes through the tunnel")
++	}
++}
++
++func TestOverlayDestinationBeforeTheDevice(t *testing.T) {
++	SetRouteSource(netip.Prefix{}, nil)
++	if !overlayDestination("1.1.1.1:443") {
++		t.Error("without a route source everything goes through the tunnel, as upstream")
++	}
++}
+--- netbird_orig/client/iface/device/device_netstack.go
++++ netbird_src/client/iface/device/device_netstack.go
+@@ -84,6 +84,10 @@
+ 		device.NewLogger(wgLogLevel(), "[netbird] "),
+ 	)
+ 
++	// BirdSocks: the SOCKS5 proxy sends through the tunnel only what a peer
++	// carries, and the rest over the host's network.
++	nbnetstack.SetRouteSource(t.address.Network, t.device.IpcGet)
++
+ 	t.configurer = configurer.NewUSPConfigurerNoUAPI(t.device, t.name, t.bind.ActivityRecorder())
+ 	err = t.configurer.ConfigureInterface(t.key, t.port)
+ 	if err != nil {

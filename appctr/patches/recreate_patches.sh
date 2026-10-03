@@ -1,170 +1,37 @@
 #!/bin/bash
+# Regenerates patches/*.patch from the edits in netbird_src against the
+# pristine netbird_orig (both are extracted by build.sh from the pinned
+# NetBird release; netbird_orig is kept only for this). Each patch lists its
+# files; a file NetBird does not have is created by the patch.
+#
+# Headers carry fixed labels, no timestamps, so regenerating an unchanged
+# patch changes nothing.
 set -e
-
-# Change directory to the appctr directory
 cd "$(dirname "$0")/.."
+[ -d netbird_orig ] && [ -d netbird_src ] || { echo "netbird_orig and netbird_src are needed: run build.sh first" >&2; exit 1; }
+find netbird_src \( -name "*.orig" -o -name "*.rej" \) -delete 2>/dev/null || true
 
-# Remove stray patch leftovers before diffing: a failed/fuzzy `patch` run drops
-# *.orig and *.rej files under tailscale_src, and the directory diffs (03/07)
-# would otherwise sweep them into the generated patches.
-find tailscale_src \( -name "*.orig" -o -name "*.rej" \) -delete 2>/dev/null || true
+make_patch() {
+    local out="patches/$1"; shift
+    : > "$out"
+    for f in "$@"; do
+        diff -uN --label "netbird_orig/$f" --label "netbird_src/$f" "netbird_orig/$f" "netbird_src/$f" >> "$out" || true
+    done
+    if [ ! -s "$out" ]; then
+        echo "❌ $out came out empty: its files are unchanged" >&2
+        exit 1
+    fi
+    echo "-> $out"
+}
 
-# Find Tailscale version from TAILSCALE_VERSION file or tailscale_src
-TS_VERSION=$(cat TAILSCALE_VERSION 2>/dev/null || cat tailscale_src/VERSION.txt 2>/dev/null || echo "v1.98.3")
-TS_VERSION="${TS_VERSION#v}"
-echo "-> Target Tailscale version: v$TS_VERSION"
-
-# Ensure orig directory exists
-if [ ! -d "orig" ]; then
-    echo "-> Downloading clean sources to orig/..."
-    curl -sL "https://github.com/tailscale/tailscale/archive/refs/tags/v${TS_VERSION}.tar.gz" | tar -xz
-    mv tailscale-${TS_VERSION} orig
-fi
-
-# Clean old patch files
-echo "-> Cleaning old patches..."
-rm -f patches/*.patch
-
-# Re-create atomic patches by running diff on modified components
-echo "-> Generating atomic patches..."
-
-# 01-enable-socks-android.patch (net/netns/socks.go and netns.go)
-{
-    diff -u orig/net/netns/socks.go tailscale_src/net/netns/socks.go || true
-    diff -u orig/net/netns/netns.go tailscale_src/net/netns/netns.go || true
-} > patches/01-enable-socks-android.patch
-
-# 02-socks5-auth.patch (cmd/tailscaled/proxy.go)
-diff -u orig/cmd/tailscaled/proxy.go tailscale_src/cmd/tailscaled/proxy.go > patches/02-socks5-auth.patch || true
-
-# 03-taildrop-monolithic-fs.patch (feature/taildrop)
-diff -N -r -u -x "*.orig" -x "*.rej" orig/feature/taildrop tailscale_src/feature/taildrop > patches/03-taildrop-monolithic-fs.patch || true
-
-# 04-vip-services.patch (ipn/ipnlocal)
-{
-    diff -u orig/ipn/ipnlocal/local.go tailscale_src/ipn/ipnlocal/local.go || true
-    diff -u orig/ipn/ipnlocal/serve.go tailscale_src/ipn/ipnlocal/serve.go || true
-} > patches/04-vip-services.patch
-
-# 05-localapi-cert.patch (ipn/localapi)
-{
-    diff -u orig/ipn/localapi/cert.go tailscale_src/ipn/localapi/cert.go || true
-    diff -u orig/ipn/localapi/disabled_stubs.go tailscale_src/ipn/localapi/disabled_stubs.go || true
-} > patches/05-localapi-cert.patch
-
-# 06-android-netmon.patch (creates cmd/tailscaled/fix_android_netmon.go)
-diff -N -u /dev/null tailscale_src/cmd/tailscaled/fix_android_netmon.go > patches/06-android-netmon.patch || true
-
-# 07-taildrive-android.patch (drive)
-diff -N -r -u -x "*.orig" -x "*.rej" orig/drive tailscale_src/drive > patches/07-taildrive-android.patch || true
-
-# 08-netstack-cgnat.patch (cmd/tailscaled/tailscaled.go)
-# NOTE: in Tailscale v1.102.1 the UseNetstackForIP hook moved out of
-# cmd/tailscaled/netstack.go into cmd/tailscaled/tailscaled.go. Diffing the old
-# file produced an empty patch that `|| true` swallowed, silently dropping the
-# TailscaleServiceIP netstack route (Taildrive/WebDAV). Keep this pointed at
-# whichever file currently defines the hook.
-diff -u orig/cmd/tailscaled/tailscaled.go tailscale_src/cmd/tailscaled/tailscaled.go > patches/08-netstack-cgnat.patch || true
-
-# 09-netstack-loopback.patch (net/tstun/wrap.go and wgengine/netstack/netstack.go)
-{
-    diff -u orig/net/tstun/wrap.go tailscale_src/net/tstun/wrap.go || true
-    diff -u orig/wgengine/netstack/netstack.go tailscale_src/wgengine/netstack/netstack.go || true
-} > patches/09-netstack-loopback.patch
-
-# 10-taildrive-userspace-dial.patch (cmd/tailscaled and tests)
-{
-    diff -u orig/cmd/tailscaled/tailscaled_drive.go tailscale_src/cmd/tailscaled/tailscaled_drive.go || true
-    diff -u orig/cmd/tailscaled/tailscaled_windows.go tailscale_src/cmd/tailscaled/tailscaled_windows.go || true
-    diff -u orig/ipn/ipnlocal/local_test.go tailscale_src/ipn/ipnlocal/local_test.go || true
-} > patches/10-taildrive-userspace-dial.patch
-
-# 11-noop-dns-fallback.patch (net/dns/noop.go)
-diff -u orig/net/dns/noop.go tailscale_src/net/dns/noop.go > patches/11-noop-dns-fallback.patch || true
-
-# 12-socket-permissions.patch (safesocket/unixsocket.go)
-diff -u orig/safesocket/unixsocket.go tailscale_src/safesocket/unixsocket.go > patches/12-socket-permissions.patch || true
-
-# 13-android-osrouter.patch (wgengine/router/osrouter/router_linux.go, net/netmon/netmon_linux.go, and net/netmon/netmon_polling.go)
-# router_linux.go: build tag flip plus the Root Mode gates (isAndroid): no
-# netfilter runner, no 52xx ip rules (stale ones purged at Up), routes always
-# into table 52. The app supplies the pref-200 rule that consults table 52.
-{
-    diff -u orig/wgengine/router/osrouter/router_linux.go tailscale_src/wgengine/router/osrouter/router_linux.go || true
-    diff -u orig/net/netmon/netmon_linux.go tailscale_src/net/netmon/netmon_linux.go || true
-    diff -u orig/net/netmon/netmon_polling.go tailscale_src/net/netmon/netmon_polling.go || true
-} > patches/13-android-osrouter.patch || true
-
-# 16-android-somark.patch (net/netns/netns_android.go) — companion of 13.
-# Root Mode: tailscaled marks its own sockets with SO_MARK 0x2000000
-# (netns.TailsocksBypassMark, must equal RootUtils.kt BYPASS_MARK) so the app's
-# 'fwmark 0x0/0x2020000 iif lo lookup 52' rule at pref 200 exempts the tunnel's
-# own WireGuard/DERP/control traffic from the exit-node default route.
-diff -u orig/net/netns/netns_android.go tailscale_src/net/netns/netns_android.go > patches/16-android-somark.patch || true
-
-# 14-dns-forwarder-netstack.patch (net/dns/resolver/forwarder.go)
-# Two fixes in the same file:
-#  - Split-DNS resolvers on tailnet IPs are dialled through netstack in
-#    userspace-networking mode instead of an OS socket the OS cannot route.
-#  - The DNS rescue (TS_DNS_RESCUE, on by default): when every upstream for a
-#    query that took the default route fails, retry it once against the OS base
-#    config (TS_DNS_FALLBACK) instead of handing the device SERVFAIL. Keeps the
-#    phone resolving while an exit node's peerapi DoH endpoint answers 403.
-diff -u orig/net/dns/resolver/forwarder.go tailscale_src/net/dns/resolver/forwarder.go > patches/14-dns-forwarder-netstack.patch || true
-
-# 15-dnscache-static-hosts.patch (net/dnscache/dnscache.go)
-# TS_STATIC_HOSTS lets the control host's pinned resolver answer for the
-# control-proxy hostname (the app pre-resolves it); it was set by the app for
-# years but nothing in the daemon ever read it.
-diff -u orig/net/dnscache/dnscache.go tailscale_src/net/dnscache/dnscache.go > patches/15-dnscache-static-hosts.patch || true
-
-# 17-android-tunfd-probe.patch (creates cmd/tailscaled/android_tunfd_probe.go)
-# Native-TUN experiment: TS_TUN_FD_PROBE=<fd> makes tailscaled report what it
-# can do with an inherited VpnService TUN fd (TUNGETIFF, SIOCGIFMTU) and exit.
-diff -N -u /dev/null tailscale_src/cmd/tailscaled/android_tunfd_probe.go > patches/17-android-tunfd-probe.patch || true
-
-# 18-android-vpn-tun.patch (creates cmd/tailscaled/android_vpn.go)
-# Native TUN: --tun=android-vpn builds the wireguard-go device from the
-# VpnService fd in TS_TUN_FD; the matching tryEngine/getLocalBackend edits in
-# tailscaled.go travel in 08 (whole-file diff).
-diff -N -u /dev/null tailscale_src/cmd/tailscaled/android_vpn.go > patches/18-android-vpn-tun.patch || true
-
-# 19-android-vpn-netstack.patch (cmd/tailscaled/netstack.go)
-# Native TUN: in android-vpn mode the host stack owns inbound traffic to the
-# node's address (ProcessLocalIPs stays false) while gVisor claims replies to
-# its own dials (CheckLocalTransportEndpoints), and the daemon dials peers
-# through netstack because its UID is excluded from the VPN.
-diff -u orig/cmd/tailscaled/netstack.go tailscale_src/cmd/tailscaled/netstack.go > patches/19-android-vpn-netstack.patch || true
-
-# 20-socks5-resilience.patch (net/socks5/socks5.go)
-# The served SOCKS5 proxy keeps serving: a transient accept error backs off
-# instead of ending Serve (whose return kills the daemon), the handshake has a
-# deadline so a silent client cannot hold a descriptor forever, and an outbound
-# dial gets long enough to ride out a DERP reconnect.
-diff -u orig/net/socks5/socks5.go tailscale_src/net/socks5/socks5.go > patches/20-socks5-resilience.patch || true
-
-# 21-netmon-wake-pollers.patch (net/netmon/polling.go)
-# WakePollingMonitors wakes every polling monitor in the process. tailcat's
-# client runs inside the app with a monitor of its own that nothing else can
-# reach, and on Android the poll is ten minutes; the bridge calls this when the
-# network moves.
-diff -u orig/net/netmon/polling.go tailscale_src/net/netmon/polling.go > patches/21-netmon-wake-pollers.patch || true
-
-# Guard: a zero-byte patch means a diff target moved or vanished and `|| true`
-# swallowed it — exactly how 08-netstack-cgnat was silently lost during the
-# v1.102.1 bump. Refuse to finish with any empty patch so it can never ship blank.
-empty=""
-for p in patches/*.patch; do
-    [ -s "$p" ] || empty="$empty $(basename "$p")"
-done
-if [ -n "$empty" ]; then
-    echo "❌ Empty patch(es) generated:$empty" >&2
-    echo "   A diff target likely moved. Fix the diff path in this script before committing." >&2
-    exit 1
-fi
-
-echo "✅ Atomic patches generated successfully in appctr/patches/."
-
-
-
-
+# The SOCKS5 proxy of netstack mode, made fit for an Android app: a password,
+# NetBird names resolvable through it, and the internet reached directly when
+# no peer carries the destination.
+make_patch 01-socks5-birdsocks.patch \
+    client/iface/netstack/env.go \
+    client/iface/netstack/proxy.go \
+    client/iface/netstack/tun.go \
+    client/iface/netstack/dialer.go \
+    client/iface/netstack/route.go \
+    client/iface/netstack/route_test.go \
+    client/iface/device/device_netstack.go

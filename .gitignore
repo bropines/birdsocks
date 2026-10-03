@@ -87,3 +87,7 @@ app/src/screenshotTestDebug/
 
 # Agent worktrees (Claude Code) are scratch checkouts, never part of the tree.
 .claude/worktrees/
+
+# NetBird sources: pristine and patched, both extracted by appctr/build.sh
+appctr/netbird_orig/
+appctr/netbird_src/
