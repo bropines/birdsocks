@@ -87,6 +87,9 @@ fun PeersScreen(onBack: () -> Unit) {
                 return@Column
             }
             CompactSearchBar(query, { query = it }, stringResource(R.string.nb_peers_search), Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (shown?.fullStatus?.lazyConnectionEnabled == true) {
+                HelpText(stringResource(R.string.nb_peers_lazy), Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            }
             SlidingSegmentedChips(
                 options = listOf(
                     stringResource(R.string.nb_peers_filter_all),

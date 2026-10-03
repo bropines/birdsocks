@@ -48,7 +48,7 @@
 -		socks5.WithDial(dialer.Dial),
 -	)
 +func NewSocks5(dialer Dialer, resolver socks5.NameResolver) (*Proxy, error) {
-+	opts := []socks5.Option{socks5.WithDial(dialer.Dial)}
++	opts := []socks5.Option{socks5.WithDial(dialer.Dial), socks5.WithAssociateHandle(associateHandler(dialer))}
 +	if resolver != nil {
 +		opts = append(opts, socks5.WithResolver(resolver))
 +	}
@@ -112,16 +112,17 @@
  }
  
  func NewNetStackTun(listenAddress string, addresses []netip.Addr, dnsAddress netip.Addr, mtu int) *NetStackTun {
-@@ -53,7 +54,7 @@
+@@ -53,7 +54,8 @@
  	}
  
  	dialer := NewNSDialer(tunNet)
 -	t.proxy, err = NewSocks5(dialer)
-+	t.proxy, err = NewSocks5(dialer, newNSResolver(tunNet))
++	dialer.resolver = newNSResolver(tunNet)
++	t.proxy, err = NewSocks5(dialer, dialer.resolver)
  	if err != nil {
  		_ = t.tundev.Close()
  		return nil, nil, err
-@@ -66,17 +67,43 @@
+@@ -66,17 +68,43 @@
  		}
  	}()
  
@@ -173,7 +174,26 @@
  	if t.tundev != nil {
 --- netbird_orig/client/iface/netstack/dialer.go
 +++ netbird_src/client/iface/netstack/dialer.go
-@@ -22,9 +22,19 @@
+@@ -3,6 +3,7 @@
+ import (
+ 	"context"
+ 	"net"
++	"net/netip"
+ 
+ 	log "github.com/sirupsen/logrus"
+ 	"golang.zx2c4.com/wireguard/tun/netstack"
+@@ -14,6 +15,10 @@
+ 
+ type NSDialer struct {
+ 	net *netstack.Net
++	// resolver names a host the way the proxy does (NetBird's DNS first);
++	// BirdSocks: a UDP ASSOCIATE datagram may carry a name, which the
++	// SOCKS5 server hands to Dial unresolved.
++	resolver *nsResolver
+ }
+ 
+ func NewNSDialer(net *netstack.Net) *NSDialer {
+@@ -22,9 +27,26 @@
  	}
  }
  
@@ -183,6 +203,13 @@
 +// has, so the rest of the internet must not end in the tunnel with nowhere
 +// to go).
  func (d *NSDialer) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
++	if host, port, err := net.SplitHostPort(addr); err == nil && d.resolver != nil {
++		if _, perr := netip.ParseAddr(host); perr != nil {
++			if _, ip, rerr := d.resolver.Resolve(ctx, host); rerr == nil {
++				addr = net.JoinHostPort(ip.String(), port)
++			}
++		}
++	}
 +	if !overlayDestination(addr) {
 +		log.Debugf("dialing %s %s directly", network, addr)
 +		var hd net.Dialer
@@ -377,7 +404,7 @@
 +}
 --- netbird_orig/client/iface/netstack/dnsproxy.go
 +++ netbird_src/client/iface/netstack/dnsproxy.go
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,180 @@
 +package netstack
 +
 +// dnsproxy.go — BirdSocks: a plain DNS server on the host side of the
@@ -390,6 +417,8 @@
 +import (
 +	"net"
 +	"net/netip"
++	"os"
++	"strings"
 +	"sync"
 +	"sync/atomic"
 +	"time"
@@ -401,6 +430,12 @@
 +// EnvDNSProxyAddress is where the DNS proxy listens, host:port; unset, there
 +// is none.
 +const EnvDNSProxyAddress = "NB_DNS_PROXY_ADDRESS"
++
++// EnvDNSProxyUpstream, comma-separated host:port, replaces the network's
++// resolvers for what NetBird does not answer — another DNS proxy, say
++// TailSocks', so that every mesh name resolves the same whichever an
++// ad-blocker asks first.
++const EnvDNSProxyUpstream = "NB_DNS_PROXY_UPSTREAM"
 +
 +const dnsTimeout = 3 * time.Second
 +
@@ -418,6 +453,20 @@
 +}
 +
 +func fallbackServers() []string {
++	if v := os.Getenv(EnvDNSProxyUpstream); v != "" {
++		var out []string
++		for _, s := range strings.Split(v, ",") {
++			if s = strings.TrimSpace(s); s != "" {
++				if _, _, err := net.SplitHostPort(s); err != nil {
++					s = net.JoinHostPort(s, "53")
++				}
++				out = append(out, s)
++			}
++		}
++		if len(out) > 0 {
++			return out
++		}
++	}
 +	fallbackDNS.RLock()
 +	defer fallbackDNS.RUnlock()
 +	if fallbackDNS.servers == nil {
@@ -535,6 +584,278 @@
 +			return append([]byte(nil), buf[:n]...), nil
 +		}
 +	}
++}
+--- netbird_orig/client/iface/netstack/associate.go
++++ netbird_src/client/iface/netstack/associate.go
+@@ -0,0 +1,156 @@
++package netstack
++
++// associate.go — BirdSocks: SOCKS5 UDP ASSOCIATE. go-socks5's own handler
++// relays from a socket bound to every interface and, when the client
++// declares no address (most send 0.0.0.0:0), accepts datagrams from anyone
++// who finds the port: an open UDP relay on the LAN, past the password. This
++// one binds the relay to the address the client reached the proxy on,
++// accepts only the client's IP, sends through the proxy's dialer (names
++// resolved the way CONNECT resolves them) and drops idle destinations.
++
++import (
++	"context"
++	"errors"
++	"io"
++	"net"
++	"sync"
++	"time"
++
++	"github.com/things-go/go-socks5"
++	"github.com/things-go/go-socks5/statute"
++
++	log "github.com/sirupsen/logrus"
++)
++
++const udpIdleTimeout = 2 * time.Minute
++
++func associateHandler(dialer Dialer) func(ctx context.Context, w io.Writer, req *socks5.Request) error {
++	return func(ctx context.Context, w io.Writer, req *socks5.Request) error {
++		local, _ := req.LocalAddr.(*net.TCPAddr)
++		client, _ := req.RemoteAddr.(*net.TCPAddr)
++		if local == nil || client == nil {
++			_ = socks5.SendReply(w, statute.RepServerFailure, nil)
++			return errors.New("associate: no TCP addresses")
++		}
++		relay, err := net.ListenUDP("udp", &net.UDPAddr{IP: local.IP})
++		if err != nil {
++			_ = socks5.SendReply(w, statute.RepServerFailure, nil)
++			return err
++		}
++		if err := socks5.SendReply(w, statute.RepSuccess, relay.LocalAddr()); err != nil {
++			relay.Close()
++			return err
++		}
++
++		ctx, cancel := context.WithCancel(ctx)
++		defer cancel()
++		go relayDatagrams(ctx, relay, client.IP, req.DestAddr, dialer)
++
++		// The association lives as long as its TCP connection.
++		buf := make([]byte, 512)
++		for {
++			if _, err := req.Reader.Read(buf); err != nil {
++				relay.Close()
++				if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
++					return nil
++				}
++				return err
++			}
++		}
++	}
++}
++
++type udpTarget struct {
++	conn net.Conn
++	last time.Time
++}
++
++func relayDatagrams(ctx context.Context, relay *net.UDPConn, clientIP net.IP, declared *statute.AddrSpec, dialer Dialer) {
++	var mu sync.Mutex
++	targets := map[string]*udpTarget{}
++	defer func() {
++		mu.Lock()
++		for _, t := range targets {
++			t.conn.Close()
++		}
++		mu.Unlock()
++	}()
++
++	go func() {
++		tick := time.NewTicker(30 * time.Second)
++		defer tick.Stop()
++		for {
++			select {
++			case <-ctx.Done():
++				return
++			case <-tick.C:
++				mu.Lock()
++				for k, t := range targets {
++					if time.Since(t.last) > udpIdleTimeout {
++						t.conn.Close()
++						delete(targets, k)
++					}
++				}
++				mu.Unlock()
++			}
++		}
++	}()
++
++	buf := make([]byte, 65535)
++	for {
++		n, src, err := relay.ReadFromUDP(buf)
++		if err != nil {
++			return
++		}
++		if !src.IP.Equal(clientIP) {
++			continue
++		}
++		if declared != nil && declared.Port != 0 && declared.Port != src.Port {
++			continue
++		}
++		pk, err := statute.ParseDatagram(buf[:n])
++		if err != nil || pk.Frag != 0 {
++			continue
++		}
++		key := src.String() + "|" + pk.DstAddr.String()
++
++		mu.Lock()
++		t, ok := targets[key]
++		mu.Unlock()
++		if !ok {
++			conn, err := dialer.Dial(ctx, "udp", pk.DstAddr.String())
++			if err != nil {
++				log.Debugf("socks5 udp: %s: %v", pk.DstAddr.String(), err)
++				continue
++			}
++			t = &udpTarget{conn: conn, last: time.Now()}
++			mu.Lock()
++			targets[key] = t
++			mu.Unlock()
++			header := pk.Header()
++			go func(conn net.Conn, to *net.UDPAddr) {
++				rb := make([]byte, 65535)
++				for {
++					m, err := conn.Read(rb)
++					if err != nil {
++						return
++					}
++					mu.Lock()
++					t.last = time.Now()
++					mu.Unlock()
++					out := make([]byte, 0, len(header)+m)
++					out = append(append(out, header...), rb[:m]...)
++					if _, err := relay.WriteToUDP(out, to); err != nil {
++						return
++					}
++				}
++			}(conn, src)
++		}
++		mu.Lock()
++		t.last = time.Now()
++		mu.Unlock()
++		if _, err := t.conn.Write(pk.Data); err != nil {
++			log.Debugf("socks5 udp: write %s: %v", pk.DstAddr.String(), err)
++		}
++	}
++}
+--- netbird_orig/client/iface/netstack/associate_test.go
++++ netbird_src/client/iface/netstack/associate_test.go
+@@ -0,0 +1,110 @@
++package netstack
++
++import (
++	"bytes"
++	"context"
++	"net"
++	"testing"
++	"time"
++
++	"github.com/things-go/go-socks5"
++	"github.com/things-go/go-socks5/statute"
++)
++
++type hostDialer struct{}
++
++func (hostDialer) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
++	var d net.Dialer
++	return d.DialContext(ctx, network, addr)
++}
++
++// A datagram through the association reaches a UDP echo server and comes
++// back framed; the relay is bound to the address the client used.
++func TestAssociateRelaysAndBindsToClientAddress(t *testing.T) {
++	echo, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer echo.Close()
++	go func() {
++		b := make([]byte, 1500)
++		for {
++			n, a, err := echo.ReadFromUDP(b)
++			if err != nil {
++				return
++			}
++			_, _ = echo.WriteToUDP(b[:n], a)
++		}
++	}()
++
++	srv := socks5.NewServer(socks5.WithDial(hostDialer{}.Dial), socks5.WithAssociateHandle(associateHandler(hostDialer{})))
++	ln, err := net.Listen("tcp4", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer ln.Close()
++	go func() { _ = srv.Serve(ln) }()
++
++	ctrl, err := net.Dial("tcp4", ln.Addr().String())
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer ctrl.Close()
++	_ = ctrl.SetDeadline(time.Now().Add(5 * time.Second))
++	// Greeting: no auth.
++	if _, err := ctrl.Write([]byte{5, 1, 0}); err != nil {
++		t.Fatal(err)
++	}
++	if b := readN(t, ctrl, 2); !bytes.Equal(b, []byte{5, 0}) {
++		t.Fatalf("greeting reply %v", b)
++	}
++	// UDP ASSOCIATE, declared address 0.0.0.0:0.
++	if _, err := ctrl.Write([]byte{5, 3, 0, 1, 0, 0, 0, 0, 0, 0}); err != nil {
++		t.Fatal(err)
++	}
++	rep := readN(t, ctrl, 10)
++	if rep[1] != 0 {
++		t.Fatalf("associate refused: %v", rep)
++	}
++	relayIP := net.IP(rep[4:8])
++	relayPort := int(rep[8])<<8 | int(rep[9])
++	if !relayIP.Equal(net.IPv4(127, 0, 0, 1)) {
++		t.Fatalf("relay bound to %v, want the client's 127.0.0.1", relayIP)
++	}
++
++	u, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: relayIP, Port: relayPort})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer u.Close()
++	dg, err := statute.NewDatagram(echo.LocalAddr().String(), []byte("ping"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := u.Write(dg.Bytes()); err != nil {
++		t.Fatal(err)
++	}
++	_ = u.SetReadDeadline(time.Now().Add(3 * time.Second))
++	b := make([]byte, 1500)
++	n, err := u.Read(b)
++	if err != nil {
++		t.Fatal(err)
++	}
++	back, err := statute.ParseDatagram(b[:n])
++	if err != nil || string(back.Data) != "ping" {
++		t.Fatalf("got %q, %v", back.Data, err)
++	}
++}
++
++func readN(t *testing.T, c net.Conn, n int) []byte {
++	t.Helper()
++	b := make([]byte, n)
++	for got := 0; got < n; {
++		m, err := c.Read(b[got:])
++		if err != nil {
++			t.Fatal(err)
++		}
++		got += m
++	}
++	return b
 +}
 --- netbird_orig/client/iface/device/device_netstack.go
 +++ netbird_src/client/iface/device/device_netstack.go

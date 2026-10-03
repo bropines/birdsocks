@@ -182,6 +182,7 @@ class NetbirdService : Service() {
         socksPass = GlobalSettings.getSocksPass(this@NetbirdService)
         logLevel = GlobalSettings.getLogLevel(this@NetbirdService)
         dnsProxy = if (GlobalSettings.isDnsProxyEnabled(this@NetbirdService)) GlobalSettings.getDnsProxyAddress(this@NetbirdService) else ""
+        dnsUpstream = GlobalSettings.getDnsUpstream(this@NetbirdService)
         hostname = GlobalSettings.getDeviceName(this@NetbirdService)
         androidVersion = Build.VERSION.RELEASE
         model = Build.MODEL
@@ -224,10 +225,29 @@ class NetbirdService : Service() {
         }
     }
 
+    /** When the daemon died on its own lately; three deaths in five minutes and it stays down. */
+    private val crashTimes = ArrayDeque<Long>()
+
     private fun onDaemonExit(err: String) {
         if (stopping) return
         // Not asked for: a crash, or the system killing the process.
         Appctr.logAndroid("ERROR", "CORE", "The NetBird daemon exited: ${err.ifEmpty { "no error" }}")
+        val now = System.currentTimeMillis()
+        crashTimes.addLast(now)
+        while (crashTimes.isNotEmpty() && now - crashTimes.first() > 5 * 60_000) crashTimes.removeFirst()
+        statusSub?.cancel()
+        statusSub = null
+        NetbirdState.statusFlow.value = null
+        if (crashTimes.size <= 3 && GlobalSettings.wasRunning(this)) {
+            // It keeps its profile and keys on disk: a new process logs back in by itself.
+            Appctr.logAndroid("WARN", "CORE", "Restarting the daemon (${crashTimes.size}/3 in 5 min)")
+            NetbirdState.daemonFlow.value = NetbirdState.Daemon.Starting
+            scope.launch {
+                kotlinx.coroutines.delay(2000)
+                if (!stopping) startDaemon()
+            }
+            return
+        }
         NetbirdState.errorFlow.value = getString(R.string.nb_error_exit, err.ifEmpty { "exit 0" })
         finish()
     }
@@ -269,7 +289,7 @@ class NetbirdService : Service() {
             NbConnState.Connected -> getString(
                 R.string.nb_notif_connected,
                 status.fullStatus.localPeerState.address,
-                peers.count { it.connected }, peers.size
+                peers.size, peers.count { it.connected }
             )
             NbConnState.Connecting -> getString(R.string.nb_notif_connecting)
             NbConnState.NeedsLogin, NbConnState.LoginFailed, NbConnState.SessionExpired -> getString(R.string.nb_notif_login)

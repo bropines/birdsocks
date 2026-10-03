@@ -49,6 +49,9 @@ object GlobalSettings {
     fun setDnsProxyEnabled(context: Context, enabled: Boolean) = setBoolean(context, "dns_proxy_enabled", enabled)
     fun getDnsProxyAddress(context: Context): String = getString(context, "dns_proxy", DEFAULT_DNS_PROXY).ifBlank { DEFAULT_DNS_PROXY }
     fun setDnsProxyAddress(context: Context, address: String) = setString(context, "dns_proxy", address.trim())
+    /** host:port, comma-separated, for names NetBird does not answer; empty for the network's resolvers. */
+    fun getDnsUpstream(context: Context): String = getString(context, "dns_upstream", "")
+    fun setDnsUpstream(context: Context, upstream: String) = setString(context, "dns_upstream", upstream.trim())
 
     // --- The daemon ---
     fun getLogLevel(context: Context): String = getString(context, "log_level", "info")

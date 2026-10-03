@@ -20,3 +20,8 @@ TailSocks' history is in its own repository.
 - A DNS proxy on 127.0.0.1:48153: NetBird names first, everything else through the network's resolvers.
 - A network switch or loss reaches the daemon, so its connections redial at once.
 - Several accounts: switch from the title on the main screen, rename and remove in Settings.
+- UDP through the proxy (UDP ASSOCIATE), to peers and to the internet; the relay answers only the client that asked.
+- The DNS proxy can send what NetBird does not answer to another resolver, such as TailSocks' DNS proxy.
+- The daemon restarts by itself after a crash, up to three times in five minutes.
+- Peer counts read as peers and active connections, with lazy connections explained.
+- The management server row in Settings opens its dashboard.

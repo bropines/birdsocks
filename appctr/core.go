@@ -58,6 +58,9 @@ type StartOptions struct {
 	// DNSProxy is where the daemon serves plain DNS (NetBird's resolver
 	// first, the network's after), host:port; empty for none.
 	DNSProxy string
+	// DNSUpstream, comma-separated host:port, answers what NetBird does not;
+	// empty for the network's resolvers.
+	DNSUpstream string
 	// LogLevel is NetBird's: panic, fatal, error, warn, info, debug, trace.
 	LogLevel string
 	// Env is extra NAME=value lines, one per line, for the daemon (NB_*
@@ -229,6 +232,9 @@ func daemonEnv(opt *StartOptions, state string) []string {
 	}
 	if opt.DNSProxy != "" {
 		env = append(env, "NB_DNS_PROXY_ADDRESS="+opt.DNSProxy)
+		if opt.DNSUpstream != "" {
+			env = append(env, "NB_DNS_PROXY_UPSTREAM="+opt.DNSUpstream)
+		}
 	}
 	if opt.SocksHost != "" {
 		env = append(env, "NB_SOCKS5_LISTENER_ADDRESS="+opt.SocksHost)

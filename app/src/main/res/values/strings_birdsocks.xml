@@ -7,14 +7,14 @@
     <string name="nb_status_idle">Disconnected</string>
     <string name="nb_status_idle_desc">NetBird is running but not connected</string>
     <string name="nb_status_stopping">Stopping…</string>
-    <string name="nb_status_connected_desc">%1$d of %2$d peers connected</string>
+    <string name="nb_status_connected_desc">%1$d peers · %2$d connected now</string>
     <string name="nb_status_connecting_desc">Reaching the management server…</string>
     <string name="nb_status_login_desc">Sign in to add this device to your network</string>
     <string name="nb_action_connect">Connect</string>
 
     <!-- Main screen -->
     <string name="nb_menu_peers">Peers</string>
-    <string name="nb_menu_peers_count">Peers %1$d/%2$d</string>
+    <string name="nb_menu_peers_count">Peers · %1$d</string>
     <string name="nb_menu_networks">Networks</string>
     <string name="nb_address_name">Name</string>
     <string name="nb_socks_title">SOCKS5 proxy</string>
@@ -63,7 +63,7 @@
     <!-- Notification -->
     <string name="nb_notif_starting">Starting…</string>
     <string name="nb_notif_connecting">Connecting…</string>
-    <string name="nb_notif_connected">Connected · %1$s · %2$d/%3$d peers</string>
+    <string name="nb_notif_connected">Connected · %1$s · %2$d peers, %3$d active</string>
     <string name="nb_notif_login">Sign-in needed</string>
     <string name="nb_notif_idle">Not connected</string>
     <string name="nb_error_start">NetBird did not start: %1$s</string>
@@ -127,4 +127,8 @@
     <string name="nb_accounts_rename">Rename</string>
     <string name="nb_accounts_remove">Remove account</string>
     <string name="nb_accounts_remove_confirm">%1$s: its keys and settings are deleted from this phone. The peer stays in the dashboard; remove it there.</string>
+    <string name="nb_peers_lazy">Lazy connections are on: an idle peer connects on the first packet sent to it and sleeps after 15 minutes of silence.</string>
+    <string name="nb_settings_dns_upstream">Other names go to</string>
+    <string name="nb_settings_dns_upstream_hint">The network\'s DNS</string>
+    <string name="nb_settings_dns_upstream_desc">Where names NetBird does not answer are sent, host:port, comma-separated. Empty: the network\'s resolvers. Put TailSocks\' DNS proxy here when both are fallbacks in AdGuard, so every mesh name gets the same answer whichever is asked first.</string>
 </resources>

@@ -156,11 +156,12 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                     description = stringResource(R.string.nb_settings_device_name_desc)
                 ) { startSetting { GlobalSettings.setDeviceName(context, it); deviceName = GlobalSettings.getDeviceName(context) } }
                 config?.let { cfg ->
+                    // The dashboard of that server: where its peers, groups and keys are managed.
                     SettingsClickableItem(
                         title = stringResource(R.string.nb_settings_server),
                         subtitle = cfg.managementUrl,
                         icon = Icons.Default.Dns
-                    ) { }
+                    ) { openUrl(context, cfg.adminURL.ifEmpty { cfg.managementUrl.substringBeforeLast(':') }) }
                 }
                 SettingsClickableItem(
                     title = stringResource(R.string.nb_settings_logout),
@@ -204,6 +205,10 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 SettingsSwitchItem(stringResource(R.string.nb_settings_dns_proxy), stringResource(R.string.nb_settings_dns_proxy_desc), Icons.Default.Dns, enabled) {
                     startSetting { GlobalSettings.setDnsProxyEnabled(context, it); enabled = it }
                 }
+                var upstream by remember { mutableStateOf(GlobalSettings.getDnsUpstream(context)) }
+                SettingsEditItem(stringResource(R.string.nb_settings_dns_upstream), upstream, Icons.Default.CallSplit,
+                    placeholder = stringResource(R.string.nb_settings_dns_upstream_hint), description = stringResource(R.string.nb_settings_dns_upstream_desc), enabled = enabled
+                ) { v -> startSetting { GlobalSettings.setDnsUpstream(context, v); upstream = GlobalSettings.getDnsUpstream(context) } }
                 SettingsEditItem(stringResource(R.string.nb_settings_dns_proxy_address), address, Icons.Default.SettingsEthernet,
                     placeholder = GlobalSettings.DEFAULT_DNS_PROXY, enabled = enabled
                 ) { v ->

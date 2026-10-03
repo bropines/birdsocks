@@ -36,6 +36,8 @@ make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/route.go \
     client/iface/netstack/route_test.go \
     client/iface/netstack/dnsproxy.go \
+    client/iface/netstack/associate.go \
+    client/iface/netstack/associate_test.go \
     client/iface/device/device_netstack.go
 
 # The device as the dashboard shows it: Android, its version and model, which

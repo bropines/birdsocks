@@ -5,13 +5,13 @@
     <string name="nb_status_idle">Не подключено</string>
     <string name="nb_status_idle_desc">NetBird запущен, но не подключён</string>
     <string name="nb_status_stopping">Остановка…</string>
-    <string name="nb_status_connected_desc">Подключено узлов: %1$d из %2$d</string>
+    <string name="nb_status_connected_desc">Узлов: %1$d · сейчас на связи: %2$d</string>
     <string name="nb_status_connecting_desc">Связь с сервером управления…</string>
     <string name="nb_status_login_desc">Войдите, чтобы добавить устройство в сеть</string>
     <string name="nb_action_connect">Подключить</string>
 
     <string name="nb_menu_peers">Узлы</string>
-    <string name="nb_menu_peers_count">Узлы %1$d/%2$d</string>
+    <string name="nb_menu_peers_count">Узлы · %1$d</string>
     <string name="nb_menu_networks">Сети</string>
     <string name="nb_address_name">Имя</string>
     <string name="nb_socks_title">Прокси SOCKS5</string>
@@ -56,7 +56,7 @@
 
     <string name="nb_notif_starting">Запуск…</string>
     <string name="nb_notif_connecting">Подключение…</string>
-    <string name="nb_notif_connected">Подключено · %1$s · узлов %2$d/%3$d</string>
+    <string name="nb_notif_connected">Подключено · %1$s · узлов %2$d, на связи %3$d</string>
     <string name="nb_notif_login">Нужен вход</string>
     <string name="nb_notif_idle">Не подключено</string>
     <string name="nb_error_start">NetBird не запустился: %1$s</string>
@@ -119,4 +119,8 @@
     <string name="nb_accounts_rename">Переименовать</string>
     <string name="nb_accounts_remove">Удалить аккаунт</string>
     <string name="nb_accounts_remove_confirm">%1$s: ключи и настройки аккаунта будут удалены с телефона. Узел в панели останется — удалите его там.</string>
+    <string name="nb_peers_lazy">Включены ленивые соединения: узел подключается на первом пакете к нему и засыпает после 15 минут тишины.</string>
+    <string name="nb_settings_dns_upstream">Остальные имена отправлять в</string>
+    <string name="nb_settings_dns_upstream_hint">DNS сети</string>
+    <string name="nb_settings_dns_upstream_desc">Куда отправлять имена, на которые не отвечает NetBird: host:port через запятую. Пусто — DNS сети. Укажите DNS-прокси TailSocks, если оба стоят fallback-серверами в AdGuard: тогда любое имя сети получит одинаковый ответ, кого бы AdGuard ни спросил первым.</string>
 </resources>

@@ -196,7 +196,7 @@ fun MainScreen() {
                     val entries = listOf(
                         MenuEntry(
                             if (peers.isEmpty()) stringResource(R.string.nb_menu_peers)
-                            else stringResource(R.string.nb_menu_peers_count, peers.count { it.connected }, peers.size),
+                            else stringResource(R.string.nb_menu_peers_count, peers.size),
                             Icons.Default.Devices
                         ) { context.startActivity(Intent(context, PeersActivity::class.java)) },
                         MenuEntry(stringResource(R.string.nb_menu_networks), Icons.Default.Hub) {
@@ -336,7 +336,7 @@ fun StatusCard(
             Spacer(Modifier.height(4.dp))
             val peers = status?.fullStatus?.peers.orEmpty()
             val subtitle = when (state) {
-                CardState.Connected -> stringResource(R.string.nb_status_connected_desc, peers.count { it.connected }, peers.size)
+                CardState.Connected -> stringResource(R.string.nb_status_connected_desc, peers.size, peers.count { it.connected })
                 CardState.Starting -> stringResource(R.string.main_status_starting_desc)
                 CardState.Connecting -> stringResource(R.string.nb_status_connecting_desc)
                 CardState.NeedsLogin -> stringResource(R.string.nb_status_login_desc)
