@@ -1,171 +1,34 @@
-# Project Roadmap
+# BirdSocks roadmap
 
-This document outlines the planned features, architectural improvements, and refactoring goals for the TailSocks project.
+What 0.1.0 has is in [`CHANGELOG.md`](../CHANGELOG.md). This is what comes next,
+roughly in order.
 
-## Completed Milestones
-- [x] **Core Stability:** Passive daemon management and stateless configuration.
-- [x] **File Sharing:** Taildrop implementation with Storage Access Framework integration.
-- [x] **Profile Isolation:** Multi-account system with independent state persistence.
-- [x] **Connectivity:** Custom DNS wrapping and Exit Node support.
-- [x] **Tailscale Serve/Funnel:** Native UI for service hosting and public internet exposure.
-- [x] **Local API v0:** 100% CLI-less operation via Go-HTTP bridge.
-- [x] **System Integration:** Basic Quick Settings Tile for connectivity toggling.
-- [x] **Service Monitoring:** Add health checks and request logs for hosted Serve/Funnel services.
-- [x] **Search & Filter:** Implement search functionality for Peer list and Logs.
-- [x] **Battery Optimization UI:** Add a prompt to help users whitelist the app from system battery restrictions.
-- [x] **Account Switching in Tiles:** Enhance Quick Settings to allow switching between profiles.
-- [x] **Socks5 proxy to Control Panel:** Added SOCKS5/HTTP proxy support for control plane traffic with atomic patches and netns bypass fix.
-- [x] **Encrypted Backups:** Manual app state backups encrypted with a user-defined password (AES-GCM) to protect node keys.
-- [x] **Quick Settings Tiles:** Quick Settings Tiles for profile switching and connection state management.
-- [x] **R8 minification (4.0.0):** `isMinifyEnabled`/`isShrinkResources` are on for release builds. Gson was replaced by `kotlinx.serialization`, the AppFunctions service constructs the KSP-generated registries directly, and the `verifyReleaseNativeMethods` Gradle task fails the build if R8 drops a JNI method.
-- [x] **Root Mode hardening (4.0.0):** dedicated `TAILSOCKS_MARK`/`TAILSOCKS_DNS` chains, masked fwmark `0x1000000/0x1000000`, Check Routing diagnostics and the ROOT log tab.
-- [x] **Automation security (4.0.0):** broadcast receiver requires a secret token; AppFunctions (Gemini, Android 16+) actually execute and honour the automation switch.
-- [x] **LAN Access, auto-reconnect, background revival and versioned backups (4.0.0).**
-- [x] **Root Mode coexistence (4.0.0):** the policy ruleset is tiered — tailnet reachability, the default-route capture, the device-wide DNS redirect — with one owner per device for the last two, a partial yield that carries exactly the uids another VPN client bypasses, a health-gated DNS redirect and a CGNAT guard. Verified on the author's Redmi (APatch), including across a real reboot.
-- [x] **Report the real OS (4.1.1):** a per-profile choice made when the profile is created (onboarding, the Add-account dialog; the Settings switch for a profile that has not signed in yet, a new profile otherwise). Off keeps the patch-06 masquerade — OS `linux`, App `tailscale-cli`, DeviceModel `Tailsocks`. On, the node registers as OS `android` with the real model, Android version and install source, the way the official client does. Measured 2026-09-07: such a node gets `https`/`funnel`, certificates and a working Funnel; the coordinator refuses only a node that changes its OS after registration.
-- [x] **Root Mode across a reboot (4.1.1):** the boot script now takes the active profile's state directory, the SOCKS5/HTTP listen addresses, the SOCKS5 credentials and the tunnel mode (kernel TUN or userspace) from the root-owned env file, starts the daemon with the same command line the app uses, and sets the same file modes (log 644, socket 666, state dir 700). The `TS_VPN_BYPASS=0` line the boot script used to drop is written quoted, so "Ignore other VPNs = off" survives a reboot. The env file is refreshed on every Root Mode start, including when the app attaches to a daemon the boot script started.
-- [x] **A daemon crash is no longer a manual Stop (4.1.1):** the desired-running flag stays set when the daemon dies on its own, so auto-reconnect restarts it within its attempt limit; when that limit is spent the service stands down with a tap-to-reconnect notification, and the 15-minute watchdog can still revive it.
+## Verify on devices
+- Sign-in through the browser and with a setup key, on NetBird Cloud and a self-hosted server.
+- Direct (P2P) connections from inside the app's sandbox with patch 03; relay as the fallback.
+- The proxy: overlay addresses, NetBird DNS names, the internet directly and through an exit node.
+- Wi-Fi ↔ mobile switches (see the network monitor below).
 
-## Plans
+## Next
+- **Network changes.** NetBird's network monitor is off in netstack mode, so a
+  switch of the default network is noticed only when connections fail. Wire the
+  app's network callback to the engine (a patch: a signal or an RPC that triggers
+  NetBird's own network-change handling), as TailSocks did with SIGUSR1.
+- **DNS proxy.** A local DNS server that forwards to NetBird's resolver, for apps
+  and ad-blockers that take a DNS address rather than a proxy.
+- **TUN mode** through `hev-socks5-tunnel` on top of the SOCKS5 proxy (TailSocks'
+  shipped design), with per-app exclusions.
+- **Control-plane proxy and DPI bypass.** NetBird's dialers have no proxy support;
+  patch `client/net.Dialer` for management, signal and relay, and bring back
+  ByeDPI. `NB_RELAY_TRANSPORT=ws` already moves the relay to WebSocket.
+- **Profiles**: several NetBird accounts or servers, switched from the main screen.
+- **Session expiry**: SubscribeEvents carries the warnings; show them and offer
+  `RequestExtendAuthSession`.
+- **HTTP proxy** next to SOCKS5, for apps that only speak HTTP.
+- Widgets, Tasker actions, backups — TailSocks had them; port what fits.
 
-State as of 2026-09-20, after 4.3.0.
-
-### Big
-
-- [x] **Native TUN — the opt-in engine (4.2.0).** `tailscaled` owns the `VpnService` device
-      instead of hev: `TunVpnService` establishes the tunnel itself and the bridge relaunches
-      the daemon with `--tun=android-vpn` on the inherited fd, with a no-op router and netstack
-      keeping only its own flows (patches 17–19). Settings → TUN → "Native engine
-      (experimental)". Verified on the POCO: MagicDNS, split DNS, exit nodes and switching
-      between them without a restart, LAN exclusions, one notification card, a single daemon
-      launch on connect (the VPN comes up first from cached addresses). The risk the plan was
-      written around is gone with it: SELinux allows the app `TUNGETIFF` on the tunnel fd
-      (`allowxperm untrusted_app tun_device chr_file ioctl { 0x54D2 }`, read off the Redmi), and
-      a real child tailscaled did `TUNGETIFF` and `SIOCGIFMTU` on an inherited fd (patch 17
-      probe: `tun0`, flags `0x1001`, MTU 1500).
-- [ ] **Native TUN — what is left.** Stopping the daemon and starting it again on the other
-      engine is the intended behaviour, not a debt: the author's design from the start was that
-      switching between hev and native restarts the daemon, and that is what ships. The fd swap,
-      `CallbackRouter` and `SCM_RIGHTS` that [`NATIVE_TUN_PLAN.md`](NATIVE_TUN_PLAN.md) argues
-      for are that document's ambition, kept there for the record and not wanted here — with
-      them go the questions about what happens when the fd's owner dies and how long a swap
-      takes, which were only ever asked because of the swap. What is actually left: accepted
-      subnet routes without an exit node, always-on and "block connections without VPN",
-      behaviour across Wi‑Fi ↔ LTE and in doze, Android 7/8 (verified on 16 only) — and then
-      making it the default instead of hev.
-- [ ] **tsnet — an idea for 5.0.** The daemon moved inside the app process. Incompatible with
-      Root Mode, where it must be a separate process under `su`.
-- [ ] **The separate CLI binary.** The author's decision, deferred. The cost is measured: about
-      6 MB in every per-ABI slice, 25 MB in the universal APK, and roughly 22 MB on device
-      because native libraries are extracted at install. What it buys: the Root Mode shell
-      wrapper (`su -c tailscale …`) and a handful of Console commands that already have LocalAPI
-      equivalents.
-  - **Choose between:** (a) keep it as it is — zero work.
-  - (b) Download it on demand from the app's own GitHub release — the smallest APK, but it adds a downloader, hash verification, published CI assets, version pinning and reachability concerns, and a downloaded binary can likely only be executed by root.
-  - (c) `lite` / `full` Gradle product flavors — a contained build change, but the variant matrix doubles and CI renaming plus updater awareness follow.
-  - (d) Ship the CLI in the universal APK only — the same mechanism as (c), with the release page still at five assets (four per-ABI APKs plus the universal one).
-  - (e) The `ts_include_cli` build tag upstream offers: one binary serves both roles, `tailscaled` dispatching to the CLI when it is invoked as `tailscale`, so there is no second library at all. **Measured 2026-09-25 on arm64: 26.6 MB for the combined binary against 22.6 + 15.3 MB for the two, i.e. -11.3 MB per ABI on device.** The link the app already makes in its data directory is named `tailscale` (`daemon.go`), which is exactly the argv[0] this dispatch needs — pointing it at the daemon is the whole switch. The cheapest item on this page.
-  - Note: `useLegacyPackaging` cannot be turned off — the daemon is `exec()`d from
-    `nativeLibraryDir`, which requires the libraries to be extracted to disk.
-
-### Needs the author's decision
-
-- [x] **The honest OS — what the research settled (2026-09-07).** Patch 06 substitutes
-      `OS = linux` on the theory that the control plane ignores services advertised by Android
-      nodes. That theory does not hold: the client has no `Hostinfo.OS` gate on serve, funnel or
-      cert — the only gates are the `https` and `funnel` node capabilities carried in the netmap.
-      The real Android gate is the `!android` build tag on `ipn/localapi/cert.go`, which patch 05
-      already removes, so the masquerade was never what made Serve/Funnel work. peerAPI and
-      Taildrop are unaffected: a `Pixel 8` with `OS = android` on this tailnet advertises
-      `peerapi4`/`peerapi6`, and only tvOS is refused in code. The single documented consequence
-      of honesty is device posture — `node:os` flips from linux to android. Upstream
-      `tailscale/tailscale#18245` shows an `OS = android` node obtaining certificates from
-      control. The switch itself has shipped (see Completed, off by default). **Measured 2026-09-07 on the
-      Redmi:** masked, the node holds `https` and `funnel`, Funnel answers from the public
-      internet in 5 s, `tailscale cert` issues, and the coordinator pulls the service list over
-      c2n; honest, for the same node (registered as Linux), the coordinator answers «node OS
-      changed since last connection, was node state copied between devices?», sends no netmap,
-      no capabilities, and `cert` fails — so a registered node cannot switch. The second half ran the same day on a
-      fresh profile: a node registered as Android from the start holds `https` and `funnel`,
-      `tailscale cert` issues, Funnel answers HTTP 200 from the public internet in 5 s, and the
-      admin console names the machine after the device model (`xiaomi-23030rac7y`,
-      "Android (16)"). Hence the setting is a property of the profile, fixed at creation. Decided
-      2026-09-07: it stays off by default for new profiles; the masquerade remains the norm.
-- [x] **Issue #3** — answered and closed; Root Mode is the feature it asked for.
-
-### Verify on devices
-
-- [x] **Root Mode on WSA after a reboot (verified by the author, 2026-09-25):** autostart through `service.d`, and the app attaching
-      to a daemon it did not launch.
-- [x] **The honest-OS experiment** — both halves ran on 2026-09-07 (see *Needs the author's
-      decision*). Not measured: a *tagged* Android node hosting a `svc:` (the fresh profile was
-      user-owned, and the daemon refuses service hosting without tags regardless of OS).
-- [x] **Received-file permissions in Root Mode (verified by the author, 2026-09-25).** `RootUtils` launches the root daemon under `umask 022`, so a received file is readable by the app the moment it lands. The fix was made blind (`umask 022` plus
-      handing the directory to the app). Check Routing now prints the real modes — look at them
-      and confirm.
-- [ ] **The IPv6 exit-node leak** does not reproduce on the Redmi as of 2026-09-07: table `52`
-      has a default route and traffic leaves through the tunnel with a tailnet source address.
-      Check the POCO, where the network is different; if it does not reproduce there either,
-      strike the item.
-- [ ] **A peer's version without the Admin API.** What ships reads it from the Admin API and
-      therefore only works with a token configured. There is a source that needs neither: a
-      peer's `Hostinfo` rides on its node, `Hostinfo.IPNVersion` is the version, and
-      `/localapi/v0/whois?addr=` returns the node — already wrapped here as `WhoIsAddr`
-      (`appctr/api.go`). One check decides it, on any device with a daemon: call WhoIs for a
-      peer and see whether the coordinator ships `IPNVersion` to other nodes (it ships `OS`,
-      which the app already displays). If it does, the version comes from our own daemon with
-      no token and no request to the internet, and the Admin API stays for what the netmap does
-      not carry.
-- Deferred, not implemented — recorded so they are not lost again:
-  - A foreign tunnel restarting with a new netId: the ruleset signature keys on the netId, but this has never been observed on a device.
-  - FBE phones: wait for user-0 CE storage before starting.
-
-### Small
-
-- [x] **IPv6 in the DNS redirect — said out loud (2026-09-26).** On kernels without an IPv6
-      `nat` table (4.19 on the Redmi) there is nowhere to write the v6 rules, so device-wide DNS
-      covers IPv4 only. The apply script now asks — `ip6tables -t nat -S`, and only when IPv6 is
-      up, so a device with it off raises no false alarm — and the answer becomes a warning in the
-      Root log and a marker in the diagnostics report instead of silence. Still open, and only
-      measurable on such a device: whether a query actually leaves over IPv6 past MagicDNS.
-- [x] **Console `status` / `netcheck` / `ping` do not work in Root Mode.** Done 2026-09-08. The
-      `tailscale` link in the data directory was made only by the userspace launch, and Android
-      renames the native library directory on every reinstall, so in Root Mode it dangled (seen
-      on the Redmi: a link from 2026-09-05 into a removed `/data/app/~~…` directory). Both launch
-      paths now refresh the links, and the CLI runner falls back to `libtailscale_cli.so` itself.
-      `netcheck` additionally needs a netlink RIB dump the CLI cannot get as an app process (in
-      any mode), so the bare command is answered by the in-process netcheck of the Netcheck screen.
-- [ ] **The five loading indicators inside buttons** are still the old ones — the new component
-      stops being legible at 14 dp. Look at it on a device and decide.
-- [ ] **Stable Material 3.** `1.5.0-alpha27` is in use for components 1.4.0 does not have, and it
-      is still the latest — no stable release exists yet. When one appears it is one line in
-      `gradle/libs.versions.toml`.
-- [x] **Update Tailscale to 1.104.0 (2026-10-01).** Go 1.27.1 with it. Fifteen of the twenty
-      patches applied as they were; 03, 10 and 20 only needed their context moved. Upstream now
-      does two things we patched: netstack's packet pump survives a failed injection and has its
-      own loopback queue, and the DNS forwarder reaches tailnet resolvers through netstack over
-      UDP — so 09 keeps only the fake-TUN routing and the bound dials, and 14 only TCP over
-      netstack and the DNS rescue. `feature/androidbin` and `feature/androiddns` do not apply to
-      our GOOS=android cgo daemon (both are switched off there by build tags) and are omitted;
-      so is the new `connreject` diagnostics. Next: tailcat as a library in the bridge (#10).
-- [x] **Update Tailscale (2026-09-25).** Pinned at `v1.102.5`, up from 1.102.1. All nineteen
-      patches applied with `-F0`; two hunks landed at an offset (04 and 10), which the build
-      allows, and nothing had to be re-fitted. It does not pull the dependency versions the
-      scanner bot asked for — `x/crypto` is still what upstream pins. The next step up is the
-      stable line that carries `feature/androidbin`; see issue #10.
-- [x] **An English easter egg (4.4.0).** The status card's long press carries its own set in each language, written separately rather than translated.
-- Deferred, not implemented — recorded so they are not lost again:
-  - Re-apply the ruleset after a netd restart flushes it; nothing reacts to that today.
-  - Do not kill a daemon that is still starting when the app adopts it — there is a single probe today.
-  - A version header in the installed boot script, and an "outdated" state in Settings.
-
-### Audit of the second project
-
-- [ ] **`bropines/tailscale-termux-cli`** — the audit started 2026-09-07 and its report is kept
-      outside this repository. Fixing what it finds is a separate session, run from that
-      project's directory.
-
-### Dropped
-
-- Dropped deliberately, with no code behind any of them: the MCP server, the Kotlin LocalAPI
-  bridge, the traffic analyzer, and custom DERP maps.
+## Later
+- Root mode.
+- A native TUN engine on NetBird's own Android device code.
+- F-Droid (reproducible builds, all four ABIs), Weblate.
+- An own logo and screenshots.

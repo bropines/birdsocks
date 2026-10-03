@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -51,6 +52,9 @@ type StartOptions struct {
 	AndroidVersion string
 	Model          string
 	Manufacturer   string
+	// AndroidSdk is the API level: from 30 on, interfaces are listed the
+	// way an app is allowed to (patch 03).
+	AndroidSdk int
 	// LogLevel is NetBird's: panic, fatal, error, warn, info, debug, trace.
 	LogLevel string
 	// Env is extra NAME=value lines, one per line, for the daemon (NB_*
@@ -194,8 +198,9 @@ func daemonEnv(opt *StartOptions, state string) []string {
 		"NB_ANDROID_VERSION":      opt.AndroidVersion,
 		"NB_ANDROID_MODEL":        opt.Model,
 		"NB_ANDROID_MANUFACTURER": opt.Manufacturer,
+		"NB_ANDROID_SDK":          strconv.Itoa(opt.AndroidSdk),
 	} {
-		if v != "" {
+		if v != "" && v != "0" {
 			env = append(env, k+"="+v)
 		}
 	}

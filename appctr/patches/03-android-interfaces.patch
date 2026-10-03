@@ -1,0 +1,859 @@
+--- netbird_orig/client/internal/anet/interface_linux.go
++++ netbird_src/client/internal/anet/interface_linux.go
+@@ -0,0 +1,452 @@
++// Copied from github.com/wlynxg/anet v0.0.5 (BSD 3-Clause, Copyright (c)
++// 2023 wlynxg; parts Copyright The Go Authors) for BirdSocks, which runs this
++// Linux binary inside an Android app: there, apps targeting Android 11 or
++// later may neither bind a netlink route socket nor ask it for RTM_GETLINK,
++// so net.Interfaces and Interface.Addrs fail. anet builds the same answers
++// from RTM_GETADDR on an unbound socket and ioctls. Upstream gates it on the
++// android build tag; here it is linux, switched on by NB_ANDROID_SDK.
++
++//go:build linux
++
++package anet
++
++import (
++	"bytes"
++	"errors"
++	"net"
++	"os"
++	"sync"
++	"syscall"
++	"time"
++	"unsafe"
++)
++
++const (
++	android11ApiLevel = 30
++)
++
++var (
++	customAndroidApiLevel       = -1
++	errInvalidInterface         = errors.New("invalid network interface")
++	errInvalidInterfaceIndex    = errors.New("invalid network interface index")
++	errInvalidInterfaceName     = errors.New("invalid network interface name")
++	errNoSuchInterface          = errors.New("no such network interface")
++	errNoSuchMulticastInterface = errors.New("no such multicast network interface")
++)
++
++type ifReq [40]byte
++
++// Interfaces returns a list of the system's network interfaces.
++func Interfaces() ([]net.Interface, error) {
++	if androidApiLevel() < android11ApiLevel {
++		return net.Interfaces()
++	}
++
++	ift, err := interfaceTable(0)
++	if err != nil {
++		return nil, &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: err}
++	}
++	if len(ift) != 0 {
++		zoneCache.update(ift, true)
++		zoneCacheX.update(ift, true)
++	}
++	return ift, nil
++}
++
++// InterfaceAddrs returns a list of the system's unicast interface
++// addresses.
++//
++// The returned list does not identify the associated interface; use
++// Interfaces and Interface.Addrs for more detail.
++func InterfaceAddrs() ([]net.Addr, error) {
++	if androidApiLevel() < android11ApiLevel {
++		return net.InterfaceAddrs()
++	}
++
++	ifat, err := interfaceAddrTable(nil)
++	if err != nil {
++		err = &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: err}
++	}
++	return ifat, err
++}
++
++// InterfaceByIndex returns the interface specified by index.
++//
++// On Solaris, it returns one of the logical network interfaces
++// sharing the logical data link; for more precision use
++// InterfaceByName.
++func InterfaceByIndex(index int) (*net.Interface, error) {
++	if androidApiLevel() < android11ApiLevel {
++		return net.InterfaceByIndex(index)
++	}
++
++	if index <= 0 {
++		return nil, &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: errInvalidInterfaceIndex}
++	}
++	ift, err := interfaceTable(index)
++	if err != nil {
++		return nil, &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: err}
++	}
++	ifi, err := interfaceByIndex(ift, index)
++	if err != nil {
++		err = &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: err}
++	}
++	return ifi, err
++}
++
++// InterfaceByName returns the interface specified by name.
++func InterfaceByName(name string) (*net.Interface, error) {
++	if name == "" {
++		return nil, &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: errInvalidInterfaceName}
++	}
++	ift, err := interfaceTable(0)
++	if err != nil {
++		return nil, &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: err}
++	}
++	if len(ift) != 0 {
++		zoneCache.update(ift, true)
++		zoneCacheX.update(ift, true)
++	}
++	for _, ifi := range ift {
++		if name == ifi.Name {
++			return &ifi, nil
++		}
++	}
++	return nil, &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: errNoSuchInterface}
++}
++
++// InterfaceAddrsByInterface returns a list of the system's unicast
++// interface addresses by specific interface.
++func InterfaceAddrsByInterface(ifi *net.Interface) ([]net.Addr, error) {
++	if ifi == nil {
++		return nil, &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: errInvalidInterface}
++	}
++
++	if androidApiLevel() < android11ApiLevel {
++		return ifi.Addrs()
++	}
++
++	ifat, err := interfaceAddrTable(ifi)
++	if err != nil {
++		err = &net.OpError{Op: "route", Net: "ip+net", Source: nil, Addr: nil, Err: err}
++	}
++	return ifat, err
++}
++
++// SetAndroidVersion set the Android environment in which the program runs.
++// The Android system version number can be obtained through
++// `android.os.Build.VERSION.RELEASE` of the Android framework.
++// If version is 0 the actual version will be detected automatically if possible.
++func SetAndroidVersion(version uint) {
++	switch {
++	case version == 0:
++		customAndroidApiLevel = -1
++	case version >= 11:
++		customAndroidApiLevel = android11ApiLevel
++	default:
++		customAndroidApiLevel = 0
++	}
++}
++
++func androidApiLevel() int {
++	if customAndroidApiLevel != -1 {
++		// user-provided api level should be used
++		return customAndroidApiLevel
++	}
++
++	// try to autodetect api level
++	return androidDeviceApiLevel()
++}
++
++// An ipv6ZoneCache represents a cache holding partial network
++// interface information. It is used for reducing the cost of IPv6
++// addressing scope zone resolution.
++//
++// Multiple names sharing the index are managed by first-come
++// first-served basis for consistency.
++type ipv6ZoneCache struct {
++	sync.RWMutex                // guard the following
++	lastFetched  time.Time      // last time routing information was fetched
++	toIndex      map[string]int // interface name to its index
++	toName       map[int]string // interface index to its name
++}
++
++//go:linkname zoneCache net.zoneCache
++var zoneCache ipv6ZoneCache
++
++//go:linkname zoneCacheX golang.org/x/net/internal/socket.zoneCache
++var zoneCacheX ipv6ZoneCache
++
++// update refreshes the network interface information if the cache was last
++// updated more than 1 minute ago, or if force is set. It reports whether the
++// cache was updated.
++func (zc *ipv6ZoneCache) update(ift []net.Interface, force bool) (updated bool) {
++	zc.Lock()
++	defer zc.Unlock()
++	now := time.Now()
++	if !force && zc.lastFetched.After(now.Add(-60*time.Second)) {
++		return false
++	}
++	zc.lastFetched = now
++	if len(ift) == 0 {
++		var err error
++		if ift, err = interfaceTable(0); err != nil {
++			return false
++		}
++	}
++	zc.toIndex = make(map[string]int, len(ift))
++	zc.toName = make(map[int]string, len(ift))
++	for _, ifi := range ift {
++		zc.toIndex[ifi.Name] = ifi.Index
++		if _, ok := zc.toName[ifi.Index]; !ok {
++			zc.toName[ifi.Index] = ifi.Name
++		}
++	}
++	return true
++}
++
++// If the ifindex is zero, interfaceTable returns mappings of all
++// network interfaces. Otherwise it returns a mapping of a specific
++// interface.
++func interfaceTable(ifindex int) ([]net.Interface, error) {
++	tab, err := NetlinkRIB(syscall.RTM_GETADDR, syscall.AF_UNSPEC)
++	if err != nil {
++		return nil, os.NewSyscallError("netlinkrib", err)
++	}
++	msgs, err := syscall.ParseNetlinkMessage(tab)
++	if err != nil {
++		return nil, os.NewSyscallError("parsenetlinkmessage", err)
++	}
++
++	var ift []net.Interface
++	im := make(map[uint32]struct{})
++loop:
++	for _, m := range msgs {
++		switch m.Header.Type {
++		case syscall.NLMSG_DONE:
++			break loop
++		case syscall.RTM_NEWADDR:
++			ifam := (*syscall.IfAddrmsg)(unsafe.Pointer(&m.Data[0]))
++			if _, ok := im[ifam.Index]; ok {
++				continue
++			} else {
++				im[ifam.Index] = struct{}{}
++			}
++
++			if ifindex == 0 || ifindex == int(ifam.Index) {
++				ifi := newLink(ifam)
++				if ifi != nil {
++					ift = append(ift, *ifi)
++				}
++				if ifindex == int(ifam.Index) {
++					break loop
++				}
++			}
++		}
++	}
++
++	return ift, nil
++}
++
++func newLink(ifam *syscall.IfAddrmsg) *net.Interface {
++	ift := &net.Interface{Index: int(ifam.Index)}
++
++	name, err := indexToName(ifam.Index)
++	if err != nil {
++		return nil
++	}
++	ift.Name = name
++
++	mtu, err := nameToMTU(name)
++	if err != nil {
++		return nil
++	}
++	ift.MTU = mtu
++
++	flags, err := nameToFlags(name)
++	if err != nil {
++		return nil
++	}
++	ift.Flags = flags
++	return ift
++}
++
++func linkFlags(rawFlags uint32) net.Flags {
++	var f net.Flags
++	if rawFlags&syscall.IFF_UP != 0 {
++		f |= net.FlagUp
++	}
++	if rawFlags&syscall.IFF_RUNNING != 0 {
++		f |= net.FlagRunning
++	}
++	if rawFlags&syscall.IFF_BROADCAST != 0 {
++		f |= net.FlagBroadcast
++	}
++	if rawFlags&syscall.IFF_LOOPBACK != 0 {
++		f |= net.FlagLoopback
++	}
++	if rawFlags&syscall.IFF_POINTOPOINT != 0 {
++		f |= net.FlagPointToPoint
++	}
++	if rawFlags&syscall.IFF_MULTICAST != 0 {
++		f |= net.FlagMulticast
++	}
++	return f
++}
++
++// If the ifi is nil, interfaceAddrTable returns addresses for all
++// network interfaces. Otherwise it returns addresses for a specific
++// interface.
++func interfaceAddrTable(ifi *net.Interface) ([]net.Addr, error) {
++	tab, err := NetlinkRIB(syscall.RTM_GETADDR, syscall.AF_UNSPEC)
++	if err != nil {
++		return nil, os.NewSyscallError("netlinkrib", err)
++	}
++	msgs, err := syscall.ParseNetlinkMessage(tab)
++	if err != nil {
++		return nil, os.NewSyscallError("parsenetlinkmessage", err)
++	}
++
++	var ift []net.Interface
++	if ifi == nil {
++		var err error
++		ift, err = interfaceTable(0)
++		if err != nil {
++			return nil, err
++		}
++	}
++	ifat, err := addrTable(ift, ifi, msgs)
++	if err != nil {
++		return nil, err
++	}
++	return ifat, nil
++}
++
++func addrTable(ift []net.Interface, ifi *net.Interface, msgs []syscall.NetlinkMessage) ([]net.Addr, error) {
++	var ifat []net.Addr
++loop:
++	for _, m := range msgs {
++		switch m.Header.Type {
++		case syscall.NLMSG_DONE:
++			break loop
++		case syscall.RTM_NEWADDR:
++			ifam := (*syscall.IfAddrmsg)(unsafe.Pointer(&m.Data[0]))
++			if len(ift) != 0 || ifi.Index == int(ifam.Index) {
++				attrs, err := syscall.ParseNetlinkRouteAttr(&m)
++				if err != nil {
++					return nil, os.NewSyscallError("parsenetlinkrouteattr", err)
++				}
++				ifa := newAddr(ifam, attrs)
++				if ifa != nil {
++					ifat = append(ifat, ifa)
++				}
++			}
++		}
++	}
++	return ifat, nil
++}
++
++func newAddr(ifam *syscall.IfAddrmsg, attrs []syscall.NetlinkRouteAttr) net.Addr {
++	var ipPointToPoint bool
++	// Seems like we need to make sure whether the IP interface
++	// stack consists of IP point-to-point numbered or unnumbered
++	// addressing.
++	for _, a := range attrs {
++		if a.Attr.Type == syscall.IFA_LOCAL {
++			ipPointToPoint = true
++			break
++		}
++	}
++	for _, a := range attrs {
++		if ipPointToPoint && a.Attr.Type == syscall.IFA_ADDRESS {
++			continue
++		}
++		switch ifam.Family {
++		case syscall.AF_INET:
++			return &net.IPNet{IP: net.IPv4(a.Value[0], a.Value[1], a.Value[2], a.Value[3]), Mask: net.CIDRMask(int(ifam.Prefixlen), 8*net.IPv4len)}
++		case syscall.AF_INET6:
++			ifa := &net.IPNet{IP: make(net.IP, net.IPv6len), Mask: net.CIDRMask(int(ifam.Prefixlen), 8*net.IPv6len)}
++			copy(ifa.IP, a.Value[:])
++			return ifa
++		}
++	}
++	return nil
++}
++
++func interfaceByIndex(ift []net.Interface, index int) (*net.Interface, error) {
++	for _, ifi := range ift {
++		if index == ifi.Index {
++			return &ifi, nil
++		}
++	}
++	return nil, errNoSuchInterface
++}
++
++func ioctl(fd int, req uint, arg unsafe.Pointer) error {
++	_, _, e1 := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(req), uintptr(arg))
++	if e1 != 0 {
++		return e1
++	}
++	return nil
++}
++
++func indexToName(index uint32) (string, error) {
++	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM|syscall.SOCK_CLOEXEC, 0)
++	if err != nil {
++		return "", err
++	}
++	defer syscall.Close(fd)
++
++	var ifr ifReq
++	*(*uint32)(unsafe.Pointer(&ifr[syscall.IFNAMSIZ])) = index
++	err = ioctl(fd, syscall.SIOCGIFNAME, unsafe.Pointer(&ifr[0]))
++	if err != nil {
++		return "", err
++	}
++
++	return string(bytes.Trim(ifr[:syscall.IFNAMSIZ], "\x00")), nil
++}
++
++func nameToMTU(name string) (int, error) {
++	// Leave room for terminating NULL byte.
++	if len(name) >= syscall.IFNAMSIZ {
++		return -1, syscall.EINVAL
++	}
++
++	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM|syscall.SOCK_CLOEXEC, 0)
++	if err != nil {
++		return -1, err
++	}
++	defer syscall.Close(fd)
++
++	var ifr ifReq
++	copy(ifr[:], name)
++	err = ioctl(fd, syscall.SIOCGIFMTU, unsafe.Pointer(&ifr[0]))
++	if err != nil {
++		return -1, err
++	}
++
++	return int(*(*int32)(unsafe.Pointer(&ifr[syscall.IFNAMSIZ]))), nil
++}
++
++func nameToFlags(name string) (net.Flags, error) {
++	// Leave room for terminating NULL byte.
++	if len(name) >= syscall.IFNAMSIZ {
++		return 0, syscall.EINVAL
++	}
++
++	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM|syscall.SOCK_CLOEXEC, 0)
++	if err != nil {
++		return 0, err
++	}
++	defer syscall.Close(fd)
++
++	var ifr ifReq
++	copy(ifr[:], name)
++	err = ioctl(fd, syscall.SIOCGIFFLAGS, unsafe.Pointer(&ifr[0]))
++	if err != nil {
++		return 0, err
++	}
++
++	return linkFlags(*(*uint32)(unsafe.Pointer(&ifr[syscall.IFNAMSIZ]))), nil
++}
+--- netbird_orig/client/internal/anet/netlink_linux.go
++++ netbird_src/client/internal/anet/netlink_linux.go
+@@ -0,0 +1,189 @@
++// Copied from github.com/wlynxg/anet v0.0.5 (BSD 3-Clause, Copyright (c)
++// 2023 wlynxg; parts Copyright The Go Authors) for BirdSocks, which runs this
++// Linux binary inside an Android app: there, apps targeting Android 11 or
++// later may neither bind a netlink route socket nor ask it for RTM_GETLINK,
++// so net.Interfaces and Interface.Addrs fail. anet builds the same answers
++// from RTM_GETADDR on an unbound socket and ioctls. Upstream gates it on the
++// android build tag; here it is linux, switched on by NB_ANDROID_SDK.
++
++// Copyright 2011 The Go Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style
++// license that can be found in the LICENSE file.
++
++// Netlink sockets and messages
++
++//go:build linux
++
++package anet
++
++import (
++	"syscall"
++	"unsafe"
++)
++
++// Round the length of a netlink message up to align it properly.
++func nlmAlignOf(msglen int) int {
++	return (msglen + syscall.NLMSG_ALIGNTO - 1) & ^(syscall.NLMSG_ALIGNTO - 1)
++}
++
++// Round the length of a netlink route attribute up to align it
++// properly.
++func rtaAlignOf(attrlen int) int {
++	return (attrlen + syscall.RTA_ALIGNTO - 1) & ^(syscall.RTA_ALIGNTO - 1)
++}
++
++// NetlinkRouteRequest represents a request message to receive routing
++// and link states from the kernel.
++type NetlinkRouteRequest struct {
++	Header syscall.NlMsghdr
++	Data   syscall.RtGenmsg
++}
++
++func (rr *NetlinkRouteRequest) toWireFormat() []byte {
++	b := make([]byte, rr.Header.Len)
++	*(*uint32)(unsafe.Pointer(&b[0:4][0])) = rr.Header.Len
++	*(*uint16)(unsafe.Pointer(&b[4:6][0])) = rr.Header.Type
++	*(*uint16)(unsafe.Pointer(&b[6:8][0])) = rr.Header.Flags
++	*(*uint32)(unsafe.Pointer(&b[8:12][0])) = rr.Header.Seq
++	*(*uint32)(unsafe.Pointer(&b[12:16][0])) = rr.Header.Pid
++	b[16] = byte(rr.Data.Family)
++	return b
++}
++
++func newNetlinkRouteRequest(proto, seq, family int) []byte {
++	rr := &NetlinkRouteRequest{}
++	rr.Header.Len = uint32(syscall.NLMSG_HDRLEN + syscall.SizeofRtGenmsg)
++	rr.Header.Type = uint16(proto)
++	rr.Header.Flags = syscall.NLM_F_DUMP | syscall.NLM_F_REQUEST
++	rr.Header.Seq = uint32(seq)
++	rr.Data.Family = uint8(family)
++	return rr.toWireFormat()
++}
++
++// NetlinkRIB returns routing information base, as known as RIB, which
++// consists of network facility information, states and parameters.
++func NetlinkRIB(proto, family int) ([]byte, error) {
++	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW|syscall.SOCK_CLOEXEC, syscall.NETLINK_ROUTE)
++	if err != nil {
++		return nil, err
++	}
++	defer syscall.Close(s)
++	sa := &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK}
++
++	wb := newNetlinkRouteRequest(proto, 1, family)
++	if err := syscall.Sendto(s, wb, 0, sa); err != nil {
++		return nil, err
++	}
++	lsa, err := syscall.Getsockname(s)
++	if err != nil {
++		return nil, err
++	}
++	lsanl, ok := lsa.(*syscall.SockaddrNetlink)
++	if !ok {
++		return nil, syscall.EINVAL
++	}
++	var tab []byte
++	rbNew := make([]byte, syscall.Getpagesize())
++done:
++	for {
++		rb := rbNew
++		nr, _, err := syscall.Recvfrom(s, rb, 0)
++		if err != nil {
++			return nil, err
++		}
++		if nr < syscall.NLMSG_HDRLEN {
++			return nil, syscall.EINVAL
++		}
++		rb = rb[:nr]
++		tab = append(tab, rb...)
++		msgs, err := ParseNetlinkMessage(rb)
++		if err != nil {
++			return nil, err
++		}
++		for _, m := range msgs {
++			if m.Header.Seq != 1 || m.Header.Pid != lsanl.Pid {
++				return nil, syscall.EINVAL
++			}
++			if m.Header.Type == syscall.NLMSG_DONE {
++				break done
++			}
++			if m.Header.Type == syscall.NLMSG_ERROR {
++				return nil, syscall.EINVAL
++			}
++		}
++	}
++	return tab, nil
++}
++
++// NetlinkMessage represents a netlink message.
++type NetlinkMessage struct {
++	Header syscall.NlMsghdr
++	Data   []byte
++}
++
++// ParseNetlinkMessage parses b as an array of netlink messages and
++// returns the slice containing the NetlinkMessage structures.
++func ParseNetlinkMessage(b []byte) ([]NetlinkMessage, error) {
++	var msgs []NetlinkMessage
++	for len(b) >= syscall.NLMSG_HDRLEN {
++		h, dbuf, dlen, err := netlinkMessageHeaderAndData(b)
++		if err != nil {
++			return nil, err
++		}
++		m := NetlinkMessage{Header: *h, Data: dbuf[:int(h.Len)-syscall.NLMSG_HDRLEN]}
++		msgs = append(msgs, m)
++		b = b[dlen:]
++	}
++	return msgs, nil
++}
++
++func netlinkMessageHeaderAndData(b []byte) (*syscall.NlMsghdr, []byte, int, error) {
++	h := (*syscall.NlMsghdr)(unsafe.Pointer(&b[0]))
++	l := nlmAlignOf(int(h.Len))
++	if int(h.Len) < syscall.NLMSG_HDRLEN || l > len(b) {
++		return nil, nil, 0, syscall.EINVAL
++	}
++	return h, b[syscall.NLMSG_HDRLEN:], l, nil
++}
++
++// NetlinkRouteAttr represents a netlink route attribute.
++type NetlinkRouteAttr struct {
++	Attr  syscall.RtAttr
++	Value []byte
++}
++
++// ParseNetlinkRouteAttr parses m's payload as an array of netlink
++// route attributes and returns the slice containing the
++// NetlinkRouteAttr structures.
++func ParseNetlinkRouteAttr(m *NetlinkMessage) ([]NetlinkRouteAttr, error) {
++	var b []byte
++	switch m.Header.Type {
++	case syscall.RTM_NEWLINK, syscall.RTM_DELLINK:
++		b = m.Data[syscall.SizeofIfInfomsg:]
++	case syscall.RTM_NEWADDR, syscall.RTM_DELADDR:
++		b = m.Data[syscall.SizeofIfAddrmsg:]
++	case syscall.RTM_NEWROUTE, syscall.RTM_DELROUTE:
++		b = m.Data[syscall.SizeofRtMsg:]
++	default:
++		return nil, syscall.EINVAL
++	}
++	var attrs []NetlinkRouteAttr
++	for len(b) >= syscall.SizeofRtAttr {
++		a, vbuf, alen, err := netlinkRouteAttrAndValue(b)
++		if err != nil {
++			return nil, err
++		}
++		ra := NetlinkRouteAttr{Attr: *a, Value: vbuf[:int(a.Len)-syscall.SizeofRtAttr]}
++		attrs = append(attrs, ra)
++		b = b[alen:]
++	}
++	return attrs, nil
++}
++
++func netlinkRouteAttrAndValue(b []byte) (*syscall.RtAttr, []byte, int, error) {
++	a := (*syscall.RtAttr)(unsafe.Pointer(&b[0]))
++	if int(a.Len) < syscall.SizeofRtAttr || int(a.Len) > len(b) {
++		return nil, nil, 0, syscall.EINVAL
++	}
++	return a, b[syscall.SizeofRtAttr:], rtaAlignOf(int(a.Len)), nil
++}
+--- netbird_orig/client/internal/anet/api_level_linux.go
++++ netbird_src/client/internal/anet/api_level_linux.go
+@@ -0,0 +1,18 @@
++//go:build linux
++
++package anet
++
++import (
++	"os"
++	"strconv"
++)
++
++// androidDeviceApiLevel is the Android API level the app reports in
++// NB_ANDROID_SDK, or -1 off Android: then every call is the standard
++// library's.
++func androidDeviceApiLevel() int {
++	if v, err := strconv.Atoi(os.Getenv("NB_ANDROID_SDK")); err == nil && v > 0 {
++		return v
++	}
++	return -1
++}
+--- netbird_orig/client/internal/anet/anet_other.go
++++ netbird_src/client/internal/anet/anet_other.go
+@@ -0,0 +1,13 @@
++//go:build !linux
++
++// Package anet lists network interfaces where the standard library cannot
++// (see interface_linux.go); elsewhere it is the standard library.
++package anet
++
++import "net"
++
++func Interfaces() ([]net.Interface, error) { return net.Interfaces() }
++
++func InterfaceAddrs() ([]net.Addr, error) { return net.InterfaceAddrs() }
++
++func InterfaceAddrsByInterface(ifi *net.Interface) ([]net.Addr, error) { return ifi.Addrs() }
+--- netbird_orig/client/internal/anet/anet_linux_test.go
++++ netbird_src/client/internal/anet/anet_linux_test.go
+@@ -0,0 +1,60 @@
++//go:build linux
++
++package anet
++
++import (
++	"net"
++	"sort"
++	"testing"
++)
++
++// The Android path (NB_ANDROID_SDK ≥ 30) must find the same interfaces and
++// addresses as the standard library where both work.
++func TestAndroidPathMatchesStdlib(t *testing.T) {
++	t.Setenv("NB_ANDROID_SDK", "35")
++	if androidApiLevel() < android11ApiLevel {
++		t.Fatal("NB_ANDROID_SDK did not select the Android path")
++	}
++	want, err := net.Interfaces()
++	if err != nil {
++		t.Fatal(err)
++	}
++	got, err := Interfaces()
++	if err != nil {
++		t.Fatal(err)
++	}
++	names := func(ifs []net.Interface) []string {
++		var n []string
++		for _, i := range ifs {
++			n = append(n, i.Name)
++		}
++		sort.Strings(n)
++		return n
++	}
++	// RTM_GETADDR only knows interfaces with an address; the stdlib lists all.
++	have := map[string]net.Interface{}
++	for _, i := range got {
++		have[i.Name] = i
++	}
++	for _, w := range want {
++		addrs, _ := w.Addrs()
++		if len(addrs) == 0 {
++			continue
++		}
++		g, ok := have[w.Name]
++		if !ok {
++			t.Errorf("%s (with addresses) missing: got %v, stdlib %v", w.Name, names(got), names(want))
++			continue
++		}
++		if g.Index != w.Index || g.Flags != w.Flags || g.MTU != w.MTU {
++			t.Errorf("%s: got %+v, stdlib %+v", w.Name, g, w)
++		}
++		ga, err := InterfaceAddrsByInterface(&g)
++		if err != nil {
++			t.Fatal(err)
++		}
++		if len(ga) != len(addrs) {
++			t.Errorf("%s: addresses %v, stdlib %v", w.Name, ga, addrs)
++		}
++	}
++}
+--- netbird_orig/client/internal/stdnet/discover_pion.go
++++ netbird_src/client/internal/stdnet/discover_pion.go
+@@ -1,7 +1,7 @@
+ package stdnet
+ 
+ import (
+-	"net"
++	"github.com/netbirdio/netbird/client/internal/anet"
+ 
+ 	"github.com/pion/transport/v3"
+ )
+@@ -12,7 +12,8 @@
+ func (d pionDiscover) iFaces() ([]*transport.Interface, error) {
+ 	ifs := []*transport.Interface{}
+ 
+-	oifs, err := net.Interfaces()
++	// anet: net.Interfaces fails inside an Android app (BirdSocks).
++	oifs, err := anet.Interfaces()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+@@ -20,7 +21,7 @@
+ 	for _, oif := range oifs {
+ 		ifc := transport.NewInterface(oif)
+ 
+-		addrs, err := oif.Addrs()
++		addrs, err := anet.InterfaceAddrsByInterface(&oif)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+--- netbird_orig/client/firewall/uspfilter/localip.go
++++ netbird_src/client/firewall/uspfilter/localip.go
+@@ -2,6 +2,7 @@
+ 
+ import (
+ 	"fmt"
++	"github.com/netbirdio/netbird/client/internal/anet"
+ 	"net"
+ 	"net/netip"
+ 	"sync/atomic"
+@@ -28,7 +29,7 @@
+ }
+ 
+ func processInterface(iface net.Interface, ips map[netip.Addr]struct{}, addresses *[]netip.Addr) {
+-	addrs, err := iface.Addrs()
++	addrs, err := anet.InterfaceAddrsByInterface(&iface)
+ 	if err != nil {
+ 		log.Debugf("get addresses for interface %s failed: %v", iface.Name, err)
+ 		return
+@@ -82,7 +83,7 @@
+ 		}
+ 	}
+ 
+-	interfaces, err := net.Interfaces()
++	interfaces, err := anet.Interfaces()
+ 	if err != nil {
+ 		log.Warnf("failed to get interfaces: %v", err)
+ 	} else {
+--- netbird_orig/client/system/network_addr.go
++++ netbird_src/client/system/network_addr.go
+@@ -3,12 +3,13 @@
+ package system
+ 
+ import (
++	"github.com/netbirdio/netbird/client/internal/anet"
+ 	"net"
+ 	"net/netip"
+ )
+ 
+ func networkAddresses() ([]NetworkAddress, error) {
+-	interfaces, err := net.Interfaces()
++	interfaces, err := anet.Interfaces()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+@@ -21,7 +22,7 @@
+ 		if iface.HardwareAddr.String() == "" {
+ 			continue
+ 		}
+-		addrs, err := iface.Addrs()
++		addrs, err := anet.InterfaceAddrsByInterface(&iface)
+ 		if err != nil {
+ 			continue
+ 		}
+--- netbird_orig/client/internal/engine.go
++++ netbird_src/client/internal/engine.go
+@@ -4,6 +4,7 @@
+ 	"context"
+ 	"errors"
+ 	"fmt"
++	"github.com/netbirdio/netbird/client/internal/anet"
+ 	"math/rand"
+ 	"net"
+ 	"net/netip"
+@@ -2860,7 +2861,7 @@
+ }
+ 
+ func getInterfacePrefixes() ([]netip.Prefix, error) {
+-	ifaces, err := net.Interfaces()
++	ifaces, err := anet.Interfaces()
+ 	if err != nil {
+ 		return nil, fmt.Errorf("get interfaces: %w", err)
+ 	}
+@@ -2869,7 +2870,7 @@
+ 	var merr *multierror.Error
+ 
+ 	for _, iface := range ifaces {
+-		addrs, err := iface.Addrs()
++		addrs, err := anet.InterfaceAddrsByInterface(&iface)
+ 		if err != nil {
+ 			merr = multierror.Append(merr, fmt.Errorf("get addresses for interface %s: %w", iface.Name, err))
+ 			continue

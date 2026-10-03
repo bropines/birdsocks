@@ -150,6 +150,7 @@ class NetbirdService : Service() {
         androidVersion = Build.VERSION.RELEASE
         model = Build.MODEL
         manufacturer = Build.MANUFACTURER
+        androidSdk = Build.VERSION.SDK_INT.toLong()
         env = buildString {
             if (GlobalSettings.isForceRelay(this@NetbirdService)) appendLine("NB_FORCE_RELAY=true")
             append(GlobalSettings.getExtraEnv(this@NetbirdService))

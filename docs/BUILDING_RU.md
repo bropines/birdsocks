@@ -1,83 +1,55 @@
-# 🛠 Сборка TailSocks
+# Сборка BirdSocks
 
-TailSocks использует высокоавтоматизированный и модульный конвейер сборки, исключающий технический долг, связанный с поддержкой громоздкого форка Tailscale.
+## Что собирается
 
----
+* **`libnetbird.so`** — демон NetBird: `client/server` из NetBird за нашей точкой
+  входа `appctr/birdsocksd`, из релиза, закреплённого в `appctr/NETBIRD_VERSION`
+  (сверяется с `appctr/NETBIRD_SHA256`), с патчами из `appctr/patches/`.
+  Статический бинарник `GOOS=linux`, по одному на ABI; приложение запускает его
+  отдельным процессом.
+* **`appctr.aar`** — мост gomobile (`appctr/*.go`): запускает демон и общается с
+  его gRPC API.
+* **APK** — Kotlin и Compose вместе с двумя предыдущими.
 
-## ⚙️ Конвейер Динамических Патчей (Dynamic Injection Pipeline)
+## Шаги
 
-Вместо постоянного разрешения конфликтов слияния (merge conflicts) скрипт сборки применяет патч-конвейер:
-1. **Загрузка Чистого Ядра:** Скачивается облегченный архив стабильного исходного кода Tailscale (версия закреплена в `appctr/TAILSCALE_VERSION`, сейчас `v1.102.1`).
-2. **Атомарное Внедрение Патчей:** Применяется серия модульных атомарных `.patch` файлов (из папки `appctr/patches/`) в алфавитном порядке для адаптации исходников под мобильные функции (поддержка SOCKS5 прокси, нативная файловая система для Taildrop, генерация сертификатов LocalAPI и мониторинг сети Android).
-3. **Агрессивное Оптимизирование:** С помощью большого набора тегов сборки Go (`ts_omit_systray`, `ts_omit_kube`, `ts_omit_aws`, `ts_omit_bird`, `ts_omit_drive` и др.) из кода вырезаются неиспользуемые компоненты Linux, серверных систем и корпоративных модулей.
-4. **Результат:** Высокооптимизированные библиотеки `libtailscale.so`, быстро компилирующиеся и минимально расходующие ресурсы в песочнице Android.
-
----
-
-## 🛠️ Требования к Окружению
-
-- **Операционная система**: Linux / macOS
-- **Go**: конкретная версия не требуется — сборка использует `GOTOOLCHAIN=auto` и сама скачивает нужный тулчейн Go
-- **Android SDK**: compileSdk 37, targetSdk 35, minSdk 24
-- **Android NDK**: 27.x (переменная `ANDROID_NDK_HOME`)
-- **gomobile**: `go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init`
-- **Gradle**: 8.x+ (используется обертка `./gradlew`)
-- **Keystore для релиза**: собственный `.jks` и переменные `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` (см. ниже)
-
----
-
-## 📦 Инструкция по Сборке
-
-### 1. Клонирование репозитория:
 ```bash
-git clone --recurse-submodules https://github.com/bropines/tailsocks.git
-cd tailsocks
+git clone https://github.com/bropines/birdsocks.git && cd birdsocks
+export ANDROID_HOME=~/android-sdk ANDROID_NDK_HOME=~/android-sdk/ndk/28.2.13676358
+cd appctr && bash build.sh && cd ..      # TS_ABIS=arm64-v8a — один ABI
+./gradlew app:assembleDebug              # ставится рядом с релизом (.dev)
 ```
 
-### 2. Компиляция нативного ядра Go (`appctr`):
-```bash
-cd appctr
-bash build.sh
-cd ..
-```
-*Скрипт сборки автоматически скачает нужную версию Tailscale, применит патчи и скомпилирует бинарники PIE (`libtailscale.so`) под 4 архитектуры: `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`.*
+`build.sh` нужны Go (версия из `appctr/go.mod`), `gomobile` и NDK. Запускайте
+его после любого изменения Go или патчей: APK упаковывает только то, что он собрал.
 
-### 3. Сборка Android APK:
+Для релизной сборки нужно хранилище ключей:
 
-#### Debug APK (без keystore, ставится рядом с релизом благодаря суффиксу `.dev`):
 ```bash
-./gradlew app:assembleDebug
-```
-
-#### Release APK (нужен собственный keystore):
-С версии 4.0.0 сборка **отказывается подписывать релиз debug-ключом**: такой APK ставится один раз, а потом его нельзя обновить нормально подписанной сборкой (Android отвергает обновление с другим сертификатом, и остаётся только удалять приложение вместе с данными). Задайте все четыре переменные, иначе задача `packageRelease` завершится с понятной ошибкой:
-```bash
-KEYSTORE_FILE="$PWD/tailsocks.jks" KEYSTORE_PASSWORD=... \
+KEYSTORE_FILE="$PWD/birdsocks.jks" KEYSTORE_PASSWORD=... \
 KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
 ```
-Если keystore ещё нет, создайте его: `keytool -genkeypair -v -keystore tailsocks.jks -alias tailsocks -keyalg RSA -keysize 4096 -validity 10000`.
 
----
+## Изменения в демоне
 
-## 🔬 Особенности релизной сборки
-
-* **R8-минификация и сжатие ресурсов включены** (`isMinifyEnabled = true`, `isShrinkResources = true`). В проекте намеренно нет JSON через рефлексию: модели сериализуются `kotlinx.serialization` (`core/AppJson.kt`), ресурсы никогда не ищутся по динамическому имени, а сервис AppFunctions создаёт сгенерированные KSP классы `$Aggregated…_Impl` напрямую, а не через рефлексию, поэтому урезанная сборка не зависит от keep-правил для этих путей.
-* **Проверка JNI (`verifyReleaseNativeMethods`).** TUN-библиотека регистрирует Java-методы по имени внутри `JNI_OnLoad`; если R8 удалит хотя бы один `external fun`, `System.loadLibrary` упадёт в рантайме (однажды так и было — каждая остановка роняла приложение). Задача запускается автоматически после `minifyReleaseWithR8` и перед `assembleRelease` / `bundleRelease`: она собирает все `external fun` из `app/src/main/java`, проверяет, что каждый попал под keep-правило в `seeds.txt` R8 и что ни один native-член не значится в `usage.txt`, иначе сборка падает. Отдельно: `./gradlew :app:verifyReleaseNativeMethods` после релизной сборки. При ошибке правьте `app/proguard-rules.pro` — обычный `-keep` для `native <methods>` (не `-keepclasseswithmembernames`).
-* **Версионирование:** `versionName` и `versionCode` берутся из `version.properties` (`4.5.2` / `4050200`; отладочная сборка добавляет `-dev`); хэш коммита — `BuildConfig.GIT_HASH`. Сборщик, который сам обновляет приложение, добавляет `-PselfUpdate=false`.
-
----
-
-## 📱 Установка и Запуск через ADB
-
-Включены ABI-сплиты, поэтому каждая сборка даёт universal APK и по одному на архитектуру (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`) в `app/build/outputs/apk/<debug|release>/`.
+Правьте `appctr/netbird_src/`, затем пересоздайте патчи:
 
 ```bash
-# Debug-сборка
-adb install -r app/build/outputs/apk/debug/app-universal-debug.apk
-
-# Release-сборка
-adb install -r app/build/outputs/apk/release/app-universal-release.apk
-
-# Запуск основного экрана
-adb shell am start -n io.github.bropines.birdsocks/io.github.bropines.birdsocks.ui.MainActivity
+bash appctr/patches/recreate_patches.sh
 ```
+
+Скрипт сравнивает с нетронутым `appctr/netbird_orig/` и перечисляет файлы каждого
+патча; для нового добавьте строку `make_patch`. Патчи должны накладываться с
+`patch -p1 -F0`.
+
+## Проверка демона без телефона
+
+Сборка для хоста выполняет тот же код (это Linux-бинарник):
+
+```bash
+cd appctr/netbird_src && CGO_ENABLED=0 go build -ldflags=-checklinkname=0 \
+    -o /tmp/nb/libnetbird.so ./client/birdsocksd && cd ..
+BIRDSOCKS_LIVE_LIB=/tmp/nb go test -run TestDaemonLive -v .
+```
+
+С `BIRDSOCKS_LIVE_SETUP_KEY=<ключ>` тест ещё и регистрирует узел и подключается.

@@ -40,3 +40,17 @@ make_patch 01-socks5-birdsocks.patch \
 # a Linux binary cannot find on its own (no os-release, no DMI).
 make_patch 02-android-system-info.patch \
     client/system/info_linux.go
+
+# Interfaces inside an Android app: from Android 11 an app may not bind a
+# netlink route socket or ask it for links, so net.Interfaces fails and ICE
+# has no candidates. A copy of wlynxg/anet does it the allowed way.
+make_patch 03-android-interfaces.patch \
+    client/internal/anet/interface_linux.go \
+    client/internal/anet/netlink_linux.go \
+    client/internal/anet/api_level_linux.go \
+    client/internal/anet/anet_other.go \
+    client/internal/anet/anet_linux_test.go \
+    client/internal/stdnet/discover_pion.go \
+    client/firewall/uspfilter/localip.go \
+    client/system/network_addr.go \
+    client/internal/engine.go

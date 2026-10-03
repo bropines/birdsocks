@@ -1,59 +1,55 @@
-# 🛠 Building TailSocks
+# Building BirdSocks
 
-TailSocks employs a highly automated and modular build pipeline that avoids the technical debt of maintaining a massive git fork of Tailscale.
+## What gets built
 
-## The Dynamic Injection Pipeline
+* **`libnetbird.so`** — the NetBird daemon: NetBird's `client/server` behind our
+  entry point `appctr/birdsocksd`, built from the release pinned in
+  `appctr/NETBIRD_VERSION` (checked against `appctr/NETBIRD_SHA256`) with the
+  patches in `appctr/patches/`. It is a static `GOOS=linux` binary, one per ABI,
+  that the app runs as its own process.
+* **`appctr.aar`** — the gomobile bridge (`appctr/*.go`): starts the daemon and
+  talks to its gRPC API.
+* **The APK** — Kotlin and Compose, with the two above.
 
-Instead of resolving endless merge conflicts, our build script uses a dynamic code patch pipeline:
-1. **Fetch Fresh Core:** Downloads a lightweight archive of the official Tailscale source code at the version pinned in `appctr/TAILSCALE_VERSION` (currently `v1.102.1`).
-2. **Atomic Patch Injection:** Applies a series of modular, atomic `.patch` files (located under `appctr/patches/`) to adapt the Tailscale source code for mobile features (SOCKS5 proxy support, custom file systems for Taildrop, LocalAPI certificate generation, and Android-specific network monitoring).
-3. **Aggressive Trimming:** Uses a massive array of Go build tags (`ts_omit_systray`, `ts_omit_kube`, `ts_omit_aws`, `ts_omit_bird`, `ts_omit_drive`, etc.) to strip out desktop Linux and enterprise features. 
-4. **Result:** Highly optimized `libtailscale.so` and `libtailscale_cli.so` binaries that compile quickly and operate efficiently in the Android sandbox.
+## Steps
 
-## Build Steps
-
-**1. Clone the repository:**
 ```bash
-git clone --recurse-submodules https://github.com/bropines/tailsocks.git
-cd tailsocks
+git clone https://github.com/bropines/birdsocks.git && cd birdsocks
+export ANDROID_HOME=~/android-sdk ANDROID_NDK_HOME=~/android-sdk/ndk/28.2.13676358
+cd appctr && bash build.sh && cd ..      # TS_ABIS=arm64-v8a builds one ABI
+./gradlew app:assembleDebug              # installs beside a release (.dev)
 ```
 
-**2. Compile the Go core (`libtailscale.so`):**
-Because Tailscale removed CLI commands from the main daemon, we compile two separate Position Independent Executables (PIE): `tailscaled` (the core) and `tailscale` (the CLI console). This allows Android to execute them as independent child processes via `fork/exec`.
-```bash
-cd appctr
-bash build.sh
-cd ..
-```
+`build.sh` needs Go (the version in `appctr/go.mod`), `gomobile` and the NDK.
+Run it after every Go or patch change: the APK only packages what it built.
 
-**3. Build the Android APK:**
+A release build needs a keystore:
 
-*Debug build* — installs alongside the release app (application id suffix `.dev`), needs no keystore:
 ```bash
-./gradlew app:assembleDebug
-```
-
-*Release build* — **requires your own signing keystore**. Since 4.0.0 the build refuses to fall back to the debug key: a release APK signed with a throwaway key installs once and can then never be updated by a properly signed build (Android rejects any update whose certificate differs, so the only way out is uninstalling and losing the app state). Provide all four variables, otherwise `packageRelease` fails with an explanatory error:
-```bash
-KEYSTORE_FILE="$PWD/tailsocks.jks" KEYSTORE_PASSWORD=... \
+KEYSTORE_FILE="$PWD/birdsocks.jks" KEYSTORE_PASSWORD=... \
 KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
 ```
-Create a keystore with `keytool -genkeypair -v -keystore tailsocks.jks -alias tailsocks -keyalg RSA -keysize 4096 -validity 10000` if you do not have one.
 
-## Release build internals
+## Changing the daemon
 
-* **R8 minification and resource shrinking are on** (`isMinifyEnabled = true`, `isShrinkResources = true`). The project deliberately contains no reflection-based JSON: models are serialised with `kotlinx.serialization` (`core/AppJson.kt`), resources are never looked up by dynamic name, and the AppFunctions service constructs the KSP-generated `$Aggregated…_Impl` classes directly instead of locating them by reflection, so a shrunk build does not depend on keep rules for those paths.
-* **JNI keep verification (`verifyReleaseNativeMethods`).** The TUN library registers its Java methods by name inside `JNI_OnLoad`; if R8 ever removes an `external fun`, `System.loadLibrary` throws at runtime (this happened once and crashed every Stop). The task runs automatically after `minifyReleaseWithR8` and before `assembleRelease` / `bundleRelease`: it collects every `external fun` in `app/src/main/java`, checks that each one is matched by a keep rule in R8's `seeds.txt` and that no native member appears in `usage.txt`, and fails the build otherwise. You can run it on its own with `./gradlew :app:verifyReleaseNativeMethods` after a release build. If it fails, fix `app/proguard-rules.pro` with a plain `-keep` for `native <methods>` (not `-keepclasseswithmembernames`).
-* **Version naming:** `versionName` and `versionCode` come from `version.properties` (`4.5.2` / `4050200`; a debug build adds `-dev`); the commit hash is `BuildConfig.GIT_HASH`. A release builder that updates the app itself adds `-PselfUpdate=false`.
-
-## Installing via ADB
-
-ABI splits are enabled, so each build produces a universal APK plus one per ABI (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`) under `app/build/outputs/apk/<debug|release>/`.
+Edit `appctr/netbird_src/`, then regenerate the patches:
 
 ```bash
-# Debug build
-adb install -r app/build/outputs/apk/debug/app-universal-debug.apk
-
-# Release build
-adb install -r app/build/outputs/apk/release/app-universal-release.apk
+bash appctr/patches/recreate_patches.sh
 ```
+
+It diffs against the pristine `appctr/netbird_orig/` and names each patch's
+files; add a `make_patch` line for a new one. Patches must apply with
+`patch -p1 -F0`.
+
+## Testing the daemon without a phone
+
+A host build runs the same code (it is a Linux binary):
+
+```bash
+cd appctr/netbird_src && CGO_ENABLED=0 go build -ldflags=-checklinkname=0 \
+    -o /tmp/nb/libnetbird.so ./client/birdsocksd && cd ..
+BIRDSOCKS_LIVE_LIB=/tmp/nb go test -run TestDaemonLive -v .
+```
+
+With `BIRDSOCKS_LIVE_SETUP_KEY=<key>` the test also registers and connects.
