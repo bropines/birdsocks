@@ -9,12 +9,15 @@
   отдельным процессом.
 * **`appctr.aar`** — мост gomobile (`appctr/*.go`): запускает демон и общается с
   его gRPC API.
-* **APK** — Kotlin и Compose вместе с двумя предыдущими.
+* **`libhev-socks5-tunnel.so`** — туннель режима VPN, из подмодуля
+  `app/src/main/jni/hev-socks5-tunnel`; его собирает ndkBuild в Gradle.
+* **APK** — Kotlin и Compose вместе с тремя предыдущими.
 
 ## Шаги
 
 ```bash
-git clone https://github.com/bropines/birdsocks.git && cd birdsocks
+git clone --recursive https://github.com/bropines/birdsocks.git && cd birdsocks
+# уже склонированный: git submodule update --init
 export ANDROID_HOME=~/android-sdk ANDROID_NDK_HOME=~/android-sdk/ndk/28.2.13676358
 cd appctr && bash build.sh && cd ..      # TS_ABIS=arm64-v8a — один ABI
 ./gradlew app:assembleDebug              # ставится рядом с релизом (.dev)

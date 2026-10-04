@@ -9,12 +9,15 @@
   that the app runs as its own process.
 * **`appctr.aar`** — the gomobile bridge (`appctr/*.go`): starts the daemon and
   talks to its gRPC API.
-* **The APK** — Kotlin and Compose, with the two above.
+* **`libhev-socks5-tunnel.so`** — the VPN mode's tunnel, from the
+  `app/src/main/jni/hev-socks5-tunnel` submodule, built by Gradle's ndkBuild.
+* **The APK** — Kotlin and Compose, with the three above.
 
 ## Steps
 
 ```bash
-git clone https://github.com/bropines/birdsocks.git && cd birdsocks
+git clone --recursive https://github.com/bropines/birdsocks.git && cd birdsocks
+# an existing clone: git submodule update --init
 export ANDROID_HOME=~/android-sdk ANDROID_NDK_HOME=~/android-sdk/ndk/28.2.13676358
 cd appctr && bash build.sh && cd ..      # TS_ABIS=arm64-v8a builds one ABI
 ./gradlew app:assembleDebug              # installs beside a release (.dev)

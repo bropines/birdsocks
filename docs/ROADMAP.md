@@ -4,14 +4,15 @@ What 0.1.0 has is in [`CHANGELOG.md`](../CHANGELOG.md). This is what comes next,
 roughly in order.
 
 ## Verify on devices
+- VPN mode: DNS through 198.18.0.2, routes with and without an exit node,
+  excluded apps, a daemon crash taking the VPN down, always-on, Private DNS
+  "automatic". Rebuilds should update the VPN network in place.
 - Sign-in through the browser and with a setup key, on NetBird Cloud and a self-hosted server.
 - Direct (P2P) connections from inside the app's sandbox with patch 03; relay as the fallback.
 - The proxy: overlay addresses, NetBird DNS names, the internet directly and through an exit node.
 - Wi-Fi ↔ mobile switches (see the network monitor below).
 
 ## Next
-- **TUN mode** through `hev-socks5-tunnel` on top of the SOCKS5 proxy (TailSocks'
-  shipped design), with per-app exclusions.
 - **Control-plane proxy and DPI bypass.** NetBird's dialers have no proxy support;
   patch `client/net.Dialer` for management, signal and relay, and bring back
   ByeDPI. `NB_RELAY_TRANSPORT=ws` already moves the relay to WebSocket.

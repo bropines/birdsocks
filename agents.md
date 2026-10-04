@@ -48,6 +48,14 @@ VPN slot.
   set (`NB_SOCKS5_USER`/`PASS`), resolves names through NetBird's DNS first, and
   dials destinations no peer routes directly from the host — a proxy for
   everything, not only the overlay.
+* **VPN mode** (`core/TunVpnService`) feeds Android's VPN into the SOCKS5 proxy
+  through hev-socks5-tunnel. It announces exactly one DNS server, 198.18.0.2,
+  which the proxy answers itself (patch 01, `tundns.go`); never announce
+  NetBird's resolver or a second server. Every `io.github.bropines.birdsocks*`
+  package stays outside the VPN (a loop guard, and it keeps
+  `files/dns-servers` on the real network). The VPN is down whenever the
+  daemon is: stop it before any daemon stop or restart and on a crash. hev
+  gets no `mapdns` — its fake-IP pool is NetBird's 100.64.0.0/10.
 * **Signing in** is `Login` then, when it asks, the browser (device-code flow:
   `verificationURIComplete` and `userCode`) and `WaitSSOLogin`, then `Up`.
   `LoginFlow` runs it in the app's scope so the browser taking the screen does
