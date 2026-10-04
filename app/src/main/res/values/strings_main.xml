@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The main screen, the account sheet, Networks and Publish. -->
+<resources>
+    <string name="action_edit">Edit</string>
+    <string name="accounts_done">Done</string>
+    <string name="accounts_not_connected">not connected</string>
+    <string name="nb_accounts_sheet_help">Every account has its own keys, settings and session; one is connected at a time. Switching reconnects, and the account you leave stays signed in. The first account cannot be renamed or removed, and the active one cannot be removed.</string>
+    <string name="nb_networks_off_title">Networks are off</string>
+    <string name="nb_networks_off_desc">\"Use networks\" is off in Settings → Account: this device reaches none of the networks and exit nodes that peers route for.</string>
+    <string name="nb_expose_inbound_in_settings">The proxy reaches the phone through NetBird, so peers must be allowed to reach its services. Turn it on in Settings.</string>
+</resources>

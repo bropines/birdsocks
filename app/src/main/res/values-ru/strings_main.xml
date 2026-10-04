@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The main screen, the account sheet, Networks and Publish. -->
+<resources>
+    <string name="action_edit">Изменить</string>
+    <string name="accounts_done">Готово</string>
+    <string name="accounts_not_connected">не подключён</string>
+    <string name="nb_accounts_sheet_help">У каждого аккаунта свои ключи, настройки и сессия; подключён одновременно только один. Переключение переподключает, а покинутый аккаунт остаётся с выполненным входом. Первый аккаунт нельзя переименовать или удалить, активный — нельзя удалить.</string>
+    <string name="nb_networks_off_title">Сети выключены</string>
+    <string name="nb_networks_off_desc">«Использовать сети» выключено в Настройках → Аккаунт: устройство не видит ни сетей, ни выходных узлов, которые маршрутизируют другие узлы.</string>
+    <string name="nb_expose_inbound_in_settings">Прокси достаёт до телефона через NetBird, поэтому узлам должен быть разрешён доступ к его сервисам. Включите это в Настройках.</string>
+</resources>

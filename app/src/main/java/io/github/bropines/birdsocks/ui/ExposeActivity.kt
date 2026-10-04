@@ -11,20 +11,23 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.ExposeFlow
 import io.github.bropines.birdsocks.core.GlobalSettings
-import io.github.bropines.birdsocks.core.NetbirdService
 import io.github.bropines.birdsocks.core.NetbirdState
+import io.github.bropines.birdsocks.core.ScrollableSlidingSegmentedChips
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
 
@@ -44,8 +47,9 @@ private val PROTOCOLS = listOf("EXPOSE_HTTP" to "HTTP", "EXPOSE_HTTPS" to "HTTPS
 /**
  * Publishes a port of this phone through the account's NetBird reverse
  * proxy: a web server, a file share, anything listening on 127.0.0.1. The
- * proxy reaches the phone over the network, so inbound access must be on;
- * the address lives while BirdSocks runs, with a notification to take it down.
+ * proxy reaches the phone over the network, so inbound access must be on
+ * (Settings → access, which this screen links to rather than repeats); the
+ * address lives while BirdSocks runs, with a notification to take it down.
  */
 @Composable
 fun ExposeScreen(onBack: () -> Unit) {
@@ -53,6 +57,11 @@ fun ExposeScreen(onBack: () -> Unit) {
     val state by ExposeFlow.state.collectAsState()
     val daemon by NetbirdState.daemon.collectAsState()
     var inbound by remember { mutableStateOf(GlobalSettings.isInboundAccess(context)) }
+    // Back from Settings, where the switch lives: read it again.
+    LifecycleResumeEffect(Unit) {
+        inbound = GlobalSettings.isInboundAccess(context)
+        onPauseOrDispose { }
+    }
     var port by remember { mutableStateOf("8080") }
     var protocol by remember { mutableStateOf("EXPOSE_HTTP") }
     var name by remember { mutableStateOf("") }
@@ -67,20 +76,16 @@ fun ExposeScreen(onBack: () -> Unit) {
         ) {
             HelpText(stringResource(R.string.nb_expose_desc))
             if (!inbound) {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                Card(
+                    onClick = { SettingsSections.open(context, SettingsSections.ACCESS) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
                     ListItem(
-                        leadingContent = { Icon(Icons.Default.CallReceived, null) },
-                        headlineContent = { Text(stringResource(R.string.nb_settings_inbound)) },
-                        supportingContent = { HelpText(stringResource(R.string.nb_expose_needs_inbound)) },
-                        trailingContent = {
-                            TextButton(onClick = {
-                                GlobalSettings.setInboundAccess(context, true)
-                                inbound = true
-                                NetbirdService.restart(context)
-                            }) { Text(stringResource(R.string.nb_expose_enable_inbound)) }
-                        },
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.CallReceived, null) },
+                        supportingContent = { HelpText(stringResource(R.string.nb_expose_inbound_in_settings)) },
+                        trailingContent = { Icon(Icons.Default.ChevronRight, null) },
                         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-                    )
+                    ) { Text(stringResource(R.string.nb_settings_inbound)) }
                 }
             }
             when (val s = state) {
@@ -93,10 +98,17 @@ fun ExposeScreen(onBack: () -> Unit) {
                 is ExposeFlow.State.Failed -> Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     ListItem(
                         leadingContent = { Icon(Icons.Default.ErrorOutline, null) },
-                        headlineContent = { Text(exposeError(s.reason)) },
+                        // "Block inbound" sits beside "Access to the phone" in Settings.
+                        supportingContent = if ("block inbound" in s.reason.lowercase()) {
+                            {
+                                TextButton(onClick = { SettingsSections.open(context, SettingsSections.ACCESS) }, contentPadding = PaddingValues(0.dp)) {
+                                    Text(stringResource(R.string.menu_settings))
+                                }
+                            }
+                        } else null,
                         trailingContent = { IconButton(onClick = { ExposeFlow.dismiss() }) { Icon(Icons.Default.Close, null) } },
                         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-                    )
+                    ) { Text(exposeError(s.reason)) }
                 }
                 ExposeFlow.State.Idle -> Unit
             }
@@ -106,11 +118,13 @@ fun ExposeScreen(onBack: () -> Unit) {
                 label = { Text(stringResource(R.string.nb_expose_port)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PROTOCOLS.forEach { (value, label) ->
-                    FilterChip(selected = protocol == value, enabled = idle, onClick = { protocol = value }, label = { Text(label) })
-                }
-            }
+            // Five of them overflow a narrow phone: the row scrolls.
+            ScrollableSlidingSegmentedChips(
+                options = PROTOCOLS.map { it.second },
+                selectedIndex = PROTOCOLS.indexOfFirst { it.first == protocol }.coerceAtLeast(0),
+                onOptionSelected = { if (idle) protocol = PROTOCOLS[it].first },
+                modifier = Modifier.fillMaxWidth().alpha(if (idle) 1f else 0.6f)
+            )
             OutlinedTextField(
                 value = name, onValueChange = { name = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '-' }.take(32) }, enabled = idle,
                 label = { Text(stringResource(R.string.nb_expose_name)) }, supportingText = { Text(stringResource(R.string.nb_expose_name_desc)) },

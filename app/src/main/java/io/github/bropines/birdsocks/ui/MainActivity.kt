@@ -12,21 +12,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,7 +32,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -55,12 +50,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import io.github.bropines.birdsocks.R
-import io.github.bropines.birdsocks.core.EgressProbe
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.LoginFlow
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdService
 import io.github.bropines.birdsocks.core.NetbirdState
+import io.github.bropines.birdsocks.core.SegmentedChipItem
+import io.github.bropines.birdsocks.core.SlidingSegmentedChips
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.models.NbConnState
 import io.github.bropines.birdsocks.models.NbNetwork
@@ -154,37 +150,20 @@ fun MainScreen() {
     LaunchedEffect(card == CardState.Connected, revision) {
         networks = if (card == CardState.Connected) runCatching { Netbird.networks() }.getOrDefault(emptyList()) else emptyList()
     }
-    var showExitPicker by remember { mutableStateOf(false) }
-    // An exit node can be up as a peer and forward nothing: check the internet
-    // through the proxy while one is selected, sooner again after a failure.
-    val selectedExit = networks.firstOrNull { it.isExitNode && it.selected }
-    var exitWorks by remember { mutableStateOf<Boolean?>(null) }
-    LaunchedEffect(selectedExit?.id, card == CardState.Connected) {
-        exitWorks = null
-        if (selectedExit == null || card != CardState.Connected) return@LaunchedEffect
-        while (true) {
-            exitWorks = EgressProbe.internetThroughProxy(context)
-            delay(if (exitWorks == true) 120_000L else 20_000L)
-        }
-    }
+    val sessionShown = sessionNeedsAttention(status?.sessionExpiresAt)
     var showAccounts by remember { mutableStateOf(false) }
     val profile by NetbirdState.profile.collectAsState()
     val accounts by rememberAccounts(profile)
     val accountLabel = accounts.firstOrNull { it.profile.name == profile }?.label
+        ?: profile?.takeIf { it != "default" }
 
     Scaffold(
         topBar = {
             AppTopBar(
                 title = stringResource(R.string.app_name),
-                subtitle = listOfNotNull(accountLabel, status?.fullStatus?.localPeerState?.fqdn?.substringBefore('.')?.takeIf { it.isNotEmpty() })
-                    .joinToString(" · ").ifEmpty { null },
+                subtitle = accountLabel,
                 // Stopped too: the sheet starts the daemon for what it does.
-                onTitleClick = { showAccounts = true },
-                actions = {
-                    IconButton(onClick = { context.startActivity(Intent(context, SettingsActivity::class.java)) }) {
-                        Icon(Icons.Default.Settings, stringResource(R.string.menu_settings))
-                    }
-                }
+                onTitleClick = { showAccounts = true }
             )
         }
     ) { padding ->
@@ -215,55 +194,29 @@ fun MainScreen() {
                 item { LoginCard(login, status?.fullStatus?.managementState?.error.orEmpty()) }
             }
             if (card == CardState.Connected) {
-                status?.sessionExpiresAt?.let { expiry -> item { SessionRow(expiry) } }
-                status?.let { s -> item { AddressCard(s) } }
-                item { SocksCard() }
-                val exitNodes = networks.filter { it.isExitNode }
-                if (exitNodes.isNotEmpty()) {
-                    item {
-                        ExitNodeRow(
-                            current = selectedExit,
-                            via = selectedExit?.let { routingPeerOf(it, status) }?.substringBefore('.'),
-                            works = exitWorks,
-                            onTurnOff = {
-                                scope.launch {
-                                    runCatching {
-                                        selectedExit?.let { Netbird.deselectNetworks(listOf(it.id)) }
-                                        networks = Netbird.networks()
-                                    }.onFailure { toast(context, it) }
-                                }
-                            },
-                            onClick = { showExitPicker = true }
-                        )
-                    }
+                // The session lives in Settings → Account; here only when it needs a hand.
+                if (sessionShown) status?.sessionExpiresAt?.let { expiry -> item { SessionRow(expiry) } }
+                if (networks.any { it.isExitNode }) {
+                    item { ExitNodeCard(networks, status, connected = true, onChanged = { networks = it }) }
                 }
             }
             item {
-                val peers = status?.fullStatus?.peers.orEmpty()
                 BoxWithConstraints {
                     val entries = listOf(
-                        MenuEntry(
-                            if (peers.isEmpty()) stringResource(R.string.nb_menu_peers)
-                            else stringResource(R.string.nb_menu_peers_count, peers.size),
-                            Icons.Default.Devices
-                        ) { context.startActivity(Intent(context, PeersActivity::class.java)) },
+                        MenuEntry(stringResource(R.string.nb_menu_peers), Icons.Default.Devices) {
+                            context.startActivity(Intent(context, PeersActivity::class.java))
+                        },
                         MenuEntry(stringResource(R.string.nb_menu_networks), Icons.Default.Hub) {
                             context.startActivity(Intent(context, NetworksActivity::class.java))
+                        },
+                        MenuEntry(stringResource(R.string.nb_menu_dns), Icons.Default.Dns) {
+                            context.startActivity(Intent(context, DnsActivity::class.java))
                         },
                         MenuEntry(stringResource(R.string.nb_expose_title), Icons.Default.Public) {
                             context.startActivity(Intent(context, ExposeActivity::class.java))
                         },
-                        MenuEntry(stringResource(R.string.nb_events_title), Icons.Default.EventNote) {
-                            context.startActivity(Intent(context, EventsActivity::class.java))
-                        },
-                        MenuEntry(stringResource(R.string.nb_details_title), Icons.Default.MonitorHeart) {
-                            context.startActivity(Intent(context, StatusDetailsActivity::class.java))
-                        },
-                        MenuEntry(stringResource(R.string.nb_trace_title), Icons.Default.Policy) {
-                            context.startActivity(TraceActivity.intent(context))
-                        },
-                        MenuEntry(stringResource(R.string.menu_logs), Icons.AutoMirrored.Filled.Article) {
-                            context.startActivity(Intent(context, LogsActivity::class.java))
+                        MenuEntry(stringResource(R.string.nb_menu_diagnostics), Icons.Default.MonitorHeart) {
+                            context.startActivity(DiagnosticsActivity.intent(context))
                         },
                         MenuEntry(stringResource(R.string.menu_settings), Icons.Default.Settings) {
                             context.startActivity(Intent(context, SettingsActivity::class.java))
@@ -276,32 +229,21 @@ fun MainScreen() {
     }
 
     if (showAccounts) AccountSheet(onDismiss = { showAccounts = false })
-
-    if (showExitPicker) {
-        val exitNodes = networks.filter { it.isExitNode }
-        val current = exitNodes.firstOrNull { it.selected }?.id ?: ""
-        PickerSheet(
-            title = stringResource(R.string.nb_exit_node),
-            options = listOf(PickerOption("", stringResource(R.string.nb_exit_node_none), Icons.Default.Block)) +
-                exitNodes.map { PickerOption(it.id, it.id, Icons.Default.Public, supporting = routingPeerOf(it, status)) },
-            selected = current,
-            onPick = { id ->
-                scope.launch {
-                    runCatching {
-                        if (id.isEmpty()) Netbird.deselectNetworks(listOfNotNull(current.ifEmpty { null }))
-                        else Netbird.selectNetworks(listOf(id))
-                        networks = Netbird.networks()
-                    }.onFailure { toast(context, it) }
-                }
-            },
-            onDismiss = { showExitPicker = false }
-        )
-    }
 }
 
-/** The peer that routes [network], by its name, as far as the status shows it. */
-private fun routingPeerOf(network: NbNetwork, status: NbStatus?): String? {
-    return status?.fullStatus?.peers?.firstOrNull { network.routedBy(it) }?.fqdn
+/**
+ * Whether the session row belongs on the main screen: the session ends
+ * within the hour, or a renewal is under way or has just failed.
+ */
+@Composable
+private fun sessionNeedsAttention(expiresAt: String?): Boolean {
+    val extend by io.github.bropines.birdsocks.core.ExtendFlow.state.collectAsState()
+    val until = expiresAt?.let { parseRfc3339Millis(it) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(until) {
+        while (until != null) { now = System.currentTimeMillis(); delay(60_000) }
+    }
+    return until != null && (extend !is io.github.bropines.birdsocks.core.ExtendFlow.State.Idle || until - now < 60 * 60_000)
 }
 
 private fun toast(context: Context, e: Throwable) {
@@ -489,14 +431,15 @@ private fun LoginCard(login: LoginFlow.State, serverMessage: String) {
                     TextButton(onClick = { LoginFlow.reset() }) { Text(stringResource(R.string.action_cancel)) }
                 }
                 else -> {
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SegmentedButton(!selfHosted, { selfHosted = false }, SegmentedButtonDefaults.itemShape(0, 2), enabled = !busy) {
-                            Text(stringResource(R.string.nb_login_cloud))
-                        }
-                        SegmentedButton(selfHosted, { selfHosted = true }, SegmentedButtonDefaults.itemShape(1, 2), enabled = !busy) {
-                            Text(stringResource(R.string.nb_login_self_hosted))
-                        }
-                    }
+                    SlidingSegmentedChips(
+                        items = listOf(
+                            SegmentedChipItem(stringResource(R.string.nb_login_cloud), Icons.Default.Cloud),
+                            SegmentedChipItem(stringResource(R.string.nb_login_self_hosted), Icons.Default.Dns)
+                        ),
+                        selectedIndex = if (selfHosted) 1 else 0,
+                        onOptionSelected = { if (!busy) selfHosted = it == 1 },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     if (selfHosted) {
                         OutlinedTextField(
                             value = server,
@@ -584,53 +527,6 @@ fun openUrl(context: Context, url: String) {
     }.onFailure { Toast.makeText(context, url, Toast.LENGTH_LONG).show() }
 }
 
-/** This device on the network: its name and addresses, each copied on tap. */
-@Composable
-private fun AddressCard(status: NbStatus) {
-    val local = status.fullStatus.localPeerState
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            CopyRow(Icons.Default.Badge, stringResource(R.string.nb_address_name), local.fqdn)
-            CopyRow(Icons.Default.Lan, "IPv4", local.address)
-            if (local.ipv6.isNotEmpty()) CopyRow(Icons.Default.Lan, "IPv6", local.ipv6.substringBefore('/'))
-        }
-    }
-}
-
-/** The proxy apps point at, as a URI they can paste. */
-@Composable
-private fun SocksCard() {
-    val context = LocalContext.current
-    val address = GlobalSettings.getSocksAddress(context)
-    val user = GlobalSettings.getSocksUser(context)
-    val pass = GlobalSettings.getSocksPass(context)
-    val creds = if (user.isNotEmpty() && pass.isNotEmpty()) "${Uri.encode(user)}:${Uri.encode(pass)}@" else ""
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column {
-            CopyRow(Icons.Default.SettingsEthernet, stringResource(R.string.nb_socks_title), "socks5://$creds$address", shown = "socks5://$address")
-            if (GlobalSettings.isDnsProxyEnabled(context)) {
-                CopyRow(Icons.Default.Dns, stringResource(R.string.nb_settings_dns_proxy), GlobalSettings.getDnsProxyAddress(context))
-            }
-        }
-    }
-}
-
-@Composable
-private fun CopyRow(icon: ImageVector, label: String, value: String, shown: String = value) {
-    if (value.isEmpty()) return
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-    ListItem(
-        leadingContent = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary) },
-        overlineContent = { Text(label) },
-        headlineContent = { Text(shown, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        trailingContent = {
-            IconButton(onClick = { clipboard.copyText(scope, value) }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.action_copy)) }
-        },
-        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-    )
-}
-
 /** Sign-in refused because of the extra DNS names asked for: the way out is to drop them. */
 @Composable
 private fun DnsLabelsRefusedCard() {
@@ -638,8 +534,7 @@ private fun DnsLabelsRefusedCard() {
     val scope = rememberCoroutineScope()
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
         ListItem(
-            leadingContent = { Icon(Icons.Default.Label, null) },
-            headlineContent = { Text(stringResource(R.string.nb_dns_labels_refused)) },
+            leadingContent = { Icon(Icons.AutoMirrored.Filled.Label, null) },
             supportingContent = { HelpText(stringResource(R.string.nb_dns_labels_refused_desc)) },
             trailingContent = {
                 TextButton(onClick = {
@@ -655,35 +550,7 @@ private fun DnsLabelsRefusedCard() {
                 }) { Text(stringResource(R.string.nb_dns_labels_remove)) }
             },
             colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-        )
-    }
-}
-
-/** The exit node in use; [works] false when the internet does not answer through it. */
-@Composable
-private fun ExitNodeRow(current: NbNetwork?, via: String?, works: Boolean?, onTurnOff: () -> Unit, onClick: () -> Unit) {
-    val dead = current != null && works == false
-    Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        ListItem(
-            leadingContent = {
-                Icon(
-                    if (dead) Icons.Default.PublicOff else Icons.Default.Public, null,
-                    tint = if (dead) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                )
-            },
-            overlineContent = { Text(stringResource(R.string.nb_exit_node)) },
-            headlineContent = { Text(current?.id ?: stringResource(R.string.nb_exit_node_none)) },
-            supportingContent = when {
-                dead -> { { HelpText(stringResource(R.string.nb_exit_node_dead), color = MaterialTheme.colorScheme.error) } }
-                current != null && via != null -> { { Text(stringResource(R.string.nb_exit_node_via, via)) } }
-                else -> null
-            },
-            trailingContent = {
-                if (dead) TextButton(onClick = onTurnOff) { Text(stringResource(R.string.nb_exit_node_off)) }
-                else Icon(Icons.Default.ChevronRight, null)
-            },
-            colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-        )
+        ) { Text(stringResource(R.string.nb_dns_labels_refused)) }
     }
 }
 

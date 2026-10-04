@@ -13,14 +13,17 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdState
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
+import io.github.bropines.birdsocks.models.NbConnState
 import io.github.bropines.birdsocks.models.NbNetwork
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
 import kotlinx.coroutines.launch
@@ -37,8 +40,8 @@ class NetworksActivity : ComponentActivity() {
 }
 
 /**
- * The networks other peers route for: ranges and domains this device may
- * reach through them, each one selectable. Exit nodes are on the main screen.
+ * The networks other peers route for: the exit node on top, then the ranges
+ * and domains this device may reach through them, each one selectable.
  */
 @Composable
 fun NetworksScreen(onBack: () -> Unit) {
@@ -46,13 +49,17 @@ fun NetworksScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val daemon by NetbirdState.daemon.collectAsState()
     val status by NetbirdState.status.collectAsState()
-    var networks by remember { mutableStateOf<List<NbNetwork>?>(null) }
+    // Everything ListNetworks gives, exit nodes included; null until it answers.
+    var all by remember { mutableStateOf<List<NbNetwork>?>(null) }
+    // "Use networks" off: the daemon takes no routes, so the list stays empty.
+    var routesOff by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     val revision = status?.fullStatus?.networksRevision
+    val networks = all?.filter { !it.isExitNode }?.sortedBy { it.id }
 
     suspend fun reload() {
-        networks = runCatching { Netbird.networks() }.getOrElse { emptyList() }.filter { !it.isExitNode }.sortedBy { it.id }
+        all = runCatching { Netbird.networks() }.getOrElse { emptyList() }
     }
 
     fun change(block: suspend () -> Unit) {
@@ -64,7 +71,18 @@ fun NetworksScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(daemon, revision) { if (daemon == NetbirdState.Daemon.Running) reload() else networks = null }
+    LaunchedEffect(daemon, revision) { if (daemon == NetbirdState.Daemon.Running) reload() else all = null }
+    // Back from Settings, where the switch lives: read it again.
+    var resumes by remember { mutableIntStateOf(0) }
+    LifecycleResumeEffect(Unit) {
+        resumes++
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(daemon, resumes) {
+        if (daemon != NetbirdState.Daemon.Running || resumes == 0) return@LaunchedEffect
+        routesOff = runCatching { Netbird.config().disableClientRoutes }.getOrDefault(false)
+        if (resumes > 1) reload()
+    }
 
     Scaffold(topBar = {
         AppTopBar(
@@ -89,18 +107,36 @@ fun NetworksScreen(onBack: () -> Unit) {
                 query.isBlank() || n.id.contains(query, true) || n.range.contains(query, true) || n.domains.any { it.contains(query, true) }
             }
             when {
-                daemon != NetbirdState.Daemon.Running -> EmptyState(Icons.Default.PowerSettingsNew, stringResource(R.string.nb_peers_daemon_off))
+                daemon != NetbirdState.Daemon.Running -> DaemonStoppedState(onStarted = {})
                 list == null -> CircularProgressIndicator(Modifier.padding(32.dp))
-                networks.isNullOrEmpty() -> EmptyState(Icons.Default.Hub, stringResource(R.string.nb_networks_empty))
                 else -> LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-                    item {
-                        io.github.bropines.birdsocks.core.CompactSearchBar(query, { query = it }, stringResource(R.string.nb_networks_search), Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    if (routesOff) {
+                        item { NetworksOffBanner(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
+                    }
+                    if (all.orEmpty().any { it.isExitNode }) {
+                        item {
+                            ExitNodeCard(
+                                networks = all.orEmpty(),
+                                status = status,
+                                connected = status?.state == NbConnState.Connected,
+                                onChanged = { all = it },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    if (networks.isNullOrEmpty()) {
+                        item {
+                            EmptyState(Icons.Default.Hub, stringResource(R.string.nb_networks_empty), Modifier.fillMaxWidth().padding(vertical = 48.dp))
+                        }
+                    } else {
+                        item {
+                            io.github.bropines.birdsocks.core.CompactSearchBar(query, { query = it }, stringResource(R.string.nb_networks_search), Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        }
                     }
                     items(list, key = { it.id }) { net ->
                         val peer = status?.fullStatus?.peers?.firstOrNull { net.routedBy(it) }
                         ListItem(
                             leadingContent = { Icon(if (net.domains.isNotEmpty()) Icons.Default.Language else Icons.Default.Hub, null, tint = MaterialTheme.colorScheme.primary) },
-                            headlineContent = { Text(net.id) },
                             supportingContent = {
                                 Column {
                                     Text(
@@ -124,10 +160,28 @@ fun NetworksScreen(onBack: () -> Unit) {
                                     }
                                 )
                             }
-                        )
+                        ) { Text(net.id) }
                     }
                 }
             }
         }
+    }
+}
+
+/** "Use networks" is off: nothing here applies until it is on, in Settings → Account. */
+@Composable
+private fun NetworksOffBanner(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    Card(
+        onClick = { SettingsSections.open(context, SettingsSections.ACCOUNT) },
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+    ) {
+        ListItem(
+            leadingContent = { Icon(Icons.Default.LinkOff, null) },
+            supportingContent = { HelpText(stringResource(R.string.nb_networks_off_desc)) },
+            trailingContent = { Icon(Icons.Default.ChevronRight, null) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+        ) { Text(stringResource(R.string.nb_networks_off_title)) }
     }
 }
