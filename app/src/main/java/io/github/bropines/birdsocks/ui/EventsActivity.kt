@@ -29,6 +29,7 @@ class EventsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        EventLog.init(this)
         setContent { BirdSocksTheme { EventsScreen(onBack = { finish() }) } }
     }
 }

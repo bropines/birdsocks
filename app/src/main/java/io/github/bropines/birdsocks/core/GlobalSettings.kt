@@ -108,8 +108,22 @@ object GlobalSettings {
     fun getAccountEmail(context: Context, profile: String): String = getString(context, "account_email_$profile", "")
     fun setAccountEmail(context: Context, profile: String, email: String) = setString(context, "account_email_$profile", email)
 
-    fun getDnsLabels(context: Context): String = getString(context, "dns_labels", "")
-    fun setDnsLabels(context: Context, value: String) = setString(context, "dns_labels", value)
+    fun getDnsLabels(context: Context, profile: String): String = getString(context, "dns_labels_$profile", "")
+    fun setDnsLabels(context: Context, profile: String, value: String) = setString(context, "dns_labels_$profile", value)
+
+    /** What the app keeps per profile follows a rename. */
+    fun renameProfileKeys(context: Context, from: String, to: String) {
+        for (key in listOf("account_email_", "dns_labels_")) {
+            val v = getString(context, key + from, "")
+            prefs(context).edit().remove(key + from).apply()
+            if (v.isNotEmpty()) setString(context, key + to, v)
+        }
+    }
+
+    /** ...and goes with the profile. */
+    fun removeProfileKeys(context: Context, profile: String) {
+        prefs(context).edit().remove("account_email_$profile").remove("dns_labels_$profile").apply()
+    }
     /** NAME=value lines handed to the daemon as they are. */
     fun getExtraEnv(context: Context): String = getString(context, "extra_env", "")
     fun setExtraEnv(context: Context, env: String) = setString(context, "extra_env", env)

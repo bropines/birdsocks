@@ -212,7 +212,8 @@ data class NbConfig(
      */
     val dashboardUrl: String
         get() {
-            val mgmt = managementUrl.removeSuffix("/").replace(Regex(":443$"), "")
+            // Any port goes: an old self-hosted server ran management on 33073 and its dashboard on 443.
+            val mgmt = managementUrl.removeSuffix("/").replace(Regex(":\\d+$"), "")
             val cloudAdmin = adminURL.isEmpty() || "app.netbird.io" in adminURL
             return if (cloudAdmin && "netbird.io" !in managementUrl) mgmt else adminURL.replace(Regex(":443/?$"), "")
         }

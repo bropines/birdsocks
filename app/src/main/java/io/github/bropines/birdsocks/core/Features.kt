@@ -1,9 +1,11 @@
 package io.github.bropines.birdsocks.core
 
+import android.content.Context
 import appctr.Subscription
 import io.github.bropines.birdsocks.models.NbEvent
 import io.github.bropines.birdsocks.models.NbExposeReady
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.serialization.encodeToString
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -18,18 +20,51 @@ object EventLog {
     private val eventsFlow = MutableStateFlow<List<NbEvent>>(emptyList())
     val events: StateFlow<List<NbEvent>> = eventsFlow.asStateFlow()
 
+    // Kept in a file so the history outlives the app's process.
+    private var file: java.io.File? = null
+
+    /** Loads the saved history once per process. */
+    @Synchronized
+    fun init(context: Context) {
+        if (file != null) return
+        val f = java.io.File(context.filesDir, "events.json")
+        file = f
+        eventsFlow.value = runCatching { AppJson.decodeFromString<List<NbEvent>>(f.readText()) }.getOrDefault(emptyList())
+    }
+
     /** Adds what is new among [incoming]; returns only those. */
     @Synchronized
     fun add(incoming: List<NbEvent>): List<NbEvent> {
         val known = eventsFlow.value.mapTo(HashSet()) { it.id }
-        val fresh = incoming.filter { it.id.isNotEmpty() && it.id !in known }
+        // The daemon greets every new subscriber with its log level, under a new id each time.
+        var level = eventsFlow.value.lastOrNull { it.metadata["kind"] == LEVEL_KIND }?.metadata?.get("level")
+        val fresh = incoming.filter { e ->
+            if (e.id.isEmpty() || e.id in known) return@filter false
+            if (e.metadata["kind"] == LEVEL_KIND) {
+                if (e.metadata["level"] == level) return@filter false
+                level = e.metadata["level"]
+            }
+            true
+        }
         if (fresh.isNotEmpty()) {
             eventsFlow.value = (eventsFlow.value + fresh).sortedBy { it.timestamp ?: "" }.takeLast(MAX)
+            save()
         }
         return fresh
     }
 
-    fun clear() { eventsFlow.value = emptyList() }
+    @Synchronized
+    fun clear() {
+        eventsFlow.value = emptyList()
+        save()
+    }
+
+    private fun save() {
+        val f = file ?: return
+        runCatching { f.writeText(AppJson.encodeToString<List<NbEvent>>(eventsFlow.value)) }
+    }
+
+    private const val LEVEL_KIND = "log-level-changed"
 }
 
 /**

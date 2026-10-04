@@ -160,6 +160,7 @@ class NetbirdService : Service() {
         Appctr.setDaemonListener(object : DaemonListener {
             override fun onExit(err: String) = onDaemonExit(err)
         })
+        EventLog.init(this)
         scope.launch { ExposeFlow.state.collect(::showExpose) }
     }
 

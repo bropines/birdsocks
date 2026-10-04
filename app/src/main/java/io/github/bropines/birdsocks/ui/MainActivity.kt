@@ -643,7 +643,7 @@ private fun DnsLabelsRefusedCard() {
             supportingContent = { HelpText(stringResource(R.string.nb_dns_labels_refused_desc)) },
             trailingContent = {
                 TextButton(onClick = {
-                    GlobalSettings.setDnsLabels(context, "")
+                    GlobalSettings.setDnsLabels(context, NetbirdState.profile.value ?: "default", "")
                     scope.launch {
                         runCatching {
                             Netbird.setConfig {

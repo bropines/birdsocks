@@ -202,6 +202,11 @@ object Netbird {
 
     // --- Diagnostics and exposure ---
 
+    /** Changes the running daemon's log level; [level] is info, debug or trace. */
+    suspend fun setLogLevel(level: String) {
+        call("SetLogLevel", buildJsonObject { put("level", level.uppercase()) }.toString())
+    }
+
     /**
      * Asks the firewall what it would do with one packet: [direction] "in"
      * for a peer reaching this device, "out" for this device reaching a peer.

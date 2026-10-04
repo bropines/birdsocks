@@ -179,6 +179,7 @@ fun AccountsCard() {
             renaming = null
             act {
                 Netbird.renameProfile(a.profile.name, name)
+                GlobalSettings.renameProfileKeys(context, a.profile.name, name)
                 if (NetbirdState.profile.value == a.profile.name) NetbirdState.profileFlow.value = name
             }
         }
@@ -188,7 +189,7 @@ fun AccountsCard() {
             onDismissRequest = { removing = null },
             title = { Text(stringResource(R.string.nb_accounts_remove)) },
             text = { Text(stringResource(R.string.nb_accounts_remove_confirm, a.label)) },
-            confirmButton = { TextButton(onClick = { removing = null; act { Netbird.removeProfile(a.profile.name) } }) { Text(stringResource(R.string.nb_accounts_remove)) } },
+            confirmButton = { TextButton(onClick = { removing = null; act { Netbird.removeProfile(a.profile.name); GlobalSettings.removeProfileKeys(context, a.profile.name) } }) { Text(stringResource(R.string.nb_accounts_remove)) } },
             dismissButton = { TextButton(onClick = { removing = null }) { Text(stringResource(R.string.action_cancel)) } }
         )
     }

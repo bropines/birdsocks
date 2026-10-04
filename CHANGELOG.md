@@ -50,6 +50,8 @@ TailSocks' history is in its own repository.
 - A management server given as http:// is not reported unreachable before sign-in.
 - The Server row opened NetBird Cloud's dashboard for a self-hosted server.
 - Domain networks never named the peer that routes them.
+- The log level changes without restarting NetBird.
+- The events list survives the app's restart; extra DNS names and the sign-in email are kept per account.
 - An exit node no longer takes the local network's own addresses.
 - A name just added to a domain route goes through it at once.
 - Connecting often took 40 s or more: on Android a kernel-WireGuard probe closed the Signal or relay socket a moment later.

@@ -238,13 +238,14 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                     SettingsSwitchItem(stringResource(R.string.nb_settings_block_inbound), stringResource(R.string.nb_settings_block_inbound_desc), Icons.Default.Block, cfg.blockInbound) {
                         setConfig { put("blockInbound", it) }
                     }
-                    var labels by remember { mutableStateOf(GlobalSettings.getDnsLabels(context)) }
+                    val profileName = NetbirdState.profile.collectAsState().value ?: "default"
+                    var labels by remember(profileName) { mutableStateOf(GlobalSettings.getDnsLabels(context, profileName)) }
                     SettingsEditItem(stringResource(R.string.nb_settings_dns_labels), labels, Icons.Default.Label,
                         placeholder = "phone, poco", description = stringResource(R.string.nb_settings_dns_labels_desc)
                     ) { v ->
                         val list = v.split(',', ' ').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-                        GlobalSettings.setDnsLabels(context, list.joinToString(", "))
-                        labels = GlobalSettings.getDnsLabels(context)
+                        GlobalSettings.setDnsLabels(context, profileName, list.joinToString(", "))
+                        labels = GlobalSettings.getDnsLabels(context, profileName)
                         setConfig {
                             putJsonArray("dnsLabels") { list.forEach { add(it) } }
                             put("cleanDNSLabels", list.isEmpty())
@@ -300,7 +301,9 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 val levels = listOf("info", "debug", "trace")
                 Text(stringResource(R.string.nb_settings_log_level), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
                 SlidingSegmentedChips(levels, levels.indexOf(level).coerceAtLeast(0), { i ->
-                    startSetting { GlobalSettings.setLogLevel(context, levels[i]); level = levels[i] }
+                    // Saved for the next start, and applied to the running daemon at once.
+                    GlobalSettings.setLogLevel(context, levels[i]); level = levels[i]
+                    if (running) scope.launch { runCatching { Netbird.setLogLevel(levels[i]) } }
                 }, Modifier.fillMaxWidth())
                 var env by remember { mutableStateOf(GlobalSettings.getExtraEnv(context)) }
                 SettingsEditItem(stringResource(R.string.nb_settings_env), env.lines().filter { it.isNotBlank() }.joinToString(", "), Icons.Default.Code,
