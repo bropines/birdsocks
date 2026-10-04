@@ -7,19 +7,12 @@ import io.github.bropines.birdsocks.models.*
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -36,17 +29,16 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.serialization.decodeFromString
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
+/**
+ * A titled group of settings rows. [note] is one line under the title saying
+ * how a change here applies (a restart, a reconnect), for the groups where
+ * that is not obvious.
+ */
 @Composable
-fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun SettingsCard(title: String, note: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
@@ -66,8 +58,9 @@ fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 12.dp)
+                modifier = Modifier.padding(bottom = if (note == null) 12.dp else 2.dp)
             )
+            if (note != null) HelpText(note, Modifier.padding(bottom = 12.dp), lines = 1)
             content()
         }
     }
@@ -212,7 +205,6 @@ fun SettingsEditItem(
     placeholder: String = "",
     description: String = "",
     enabled: Boolean = true,
-    suggestions: List<String> = emptyList(),
     onAction: (() -> String)? = null,
     actionIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     onSave: (String) -> Unit
@@ -264,51 +256,19 @@ fun SettingsEditItem(
             onDismissRequest = { showDialog = false },
             title = { Text(title) },
             text = {
-                Column {
-                    OutlinedTextField(
-                        value = text,
-                        onValueChange = { text = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        maxLines = 1,
-                        shape = MaterialTheme.shapes.medium,
-                        label = { if (placeholder.isNotEmpty()) Text(ctx.getString(R.string.settings_field_example, placeholder)) },
-                        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
-                        trailingIcon = if (onAction != null && actionIcon != null) {
-                            { IconButton(onClick = { text = onAction() }) { Icon(actionIcon, ctx.getString(R.string.action_generate)) } }
-                        } else null
-                    )
-                    if (suggestions.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(ctx.getString(R.string.settings_suggested), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            suggestions.forEach { tag ->
-                                val cleanTag = if (tag.startsWith("tag:")) tag else "tag:$tag"
-                                val isSelected = text.split(",").map { it.trim() }.contains(cleanTag)
-
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        val currentTags = text.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
-                                        if (currentTags.contains(cleanTag)) {
-                                            currentTags.remove(cleanTag)
-                                        } else {
-                                            currentTags.add(cleanTag)
-                                        }
-                                        text = currentTags.joinToString(", ")
-                                    },
-                                    label = { Text(tag) }
-                                )
-                            }
-                        }
-                    }
-                }
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    maxLines = 1,
+                    shape = MaterialTheme.shapes.medium,
+                    label = { if (placeholder.isNotEmpty()) Text(ctx.getString(R.string.settings_field_example, placeholder)) },
+                    placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
+                    trailingIcon = if (onAction != null && actionIcon != null) {
+                        { IconButton(onClick = { text = onAction() }) { Icon(actionIcon, ctx.getString(R.string.action_generate)) } }
+                    } else null
+                )
             },
             confirmButton = { Button(onClick = { onSave(text); showDialog = false }) { Text(ctx.getString(R.string.action_save)) } },
             dismissButton = { TextButton(onClick = { showDialog = false }) { Text(ctx.getString(R.string.action_cancel)) } }

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: the hub's sections and what moved into them. -->
+<resources>
+    <!-- The hub -->
+    <string name="settings_cat_appearance">Appearance &amp; language</string>
+    <string name="settings_cat_appearance_desc">Theme, colors, app language</string>
+    <string name="settings_cat_account">Account &amp; device</string>
+    <string name="settings_cat_account_desc">Accounts, device name, server, session, networks</string>
+    <string name="settings_cat_tunnel">Tunnel mode</string>
+    <string name="settings_cat_tunnel_desc">A VPN interface for apps that cannot use a proxy</string>
+    <string name="settings_cat_proxies">Local proxies</string>
+    <string name="settings_cat_proxies_desc">SOCKS5 address and password, sharing on the local network</string>
+    <string name="settings_cat_dns" translatable="false">DNS</string>
+    <string name="settings_cat_dns_desc">NetBird DNS, extra names, the DNS proxy</string>
+    <string name="settings_cat_access">Access to this phone</string>
+    <string name="settings_cat_access_desc">Connections from peers, publishing a port</string>
+    <string name="settings_cat_connection">Connection</string>
+    <string name="settings_cat_connection_desc">Lazy connections, relays, IPv6, MTU</string>
+    <string name="settings_cat_background">Background &amp; permissions</string>
+    <string name="settings_cat_background_desc">Notifications, start on boot, permissions</string>
+    <string name="settings_cat_diagnostics">Diagnostics &amp; developer</string>
+    <string name="settings_cat_diagnostics_desc">Log detail, environment, remote jobs, logs</string>
+    <string name="settings_cat_about_desc">Versions, documentation, licenses</string>
+
+    <!-- How a group of settings applies -->
+    <string name="settings_note_restart">Applies after BirdSocks restarts</string>
+    <string name="settings_note_reconnect">Kept in the NetBird profile: a change reconnects</string>
+
+    <!-- Cards -->
+    <string name="settings_card_account">Account</string>
+    <string name="settings_card_network">Network</string>
+    <string name="settings_sect_lan">Local network</string>
+    <string name="settings_card_inbound">Connections to this phone</string>
+    <string name="settings_card_peers">Peers and relays</string>
+    <string name="settings_card_packets">Addresses and packets</string>
+    <string name="settings_card_developer">Developer</string>
+    <string name="settings_sect_tools">Tools</string>
+
+    <!-- Account -->
+    <string name="settings_account_hint">Switch, add, rename or remove</string>
+
+    <!-- Local proxies -->
+    <string name="settings_socks5_auth_needs_both">Fill in both: one alone is ignored and the proxy stays open</string>
+    <string name="settings_sagernet_copy">Copy the socks5:// link</string>
+    <string name="settings_sagernet_copied">Link copied</string>
+    <string name="settings_sagernet_copy_for">Link for a client on…</string>
+    <string name="settings_sagernet_copy_local">This phone</string>
+    <string name="settings_lan_access_listening">Listening on every interface: the address is below</string>
+    <string name="settings_lan_endpoint_lan">Wi‑Fi / LAN</string>
+    <string name="settings_lan_endpoint_none">No address on this network right now</string>
+    <string name="settings_lan_copied">Copied: %1$s</string>
+    <string name="settings_lan_access_no_auth_warning">The SOCKS5 proxy has no username and password: anyone on this Wi‑Fi can reach your NetBird network through it.</string>
+
+    <!-- DNS, access, diagnostics -->
+    <string name="settings_link_dns_desc">Resolvers, names and a lookup test</string>
+    <string name="settings_inbound_override">Block inbound wins: with it on, peers reach nothing on this phone, whatever Access to the phone says.</string>
+    <string name="settings_link_publish_desc">Give a port of this phone a public address</string>
+    <string name="settings_link_diagnostics_desc">Connection, events, access check, packet capture</string>
+    <string name="settings_link_logs_desc">The daemon\'s log, with filters and export</string>
+</resources>

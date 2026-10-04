@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: the hub's sections and what moved into them. -->
+<resources>
+    <!-- The hub -->
+    <string name="settings_cat_appearance">Оформление и язык</string>
+    <string name="settings_cat_appearance_desc">Тема, цвета, язык приложения</string>
+    <string name="settings_cat_account">Аккаунт и устройство</string>
+    <string name="settings_cat_account_desc">Аккаунты, имя устройства, сервер, сессия, сети</string>
+    <string name="settings_cat_tunnel">Режим туннеля</string>
+    <string name="settings_cat_tunnel_desc">VPN-интерфейс для приложений, которые не умеют в прокси</string>
+    <string name="settings_cat_proxies">Локальные прокси</string>
+    <string name="settings_cat_proxies_desc">Адрес и пароль SOCKS5, доступ из локальной сети</string>
+    <string name="settings_cat_dns_desc">DNS NetBird, дополнительные имена, DNS-прокси</string>
+    <string name="settings_cat_access">Доступ к телефону</string>
+    <string name="settings_cat_access_desc">Подключения от узлов, публикация порта</string>
+    <string name="settings_cat_connection">Соединение</string>
+    <string name="settings_cat_connection_desc">Ленивые соединения, relay, IPv6, MTU</string>
+    <string name="settings_cat_background">Фоновая работа и разрешения</string>
+    <string name="settings_cat_background_desc">Уведомления, автозапуск, разрешения</string>
+    <string name="settings_cat_diagnostics">Диагностика и разработчику</string>
+    <string name="settings_cat_diagnostics_desc">Подробность логов, окружение, удалённые задания, логи</string>
+    <string name="settings_cat_about_desc">Версии, документация, лицензии</string>
+
+    <!-- How a group of settings applies -->
+    <string name="settings_note_restart">Применится после перезапуска BirdSocks</string>
+    <string name="settings_note_reconnect">Хранится в профиле NetBird: изменение переподключит</string>
+
+    <!-- Cards -->
+    <string name="settings_card_account">Аккаунт</string>
+    <string name="settings_card_network">Сеть</string>
+    <string name="settings_sect_lan">Локальная сеть</string>
+    <string name="settings_card_inbound">Подключения к телефону</string>
+    <string name="settings_card_peers">Узлы и relay</string>
+    <string name="settings_card_packets">Адреса и пакеты</string>
+    <string name="settings_card_developer">Для разработчика</string>
+    <string name="settings_sect_tools">Инструменты</string>
+
+    <!-- Account -->
+    <string name="settings_account_hint">Сменить, добавить, переименовать или удалить</string>
+
+    <!-- Local proxies -->
+    <string name="settings_socks5_auth_needs_both">Нужны оба поля: одно игнорируется, и прокси остаётся открытым</string>
+    <string name="settings_sagernet_copy">Скопировать ссылку socks5://</string>
+    <string name="settings_sagernet_copied">Ссылка скопирована</string>
+    <string name="settings_sagernet_copy_for">Ссылка для клиента на…</string>
+    <string name="settings_sagernet_copy_local">Этом телефоне</string>
+    <string name="settings_lan_access_listening">Слушает все интерфейсы: адрес ниже</string>
+    <string name="settings_lan_endpoint_lan">Wi‑Fi / LAN</string>
+    <string name="settings_lan_endpoint_none">Сейчас нет адреса в этой сети</string>
+    <string name="settings_lan_copied">Скопировано: %1$s</string>
+    <string name="settings_lan_access_no_auth_warning">У SOCKS5-прокси нет логина и пароля: любой в этой Wi‑Fi сети попадёт через него в вашу сеть NetBird.</string>
+
+    <!-- DNS, access, diagnostics -->
+    <string name="settings_link_dns_desc">Резолверы, имена и проверка запроса</string>
+    <string name="settings_inbound_override">«Блокировать входящие» главнее: с ним узлы не достанут ничего на телефоне, что бы ни стояло в «Доступе к телефону».</string>
+    <string name="settings_link_publish_desc">Дать порту телефона публичный адрес</string>
+    <string name="settings_link_diagnostics_desc">Соединение, события, проверка доступа, захват пакетов</string>
+    <string name="settings_link_logs_desc">Лог демона с фильтрами и выгрузкой</string>
+</resources>
