@@ -1,6 +1,7 @@
 package io.github.bropines.birdsocks.core
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import android.provider.Settings
 
@@ -8,6 +9,8 @@ import android.provider.Settings
  * The app's own settings, in one SharedPreferences file. NetBird's settings —
  * the management server, Rosenpass, routes, DNS — are not here: they live in
  * the daemon's profile and go through GetConfig/SetConfig.
+ *
+ * A backup carries a key only once BackupFormat lists it.
  */
 object GlobalSettings {
     private const val PREFS_NAME = "global_settings"
@@ -23,6 +26,11 @@ object GlobalSettings {
     fun setBoolean(context: Context, key: String, value: Boolean) = prefs(context).edit().putBoolean(key, value).apply()
     fun getLong(context: Context, key: String, default: Long): Long = prefs(context).getLong(key, default)
     fun setLong(context: Context, key: String, value: Long) = prefs(context).edit().putLong(key, value).apply()
+
+    /** Every stored entry as it is, for a backup to pick from (core/Backup.kt). */
+    fun snapshot(context: Context): Map<String, *> = prefs(context).all
+    /** Several changes in one write that is on disk when this returns: a restore. */
+    fun commit(context: Context, changes: SharedPreferences.Editor.() -> Unit): Boolean = prefs(context).edit().apply(changes).commit()
 
     // --- Appearance ---
     fun getAppTheme(context: Context): String = getString(context, "app_theme", "system")
