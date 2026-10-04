@@ -68,6 +68,7 @@ make_patch 03-android-interfaces.patch \
     client/internal/anet/api_level_linux.go \
     client/internal/anet/anet_other.go \
     client/internal/anet/anet_linux_test.go \
+    client/internal/anet/LICENSE \
     client/internal/stdnet/discover_pion.go \
     client/firewall/uspfilter/localip.go \
     client/system/network_addr.go

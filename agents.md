@@ -103,11 +103,13 @@ cd appctr && bash build.sh        # TS_ABIS=arm64-v8a for one ABI
 ## Licensing
 
 The NetBird client (`client/`, `shared/`, `util/`…) is BSD-3, like this
-repository. Its `management/`, `signal/`, `relay/` and `combined/` directories are
-AGPLv3 and are never built into the app. The official NetBird Android app
+repository. Its `management/`, `signal/`, `relay/`, `combined/`, `proxy/` and
+`tools/idp-migrate/` directories are AGPLv3 and are never built into the app
+(check with `go list -deps ./client/birdsocksd` after a new import). The official NetBird Android app
 (`netbirdio/android-client`) is **GPLv3: a reference, never a source** — read it to
 learn behaviour, write our own code. `client/internal/anet` carries anet's
-BSD-3 notice.
+BSD-3 license (patch 03), and `assets/third_party_licenses.txt` the full texts
+the APK ships; regenerate it when a component changes.
 
 ---
 

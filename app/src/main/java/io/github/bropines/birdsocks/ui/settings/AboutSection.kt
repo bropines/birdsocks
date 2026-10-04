@@ -12,7 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import appctr.Appctr
 import io.github.bropines.birdsocks.BuildConfig
 import io.github.bropines.birdsocks.R
@@ -41,13 +43,29 @@ internal fun AboutSection(env: SettingsEnv) {
             openUrl(context, "https://github.com/bropines/birdsocks")
         }
         var showLicenses by remember { mutableStateOf(false) }
+        // The licenses in full, as MIT and BSD ask a binary to carry them (assets/third_party_licenses.txt).
+        var fullTexts by remember { mutableStateOf<String?>(null) }
         SettingsClickableItem(stringResource(R.string.nb_about_licenses), stringResource(R.string.nb_about_licenses_desc), Icons.Default.Gavel) { showLicenses = true }
         if (showLicenses) {
             AlertDialog(
                 onDismissRequest = { showLicenses = false },
                 title = { Text(stringResource(R.string.nb_about_licenses)) },
                 text = { Text(stringResource(R.string.nb_about_licenses_text), style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
-                confirmButton = { TextButton(onClick = { showLicenses = false }) { Text(stringResource(R.string.action_close)) } }
+                confirmButton = { TextButton(onClick = { showLicenses = false }) { Text(stringResource(R.string.action_close)) } },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showLicenses = false
+                        fullTexts = runCatching { context.assets.open("third_party_licenses.txt").bufferedReader().use { it.readText() } }.getOrDefault("")
+                    }) { Text(stringResource(R.string.nb_about_licenses_full)) }
+                }
+            )
+        }
+        fullTexts?.let { text ->
+            AlertDialog(
+                onDismissRequest = { fullTexts = null },
+                title = { Text(stringResource(R.string.nb_about_licenses)) },
+                text = { Text(text, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.verticalScroll(rememberScrollState())) },
+                confirmButton = { TextButton(onClick = { fullTexts = null }) { Text(stringResource(R.string.action_close)) } }
             )
         }
     }

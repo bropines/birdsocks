@@ -11,13 +11,10 @@ roughly in order.
 - Direct (P2P) connections from inside the app's sandbox with patch 03; relay as the fallback.
 - The proxy: overlay addresses, NetBird DNS names, the internet directly and through an exit node.
 - Wi-Fi ↔ mobile switches (see the network monitor below).
+- The server connection through a SOCKS5/HTTP proxy and through ByeDPI (patch 08).
+- The R8 release build on a device.
 
 ## Next
-- **Control-plane proxy and DPI bypass.** NetBird's dialers have no proxy support;
-  patch `client/net.Dialer` for management, signal and relay, and bring back
-  ByeDPI. `NB_RELAY_TRANSPORT=ws` already moves the relay to WebSocket.
-- **Session expiry**: SubscribeEvents carries the warnings; show them and offer
-  `RequestExtendAuthSession`.
 - **HTTP proxy** next to SOCKS5, for apps that only speak HTTP.
 - Widgets, Tasker actions, backups — TailSocks had them; port what fits.
 

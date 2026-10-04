@@ -233,7 +233,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Custom Tabs: sign-in pages open over the app and share Chrome's cookies.
     implementation("androidx.browser:browser:1.8.0")
-    implementation("androidx.biometric:biometric:1.1.0")
     implementation(libs.androidx.appcompat)
     
     // ВАЖНО: Библиотека для XML-тем (исправляет "resource style/Theme.Material3... not found")
@@ -249,12 +248,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.documentfile)
-    implementation(libs.navigation.compose)
     
     implementation("androidx.compose.material:material-icons-extended:1.7.0")
-    implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.material3)
     
     
     implementation(libs.androidx.material3.adaptive)
