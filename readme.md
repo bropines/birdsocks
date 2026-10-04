@@ -44,7 +44,11 @@ The project's base comes from [TailSocks](https://github.com/bropines/tailsocks)
   - NetBird events, with warnings shown as notifications;
   - an access check (what the firewall does with a packet);
   - packet capture to `.pcap`, logs, and the debug bundle.
-- **Around the app:** a Quick Settings tile, start on boot, and `birdsocks://` links to every screen.
+- **Around the app:**
+  - a Quick Settings tile, start on boot, launcher shortcuts;
+  - `birdsocks://` links to every screen and to actions, including invite links that fill in a new account;
+  - Tasker and adb automation behind a token;
+  - backups: a settings file, or a full backup with NetBird's profiles under a password.
 
 ## How it works
 
@@ -73,6 +77,7 @@ server connection and ByeDPI, and what to do when something does not connect.
 | | |
 |---|---|
 | [User guide](docs/GUIDE.md) | Setup, every mode, troubleshooting |
+| [Automation](docs/AUTOMATION.md) | Tasker and adb actions, links |
 | [Building](docs/BUILDING.md) | The NetBird daemon, the bridge and the APK |
 | [Releasing](docs/RELEASING.md) | From a clean checkout to signed APKs |
 | [Translating](docs/TRANSLATING.md) | Adding a language |

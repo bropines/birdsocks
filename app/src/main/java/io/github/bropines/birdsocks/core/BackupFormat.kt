@@ -160,7 +160,8 @@ object BackupFormat {
      *    stops NetBird starts it again itself;
      *  - `tun_ula` — the VPN's IPv6 address, made once per install at random;
      *  - `autostart_ask_never`, `autostart_ask_pending` — about this phone's
-     *    own autostart permission prompt.
+     *    own autostart permission prompt;
+     *  - `automation_status_to` — the app on this phone that asked for status.
      * A new setting is backed up once it is added here.
      */
     private val KEYS: Map<String, KeySpec> = buildMap {
@@ -183,6 +184,8 @@ object BackupFormat {
         add(Scope.SETTING, Type.BOOLEAN, "byedpi_ipv4")
         // Lifecycle, notifications, logs
         add(Scope.SETTING, Type.BOOLEAN, "auto_start", "event_notifications", "logs_include_logcat")
+        // Automation: the switch; its token is a secret, and the app status goes to is this phone's
+        add(Scope.SETTING, Type.BOOLEAN, "automation_enabled")
         // VPN mode
         add(Scope.SETTING, Type.BOOLEAN, "tun_mode_enabled", "tun_route_all", "tun_ipv6_enabled")
         add(Scope.SETTING, Type.STRING, "tun_excluded_apps", "tun_excluded_cidrs", "tun_address")

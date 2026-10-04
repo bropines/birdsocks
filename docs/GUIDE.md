@@ -95,9 +95,15 @@ Use this when your network blocks the NetBird server or filters its TLS handshak
 - **Access check:** what NetBird's firewall does with a packet to or from a peer, and which rule decides.
 - **Logs:** filters, packet capture to `.pcap` (opens in Wireshark), and the debug bundle (anonymized, saved or uploaded to NetBird).
 
-## Links
+## Backup
 
-`birdsocks://` opens a screen from Tasker, a shortcut or a browser:
+Settings → Backup:
+- **Settings file:** your settings without secrets. Restoring it anywhere is safe.
+- **Full backup:** everything, including passwords and NetBird's profiles with their keys, under a password. Restore it to the same phone (after a reinstall). On another phone, take "Settings only" and sign in there: the same keys on two phones make them one device to NetBird.
+
+## Links and automation
+
+Tasker and adb actions, action links and invite links are in [AUTOMATION.md](AUTOMATION.md). `birdsocks://` also opens any screen:
 
 ```
 birdsocks://peers

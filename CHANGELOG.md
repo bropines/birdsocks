@@ -42,6 +42,10 @@
 - Events: NetBird's network, DNS, sign-in and connection events in a list; warnings arrive as notifications.
 - The DNS proxy asks its fallbacks at once, skips a NetBird resolver that stalls for 30 s, and never sends a NetBird name to a public server.
 - A new account takes its server and setup key at once; a pasted dashboard link is cut to the server, and the name comes from its domain.
+- Backup: a settings file, or a password-protected full backup with NetBird's profiles; restore asks whether to take everything.
+- Automation for Tasker and adb: connect, disconnect, toggle, restart, status, exit node, account, VPN mode and server connection, behind a token.
+- Action links (`birdsocks://connect`, `exit-node`, `account`, `tun`) ask before they act; `birdsocks://add-account` opens the new-account dialog filled in, an invite an admin can send.
+- Launcher shortcuts: On / Off, Peers, DNS, Diagnostics.
 - Server connection in Settings: management, signal and the relay through a SOCKS5 or HTTP proxy, or through the built-in ByeDPI against DPI.
 - The DNS screen lists the records the server gave this device, the peers' zone and admins' zones, with a filter.
 - VPN mode (TUN): every app through BirdSocks over Android's VPN, NetBird's ranges by default, all traffic with an exit node or a domain route; DNS from a resolver inside the proxy; excluded apps; the tile asks for the permission.
