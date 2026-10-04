@@ -21,6 +21,8 @@
 -keep class io.github.bropines.birdsocks.core.TunVpnService$Companion {
     native <methods>;
 }
+# ByeDPI's JNI is resolved by symbol (Java_io_github_bropines_birdsocks_core_
+# ByeDpiProxy_jni*), so the class and method names must survive as well.
 -keep class io.github.bropines.birdsocks.core.ByeDpiProxy {
     native <methods>;
 }
@@ -38,11 +40,6 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 -keep,includedescriptorclasses class io.github.bropines.birdsocks.**$$serializer { *; }
-
-# ── Jetpack AppFunctions (KSP-generated inventory/invoker) ───────────────────
--keep class androidx.appfunctions.internal.** { *; }
--keep @androidx.appfunctions.AppFunctionSerializable class * { *; }
--keep class io.github.bropines.birdsocks.appfunctions.** { *; }
 
 # ── Glance widgets ──────────────────────────────────────────────────────────
 # GlanceAppWidgetManager persists each GlanceAppWidget subclass's canonicalName
