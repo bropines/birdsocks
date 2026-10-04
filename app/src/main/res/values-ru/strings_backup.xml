@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings → Backup: BirdSocks' settings and NetBird's accounts to a file, and back. -->
+<resources>
+    <!-- The hub -->
+    <string name="settings_cat_backup">Резервная копия</string>
+    <string name="settings_cat_backup_desc">Настройки и аккаунты в файл и обратно</string>
+
+    <!-- Saving -->
+    <string name="backup_card_save">Сохранить</string>
+    <string name="backup_settings_title">Файл настроек</string>
+    <string name="backup_settings_desc">Настройки BirdSocks обычным файлом JSON — для этого телефона или другого. Пароли, аккаунты NetBird и имя устройства в него не попадают: после восстановления введите пароли прокси заново и войдите в аккаунт.</string>
+    <string name="backup_full_title">Полная копия</string>
+    <string name="backup_full_desc">Настройки с паролями и аккаунты NetBird с ключами в одном файле, закрытом паролем. Для этого же телефона после переустановки.</string>
+    <string name="backup_saved">Копия сохранена</string>
+    <string name="backup_save_failed">Копия не сохранена: %1$s</string>
+
+    <!-- Restoring -->
+    <string name="backup_card_restore">Восстановить</string>
+    <string name="backup_restore_title">Восстановить из файла</string>
+    <string name="backup_restore_desc">Файл настроек или полная копия. Ничего не меняется, пока вы не подтвердите, что восстанавливать.</string>
+    <string name="backup_restored">Восстановлено</string>
+    <string name="backup_restore_failed">Не восстановлено: %1$s</string>
+
+    <!-- Passwords -->
+    <string name="backup_password_title">Пароль для копии</string>
+    <string name="backup_password_text">В файле будут ключи ваших аккаунтов NetBird и ваши пароли, зашифрованные этим паролем. Восстановить его нельзя: без него копию не открыть.</string>
+    <string name="backup_password_label">Пароль</string>
+    <string name="backup_password_repeat">Повторите пароль</string>
+    <string name="backup_password_mismatch">Пароли не совпадают</string>
+    <string name="backup_password_show">Показать пароль</string>
+    <string name="backup_password_continue">Выбрать, куда сохранить</string>
+    <string name="backup_password_lost">Пароль потерялся, пока выбирался файл. Начните сохранение заново.</string>
+    <string name="backup_unlock_title">Полная копия</string>
+    <string name="backup_unlock_text">Введите пароль, с которым копия была сохранена.</string>
+    <string name="backup_unlock_action">Открыть</string>
+    <string name="backup_wrong_password">Неверный пароль, или файл повреждён</string>
+
+    <!-- What to restore -->
+    <string name="backup_from">От %1$s, BirdSocks %2$s</string>
+    <string name="backup_settings_confirm_title">Восстановить настройки?</string>
+    <string name="backup_settings_confirm_text">%1$s.\n\nНастройки из файла заменят здешние. Паролей, аккаунтов NetBird и имени устройства в нём нет — они останутся как есть. Доступ к прокси из локальной сети останется выключен, пока у прокси здесь нет пароля.</string>
+    <string name="backup_restore_action">Восстановить</string>
+    <string name="backup_scope_title">Что восстановить</string>
+    <string name="backup_scope_text">%1$s. Аккаунтов NetBird в копии: %2$d.</string>
+    <string name="backup_scope_settings">Только настройки</string>
+    <string name="backup_scope_settings_desc">Настройки и их пароли. Аккаунты NetBird здесь останутся как есть.</string>
+    <string name="backup_scope_everything">Всё</string>
+    <string name="backup_scope_everything_desc">Ещё и аккаунты NetBird с ключами вместо здешних, и имя устройства. NetBird остановится, пока они записываются, и запустится снова.</string>
+    <string name="backup_scope_warning">Ключи NetBird, восстановленные на другом телефоне, дают двум устройствам одну личность. Восстанавливайте их на том же телефоне (после переустановки), а на новом войдите заново.</string>
+
+    <!-- Why a file is refused; they follow "Not restored:" -->
+    <string name="backup_err_not_backup">это не резервная копия BirdSocks</string>
+    <string name="backup_err_other_app">копия от другого приложения (%1$s)</string>
+    <string name="backup_err_format_new">копию сделал более новый BirdSocks — сначала обновите приложение</string>
+    <string name="backup_err_app_new">копию сделал BirdSocks %1$s, новее этого — сначала обновите приложение</string>
+    <string name="backup_err_entry">в копии есть файл, который восстановление записывать не может: %1$s</string>
+    <string name="backup_err_too_large">файл слишком большой для резервной копии</string>
+    <string name="backup_err_daemon">NetBird не остановился, поэтому его файлы не тронуты</string>
+</resources>

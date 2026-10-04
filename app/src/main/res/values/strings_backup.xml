@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings → Backup: BirdSocks' settings and NetBird's accounts to a file, and back. -->
+<resources>
+    <!-- The hub -->
+    <string name="settings_cat_backup">Backup</string>
+    <string name="settings_cat_backup_desc">Settings and accounts to a file, and back</string>
+
+    <!-- Saving -->
+    <string name="backup_card_save">Back up</string>
+    <string name="backup_settings_title">Settings file</string>
+    <string name="backup_settings_desc">BirdSocks\' settings as a plain JSON file, for this phone or another. Passwords, NetBird accounts and this device\'s name stay out: after a restore, enter the proxy passwords again and sign in.</string>
+    <string name="backup_full_title">Full backup</string>
+    <string name="backup_full_desc">The settings with their passwords and the NetBird accounts with their keys, in one file locked with a password. For this phone after a reinstall.</string>
+    <string name="backup_saved">Backup saved</string>
+    <string name="backup_save_failed">The backup was not saved: %1$s</string>
+
+    <!-- Restoring -->
+    <string name="backup_card_restore">Restore</string>
+    <string name="backup_restore_title">Restore from a file</string>
+    <string name="backup_restore_desc">A settings file or a full backup. Nothing changes before you confirm what to restore.</string>
+    <string name="backup_restored">Restored</string>
+    <string name="backup_restore_failed">Not restored: %1$s</string>
+
+    <!-- Passwords -->
+    <string name="backup_password_title">Password for the backup</string>
+    <string name="backup_password_text">The file will hold the keys of your NetBird accounts and your passwords, encrypted with this password. It cannot be recovered: without it the backup cannot be restored.</string>
+    <string name="backup_password_label">Password</string>
+    <string name="backup_password_repeat">Repeat the password</string>
+    <string name="backup_password_mismatch">The passwords differ</string>
+    <string name="backup_password_show">Show the password</string>
+    <string name="backup_password_continue">Choose where to save</string>
+    <string name="backup_password_lost">The password was lost while the file was being chosen. Start the backup again.</string>
+    <string name="backup_unlock_title">Full backup</string>
+    <string name="backup_unlock_text">Enter the password the backup was saved with.</string>
+    <string name="backup_unlock_action">Open</string>
+    <string name="backup_wrong_password">Wrong password, or the file is damaged</string>
+
+    <!-- What to restore -->
+    <string name="backup_from">From %1$s, BirdSocks %2$s</string>
+    <string name="backup_settings_confirm_title">Restore settings?</string>
+    <string name="backup_settings_confirm_text">%1$s.\n\nThe settings in the file replace the ones here. Passwords, NetBird accounts and this device\'s name are not in it and stay as they are. Sharing the proxy on the local network stays off while the proxy has no password here.</string>
+    <string name="backup_restore_action">Restore</string>
+    <string name="backup_scope_title">What to restore</string>
+    <string name="backup_scope_text">%1$s. NetBird accounts in it: %2$d.</string>
+    <string name="backup_scope_settings">Settings only</string>
+    <string name="backup_scope_settings_desc">The settings and their passwords. The NetBird accounts here stay as they are.</string>
+    <string name="backup_scope_everything">Everything</string>
+    <string name="backup_scope_everything_desc">Also the NetBird accounts with their keys, in place of the ones here, and this device\'s name. NetBird stops while they are written and starts again.</string>
+    <string name="backup_scope_warning">Restoring NetBird keys on another phone makes two devices share one identity. Use it on the same phone (after a reinstall), or sign in again on a new one.</string>
+
+    <!-- Why a file is refused; they follow "Not restored:" -->
+    <string name="backup_err_not_backup">this is not a BirdSocks backup</string>
+    <string name="backup_err_other_app">the backup belongs to another app (%1$s)</string>
+    <string name="backup_err_format_new">the backup was made by a newer BirdSocks; update the app first</string>
+    <string name="backup_err_app_new">the backup was made by BirdSocks %1$s, newer than this one; update the app first</string>
+    <string name="backup_err_entry">the backup holds a file a restore may not write: %1$s</string>
+    <string name="backup_err_too_large">the file is too large for a backup</string>
+    <string name="backup_err_daemon">NetBird did not stop, so its files were left alone</string>
+</resources>

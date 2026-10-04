@@ -67,6 +67,7 @@ private val settingsCategories = listOfNotNull(
     SettingsCategory(SettingsSections.ACCESS, R.string.settings_cat_access, R.string.settings_cat_access_desc, Icons.Default.Shield),
     SettingsCategory(SettingsSections.CONNECTION, R.string.settings_cat_connection, R.string.settings_cat_connection_desc, Icons.Default.Cable),
     SettingsCategory(SettingsSections.BACKGROUND, R.string.settings_cat_background, R.string.settings_cat_background_desc, Icons.Default.Bolt),
+    SettingsCategory(SettingsSections.BACKUP, R.string.settings_cat_backup, R.string.settings_cat_backup_desc, Icons.Default.SettingsBackupRestore),
     SettingsCategory(SettingsSections.DIAGNOSTICS, R.string.settings_cat_diagnostics, R.string.settings_cat_diagnostics_desc, Icons.Default.BugReport),
     SettingsCategory(SettingsSections.ABOUT, R.string.nb_settings_about, R.string.settings_cat_about_desc, Icons.Default.Info)
 )
@@ -262,6 +263,7 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
                             SettingsSections.ACCESS -> AccessSection(env)
                             SettingsSections.CONNECTION -> ConnectionSection(env)
                             SettingsSections.BACKGROUND -> BackgroundSection()
+                            SettingsSections.BACKUP -> BackupSection(env)
                             SettingsSections.DIAGNOSTICS -> DiagnosticsSection(env)
                             SettingsSections.ABOUT -> AboutSection(env)
                         }
