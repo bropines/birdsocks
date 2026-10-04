@@ -30,4 +30,7 @@
     <string name="automation_link_body">A link from another app or a web page asks for this. Allow it only if you opened it yourself.</string>
     <string name="automation_link_allow">Allow</string>
     <string name="automation_link_invalid">This BirdSocks link is incomplete or not valid</string>
+
+    <string name="shortcut_toggle">On / Off</string>
+    <string name="shortcut_toggle_long">Turn BirdSocks on or off</string>
 </resources>

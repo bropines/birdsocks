@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher shortcuts (long press on the icon). The debug build's copy of src/main's, for its .dev package: keep the two alike.
+     On / Off goes to ToggleActivity, which is not exported: only this app's own
+     shortcut reaches it, so it asks nothing, unlike a birdsocks://toggle link.
+     The screens open over the main screen, so back leads there. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="toggle"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_power"
+        android:shortcutShortLabel="@string/shortcut_toggle"
+        android:shortcutLongLabel="@string/shortcut_toggle_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="io.github.bropines.birdsocks.dev"
+            android:targetClass="io.github.bropines.birdsocks.ui.ToggleActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="peers"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_peers"
+        android:shortcutShortLabel="@string/nb_menu_peers">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="io.github.bropines.birdsocks.dev"
+            android:targetClass="io.github.bropines.birdsocks.ui.MainActivity" />
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="io.github.bropines.birdsocks.dev"
+            android:targetClass="io.github.bropines.birdsocks.ui.PeersActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="dns"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_dns"
+        android:shortcutShortLabel="@string/nb_menu_dns">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="io.github.bropines.birdsocks.dev"
+            android:targetClass="io.github.bropines.birdsocks.ui.MainActivity" />
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="io.github.bropines.birdsocks.dev"
+            android:targetClass="io.github.bropines.birdsocks.ui.DnsActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="diagnostics"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_diagnostics"
+        android:shortcutShortLabel="@string/nb_menu_diagnostics">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="io.github.bropines.birdsocks.dev"
+            android:targetClass="io.github.bropines.birdsocks.ui.MainActivity" />
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="io.github.bropines.birdsocks.dev"
+            android:targetClass="io.github.bropines.birdsocks.ui.DiagnosticsActivity" />
+    </shortcut>
+</shortcuts>

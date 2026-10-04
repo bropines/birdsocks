@@ -41,6 +41,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="birdsocks" />
             </intent-filter>
+            <!-- Launcher shortcuts: On / Off (ToggleActivity), Peers, DNS, Diagnostics. -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
         <activity android:name=".ui.SettingsActivity" android:exported="false" />

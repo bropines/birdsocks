@@ -30,4 +30,7 @@
     <string name="automation_link_body">Об этом просит ссылка из другого приложения или с веб-страницы. Разрешайте, только если открыли её сами.</string>
     <string name="automation_link_allow">Разрешить</string>
     <string name="automation_link_invalid">Эта ссылка BirdSocks неполная или неверная</string>
+
+    <string name="shortcut_toggle">Вкл / Выкл</string>
+    <string name="shortcut_toggle_long">Включить или выключить BirdSocks</string>
 </resources>
