@@ -117,7 +117,10 @@ object ByeDpiProxy {
         }.start()
     }
 
-    /** byedpi writes its log to a file; its lines go on to the app's log. */
+    /** byedpi's per-socket bookkeeping: a line for every poll event, accept and close. */
+    private val NOISE = listOf("new event:", "accept:", "close:")
+
+    /** byedpi writes its log to a file; its lines go on to the app's log, less [NOISE]. */
     private fun startLogReader(file: File) {
         stopLogReader = false
         logReaderThread = Thread {
@@ -132,7 +135,7 @@ object ByeDpiProxy {
                                 var line = raf.readLine()
                                 while (line != null) {
                                     val text = String(line.toByteArray(Charsets.ISO_8859_1), Charsets.UTF_8).trim()
-                                    if (text.isNotEmpty()) {
+                                    if (text.isNotEmpty() && NOISE.none { text.startsWith(it) }) {
                                         val bad = text.contains("error", true) || text.contains("fail", true)
                                         Appctr.logAndroid(if (bad) "WARN" else "INFO", "CORE", "ByeDPI: $text")
                                     }

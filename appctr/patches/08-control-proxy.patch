@@ -1,6 +1,6 @@
 --- netbird_orig/client/net/birdsocks_ctlproxy.go
 +++ netbird_src/client/net/birdsocks_ctlproxy.go
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,191 @@
 +package net
 +
 +// birdsocks_ctlproxy.go — BirdSocks: the control plane through a proxy.
@@ -22,6 +22,7 @@
 +	"fmt"
 +	"net"
 +	"net/http"
++	"net/netip"
 +	"net/url"
 +	"os"
 +	"strings"
@@ -81,7 +82,7 @@
 +	if err != nil {
 +		return nil, err
 +	}
-+	if u == nil || isLoopbackAddr(addr) {
++	if u == nil || isLocalAddr(addr) {
 +		return base(ctx, "tcp", addr)
 +	}
 +	if u.Scheme == "http" {
@@ -104,13 +105,13 @@
 +}
 +
 +// ControlHTTPProxy is an http.Transport Proxy func: the control proxy for
-+// every request but those to loopback.
++// every request but those to local addresses (isLocalAddr).
 +func ControlHTTPProxy(req *http.Request) (*url.URL, error) {
 +	u, err := ControlProxy()
 +	if err != nil || u == nil {
 +		return nil, err
 +	}
-+	if isLoopbackAddr(req.URL.Host) {
++	if isLocalAddr(req.URL.Hostname()) {
 +		return nil, nil
 +	}
 +	if u.Scheme == "socks5h" {
@@ -122,16 +123,30 @@
 +	return u, nil
 +}
 +
-+func isLoopbackAddr(addr string) bool {
++// cgnat is 100.64.0.0/10: NetBird's overlay and some clouds' metadata
++// (Alibaba's 100.100.100.200).
++var cgnat = netip.MustParsePrefix("100.64.0.0/10")
++
++// isLocalAddr reports whether addr is no control-plane server: loopback,
++// link-local (the cloud metadata at 169.254.169.254 that NetBird's system
++// info probes), private and CGNAT ranges. Those go direct: through a
++// remote proxy a metadata probe would describe the proxy's host, and a
++// private address means the proxy's network, not this one.
++func isLocalAddr(addr string) bool {
 +	host := addr
 +	if h, _, err := net.SplitHostPort(addr); err == nil {
 +		host = h
 +	}
++	host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
 +	if host == "localhost" {
 +		return true
 +	}
-+	ip := net.ParseIP(host)
-+	return ip != nil && ip.IsLoopback()
++	ip, err := netip.ParseAddr(host)
++	if err != nil {
++		return false
++	}
++	ip = ip.Unmap()
++	return ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsPrivate() || ip.IsUnspecified() || cgnat.Contains(ip)
 +}
 +
 +// dialConnect opens a tunnel to addr with HTTP CONNECT.
@@ -179,7 +194,7 @@
 +func (c *bufferedConn) Read(p []byte) (int, error) { return c.r.Read(p) }
 --- netbird_orig/client/net/birdsocks_ctlproxy_test.go
 +++ netbird_src/client/net/birdsocks_ctlproxy_test.go
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,244 @@
 +package net
 +
 +import (
@@ -414,9 +429,14 @@
 +	if u, _ := ControlHTTPProxy(req); u == nil || u.Scheme != "socks5" {
 +		t.Fatalf("http proxy for socks5h: %v", u)
 +	}
-+	local, _ := http.NewRequest(http.MethodGet, "http://127.0.0.1:53000/cb", nil)
-+	if u, _ := ControlHTTPProxy(local); u != nil {
-+		t.Fatalf("loopback proxied: %v", u)
++	for _, local := range []string{"http://127.0.0.1:53000/cb", "http://169.254.169.254/latest/meta-data/", "http://100.100.100.200/", "http://192.168.1.1/", "http://[fd00::1]/"} {
++		req, _ := http.NewRequest(http.MethodGet, local, nil)
++		if u, _ := ControlHTTPProxy(req); u != nil {
++			t.Errorf("%s proxied: %v", local, u)
++		}
++	}
++	if isLocalAddr("access.example.com:443") || isLocalAddr("203.0.113.10:443") {
++		t.Error("a public server counted as local")
 +	}
 +}
 --- netbird_orig/shared/relay/client/dialer/ws/ws.go
