@@ -143,4 +143,48 @@ object GlobalSettings {
     /** The user wanted it on: the boot receiver and a restarted service bring it back. */
     fun wasRunning(context: Context): Boolean = getBoolean(context, "was_running", false)
     fun setWasRunning(context: Context, running: Boolean) = setBoolean(context, "was_running", running)
+
+    // --- VPN (TUN) mode: Android's VPN fed into the SOCKS5 proxy (TunVpnService) ---
+    /** The VPN comes up with the daemon and goes down with it. */
+    fun isTunModeEnabled(context: Context): Boolean = getBoolean(context, "tun_mode_enabled", false)
+    fun setTunModeEnabled(context: Context, enabled: Boolean) = setBoolean(context, "tun_mode_enabled", enabled)
+    /** The default route into the VPN even with no exit node or domain route selected. */
+    fun isTunRouteAll(context: Context): Boolean = getBoolean(context, "tun_route_all", false)
+    fun setTunRouteAll(context: Context, on: Boolean) = setBoolean(context, "tun_route_all", on)
+    /** ::/0 into the VPN beside 0.0.0.0/0; NetBird's own IPv6 goes in regardless. */
+    fun isTunIpv6Enabled(context: Context): Boolean = getBoolean(context, "tun_ipv6_enabled", false)
+    fun setTunIpv6Enabled(context: Context, on: Boolean) = setBoolean(context, "tun_ipv6_enabled", on)
+
+    /** Apps that bypass the VPN unless the user changed the list: banks and stores that refuse a VPN. */
+    val DEFAULT_TUN_EXCLUDED_APPS = setOf(
+        "ru.oneme.app",
+        "com.vkontakte.android",
+        "ru.vk.store.tv",
+        "ru.nspk.mirpay",
+        "ru.rostel",
+        "com.avito.android",
+    )
+    fun getTunExcludedApps(context: Context): Set<String> {
+        if (!prefs(context).contains("tun_excluded_apps")) return DEFAULT_TUN_EXCLUDED_APPS
+        return getString(context, "tun_excluded_apps", "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    }
+    fun setTunExcludedApps(context: Context, apps: Set<String>) = setString(context, "tun_excluded_apps", apps.sorted().joinToString(","))
+    /** Comma-separated CIDRs carved out of the default route (Android 13+); empty, the proxy already sends the LAN direct. */
+    fun getTunExcludedCIDRs(context: Context): String = getString(context, "tun_excluded_cidrs", "")
+    fun setTunExcludedCIDRs(context: Context, cidrs: String) = setString(context, "tun_excluded_cidrs", cidrs.trim())
+    const val DEFAULT_TUN_ADDRESS = "198.18.0.1/32"
+    /** The VPN interface's IPv4 address with its prefix; a /32 drags no connected route over NetBird's. */
+    fun getTunAddress(context: Context): String = getString(context, "tun_address", DEFAULT_TUN_ADDRESS).ifBlank { DEFAULT_TUN_ADDRESS }
+    fun setTunAddress(context: Context, address: String) = setString(context, "tun_address", address.trim())
+    /** The NetBird network's prefixes last seen under [profile], so the VPN can come up before the first status. */
+    fun getTunOverlay(context: Context, profile: String): String = getString(context, "tun_overlay_$profile", "")
+    fun setTunOverlay(context: Context, profile: String, prefixes: String) = setString(context, "tun_overlay_$profile", prefixes)
+    /** A unique-local IPv6 address for the VPN, made once: it keeps IPv6 working for apps inside it. */
+    fun getTunUla(context: Context): String {
+        getString(context, "tun_ula", "").takeIf { it.isNotEmpty() }?.let { return it }
+        val r = java.security.SecureRandom()
+        val ula = "fd%02x:%04x:%04x::1".format(r.nextInt(256), r.nextInt(65536), r.nextInt(65536))
+        setString(context, "tun_ula", ula)
+        return ula
+    }
 }

@@ -152,9 +152,10 @@ class NetbirdService : Service() {
     override fun onCreate() {
         super.onCreate()
         connectivity = getSystemService(ConnectivityManager::class.java)
-        // The default network as apps see it — never this app's own VPN, which
-        // it does not have, but possibly another app's: its DNS is what the
-        // device uses then, and so the daemon too.
+        // The default network as this app sees it — never its own VPN, which
+        // it always keeps itself out of (TunVpnService), so files/dns-servers
+        // never names the VPN's resolver; but possibly another app's VPN: its
+        // DNS is what the device uses then, and so the daemon too.
         runCatching { connectivity.registerDefaultNetworkCallback(networkCallback) }
             .onFailure { Log.w(TAG, "no default network callback: ${it.message}") }
         Appctr.setDaemonListener(object : DaemonListener {
@@ -162,6 +163,13 @@ class NetbirdService : Service() {
         })
         EventLog.init(this)
         scope.launch { ExposeFlow.state.collect(::showExpose) }
+        // "· VPN" in the notification follows the tunnel.
+        scope.launch {
+            TunVpnService.running.collect {
+                shownText = null
+                NetbirdState.statusFlow.value?.let(::updateNotification)
+            }
+        }
     }
 
     /** The newest start; stopping for an older one must not end a service asked to run since. */
@@ -197,6 +205,8 @@ class NetbirdService : Service() {
                 NetbirdState.profileFlow.value = runCatching { Netbird.activeProfile() }.getOrNull()
                 followStatus()
                 followEvents()
+                // VPN mode: the tunnel needs the SOCKS port, which exists from now on.
+                TunVpnService.start(this@NetbirdService)
             } catch (e: Exception) {
                 Log.e(TAG, "start failed", e)
                 Appctr.logAndroid("ERROR", "CORE", "NetBird did not start: ${e.message}")
@@ -217,6 +227,7 @@ class NetbirdService : Service() {
         logLevel = GlobalSettings.getLogLevel(this@NetbirdService)
         dnsProxy = if (GlobalSettings.isDnsProxyEnabled(this@NetbirdService)) GlobalSettings.getDnsProxyAddress(this@NetbirdService) else ""
         dnsUpstream = GlobalSettings.getDnsUpstream(this@NetbirdService)
+        tunDNS = TunRoutes.DNS_IP
         relayQUIC = GlobalSettings.isRelayQuic(this@NetbirdService)
         lazyConn = GlobalSettings.getLazyConn(this@NetbirdService)
         inboundAccess = GlobalSettings.isInboundAccess(this@NetbirdService)
@@ -323,6 +334,8 @@ class NetbirdService : Service() {
         stopping = true
         NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopping
         scope.launch {
+            // The VPN first: without the daemon it would swallow every app's traffic and DNS.
+            TunVpnService.stop()
             startJob?.cancel()
             statusSub?.cancel()
             statusSub = null
@@ -340,6 +353,7 @@ class NetbirdService : Service() {
         stopping = true
         NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopping
         scope.launch {
+            TunVpnService.stop()
             startJob?.cancel()
             statusSub?.cancel()
             eventsSub?.cancel()
@@ -357,6 +371,9 @@ class NetbirdService : Service() {
         if (stopping) return
         // Not asked for: a crash, or the system killing the process.
         Appctr.logAndroid("ERROR", "CORE", "The NetBird daemon exited: ${err.ifEmpty { "no error" }}")
+        // Its SOCKS port is gone: the VPN goes until the daemon is back, so
+        // the device falls back to the network's DNS instead of a black hole.
+        TunVpnService.stop()
         val now = System.currentTimeMillis()
         crashTimes.addLast(now)
         while (crashTimes.isNotEmpty() && now - crashTimes.first() > 5 * 60_000) crashTimes.removeFirst()
@@ -388,6 +405,7 @@ class NetbirdService : Service() {
     }
 
     override fun onDestroy() {
+        TunVpnService.stop(waitMs = 0)
         runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
         Appctr.setDaemonListener(null)
         // Off the main thread: Stop waits for the daemon to exit (up to 10 s),
@@ -471,7 +489,7 @@ class NetbirdService : Service() {
             NbConnState.Connecting -> getString(R.string.nb_notif_connecting)
             NbConnState.NeedsLogin, NbConnState.LoginFailed, NbConnState.SessionExpired -> getString(R.string.nb_notif_login)
             else -> getString(R.string.nb_notif_idle)
-        }
+        }.let { if (TunVpnService.running.value) getString(R.string.nb_tun_notif_text, it) else it }
         if (text == shownText) return
         val nm = getSystemService(NotificationManager::class.java)
         nm.notify(NOTIF_ID, buildNotification(text))

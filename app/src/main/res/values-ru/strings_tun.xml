@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="title_activity_tun_excluded_apps">Исключения</string>
+    <string name="tun_apps_filter_all">Все</string>
+    <string name="tun_apps_filter_excluded">В обход VPN</string>
+    <string name="tun_excluded_apps_count">В обход туннеля: %1$d</string>
+    <string name="nb_tun_apps_empty">Ничего нет</string>
+    <string name="tun_excluded_apps_not_installed">Не установлено на этом телефоне</string>
+
+    <string name="nb_tun_mode_proxy">Прокси</string>
+    <string name="nb_tun_mode_vpn">VPN (TUN)</string>
+    <string name="nb_tun_mode_title">Режим</string>
+    <string name="nb_tun_mode_proxy_desc">Приложения ходят в NetBird через SOCKS5-прокси (или DNS-прокси), указанный в них. Слот VPN свободен.</string>
+    <string name="nb_tun_mode_vpn_desc">Все приложения идут через BirdSocks по VPN Android, в них ничего настраивать не нужно. Занимает слот VPN.</string>
+    <string name="nb_tun_card">VPN</string>
+    <string name="nb_tun_status_up">Туннель поднят · %1$s</string>
+    <string name="nb_tun_status_waiting">Поднимется вместе с NetBird</string>
+    <string name="nb_tun_status_consent">Ждёт разрешения на VPN</string>
+    <string name="nb_tun_routes_split">только сети NetBird</string>
+    <string name="nb_tun_routes_all">весь трафик (%1$s)</string>
+    <string name="nb_tun_reason_exit">выходной узел</string>
+    <string name="nb_tun_reason_domain">доменный маршрут</string>
+    <string name="nb_tun_reason_all">по настройке</string>
+    <string name="nb_tun_help">Трафик приложений уходит в SOCKS5-прокси (%1$s), а дальше сети NetBird идут через mesh, остальное — напрямую. Ping через туннель не ходит.\n• DNS — один резолвер внутри BirdSocks: сначала имена NetBird, потом вышестоящий DNS или резолверы сети.\n• Частный DNS с именем хоста обходит его: имена NetBird перестают резолвиться.\n• VPN падает всякий раз, когда падает демон NetBird.</string>
+    <string name="nb_tun_route_all_title">Весь трафик через туннель</string>
+    <string name="nb_tun_route_all_desc">В туннель идёт трафик всех приложений, а не только сети NetBird. Выбранный выходной узел или доменный маршрут включают это сами.</string>
+    <string name="nb_tun_ipv6_title">Весь IPv6 через туннель</string>
+    <string name="nb_tun_ipv6_desc">Когда туннель забирает весь трафик, IPv6 идёт туда же. Свой IPv6 NetBird идёт всегда.\n• Включайте, только если выходной узел умеет IPv6.\n• Иначе IPv6-сайты висят вместо отката на IPv4.</string>
+    <string name="nb_tun_apps_title">Исключённые приложения</string>
+    <string name="nb_tun_apps_desc">В обход туннеля: %1$d; сам BirdSocks — всегда. При постоянном VPN с «Блокировать соединения без VPN» исключённые остаются без сети.</string>
+    <string name="nb_tun_cidrs_title">Исключённые диапазоны</string>
+    <string name="nb_tun_cidrs_desc">Подсети через запятую, которые не идут в туннель, когда он забирает весь трафик. Android 13+. Обычно не нужно: локальную сеть прокси и так шлёт напрямую.</string>
+    <string name="nb_tun_cidrs_hint">192.168.0.0/16</string>
+    <string name="nb_tun_address_title">Адрес VPN</string>
+    <string name="nb_tun_address_desc">IPv4-адрес интерфейса туннеля с префиксом. Меняйте, только если 198.18.0.1 с чем-то пересекается.</string>
+    <string name="nb_tun_address_invalid">Это не IPv4-адрес с префиксом: %1$s</string>
+    <string name="nb_tun_warning_title">Занять слот VPN?</string>
+    <string name="nb_tun_warning_body">Android держит один VPN за раз. Включение займёт слот, и VPN или блокировщик рекламы, занявший его позже, так же отключит BirdSocks.</string>
+    <string name="nb_tun_warning_body_busy">Сейчас работает другой VPN — блокировщик рекламы, DNS-приложение, ещё один туннель. Включение заберёт у него слот, и он остановится, пока вы не переключитесь обратно.</string>
+    <string name="nb_tun_warning_confirm">Включить</string>
+    <string name="nb_tun_denied">Разрешение на VPN не дано</string>
+    <string name="nb_tun_unavailable">Библиотека туннеля не загрузилась на этом устройстве.</string>
+    <string name="nb_tun_channel">VPN</string>
+    <string name="nb_tun_consent_title">Нужно разрешение на VPN</string>
+    <string name="nb_tun_consent_text">Нажмите, чтобы BirdSocks поднял VPN.</string>
+    <string name="nb_tun_revoked_text">Слот VPN занял другой VPN. BirdSocks работает дальше как прокси.</string>
+    <string name="nb_tun_notif_text">%1$s · VPN</string>
+    <string name="nb_tun_tile_active">Активно · VPN</string>
+</resources>

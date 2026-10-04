@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The VPN (TUN) mode: TunVpnService, its settings, its permission and its app list. -->
+<resources>
+    <!-- Restored from the TailSocks-era screens (305673c^) -->
+    <string name="title_activity_tun_excluded_apps">Excluded apps</string>
+    <string name="tun_apps_filter_all">All</string>
+    <string name="tun_apps_filter_excluded">Bypassed</string>
+    <string name="tun_excluded_apps_count">Bypassing the tunnel: %1$d</string>
+    <string name="nb_tun_apps_empty">Nothing here</string>
+    <string name="tun_excluded_apps_not_installed">Not installed on this phone</string>
+
+    <string name="nb_tun_mode_proxy">Proxy</string>
+    <string name="nb_tun_mode_vpn">VPN (TUN)</string>
+    <string name="nb_tun_mode_title">Mode</string>
+    <string name="nb_tun_mode_proxy_desc">Apps reach NetBird through the SOCKS5 proxy (or the DNS proxy) set in them. The VPN slot stays free.</string>
+    <string name="nb_tun_mode_vpn_desc">Every app goes through BirdSocks over Android\'s VPN, nothing to set in apps. Takes the VPN slot.</string>
+    <string name="nb_tun_card">VPN</string>
+    <string name="nb_tun_status_up">Tunnel up · %1$s</string>
+    <string name="nb_tun_status_waiting">Comes up with NetBird</string>
+    <string name="nb_tun_status_consent">Waiting for the VPN permission</string>
+    <string name="nb_tun_routes_split">NetBird ranges only</string>
+    <string name="nb_tun_routes_all">all traffic (%1$s)</string>
+    <string name="nb_tun_reason_exit">exit node</string>
+    <string name="nb_tun_reason_domain">domain route</string>
+    <string name="nb_tun_reason_all">by setting</string>
+    <string name="nb_tun_help">Apps\' traffic goes into the SOCKS5 proxy (%1$s) and on from there: NetBird\'s ranges through the mesh, the rest directly. No ping through the tunnel.\n• DNS: one resolver inside BirdSocks — NetBird\'s names first, then the DNS upstream or the network\'s resolvers.\n• Private DNS set to a hostname bypasses it: NetBird names stop resolving.\n• The VPN goes down whenever NetBird\'s daemon does.</string>
+    <string name="nb_tun_route_all_title">Route all traffic</string>
+    <string name="nb_tun_route_all_desc">Every app\'s traffic into the tunnel, not only NetBird\'s ranges. A selected exit node or domain route does this by itself.</string>
+    <string name="nb_tun_ipv6_title">Route all IPv6</string>
+    <string name="nb_tun_ipv6_desc">When the tunnel takes all traffic, IPv6 goes in too. NetBird\'s own IPv6 always does.\n• Turn on only if your exit node carries IPv6.\n• Otherwise IPv6 sites hang instead of falling back to IPv4.</string>
+    <string name="nb_tun_apps_title">Excluded apps</string>
+    <string name="nb_tun_apps_desc">%1$d bypass the tunnel; BirdSocks itself always does. With Always-on VPN and \"Block connections without VPN\", excluded apps lose the network.</string>
+    <string name="nb_tun_cidrs_title">Excluded ranges</string>
+    <string name="nb_tun_cidrs_desc">Comma-separated subnets kept off the tunnel while it takes all traffic. Android 13+. Rarely needed: the proxy sends the local network direct anyway.</string>
+    <string name="nb_tun_cidrs_hint">192.168.0.0/16</string>
+    <string name="nb_tun_address_title">VPN address</string>
+    <string name="nb_tun_address_desc">The tunnel interface\'s IPv4 address with its prefix. Change it only if 198.18.0.1 collides with something.</string>
+    <string name="nb_tun_address_invalid">Not an IPv4 address with a prefix: %1$s</string>
+    <string name="nb_tun_warning_title">Take the VPN slot?</string>
+    <string name="nb_tun_warning_body">Android runs one VPN at a time. Turning this on takes the slot, and a VPN or ad blocker that takes it later disconnects BirdSocks the same way.</string>
+    <string name="nb_tun_warning_body_busy">Another VPN is running right now — an ad blocker, a DNS app, another tunnel. Turning this on takes the slot from it, and it stops until you switch back.</string>
+    <string name="nb_tun_warning_confirm">Turn on</string>
+    <string name="nb_tun_denied">VPN permission not granted</string>
+    <string name="nb_tun_unavailable">The tunnel library did not load on this device.</string>
+    <string name="nb_tun_channel">VPN</string>
+    <string name="nb_tun_consent_title">VPN permission needed</string>
+    <string name="nb_tun_consent_text">Tap to let BirdSocks start its VPN.</string>
+    <string name="nb_tun_revoked_text">Another VPN took the slot. BirdSocks goes on as a proxy.</string>
+    <string name="nb_tun_notif_text">%1$s · VPN</string>
+    <string name="nb_tun_tile_active">Active · VPN</string>
+</resources>

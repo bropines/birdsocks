@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- VPN mode: the excluded-apps picker, and finding every BirdSocks build to keep outside the VPN. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:name=".core.BirdSocksApp"
@@ -57,6 +59,16 @@
         <service android:name=".core.NetbirdService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="netbird mesh network node and its local SOCKS5 proxy" />
         </service>
+
+        <!-- VPN mode (core/TunVpnService.kt): hev-socks5-tunnel into the SOCKS5 proxy. Not
+             started foreground: the system binds a VPN service at foreground priority itself. -->
+        <service android:name=".core.TunVpnService" android:exported="false" android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+        <activity android:name=".core.TunPermissionActivity" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:taskAffinity="" />
+        <activity android:name=".ui.TunExcludedAppsActivity" android:exported="false" />
 
         <service android:name=".core.ProxyTileService" android:exported="true" android:label="BirdSocks" android:icon="@drawable/ic_qs_tile" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>

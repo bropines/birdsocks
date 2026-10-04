@@ -1,0 +1,337 @@
+package io.github.bropines.birdsocks.ui
+
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.core.GlobalSettings
+import io.github.bropines.birdsocks.core.PredictiveBackContainer
+import io.github.bropines.birdsocks.core.SlidingSegmentedChips
+import io.github.bropines.birdsocks.core.CompactSearchBar
+import io.github.bropines.birdsocks.core.TunVpnService
+import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/** One row of the picker. */
+private data class AppItem(
+    val packageName: String,
+    val label: String,
+    val icon: ImageBitmap?,
+    /** False for a package that is on the exclusion list but no longer on the phone. */
+    val installed: Boolean = true,
+)
+
+/**
+ * The apps that bypass the VPN. BirdSocks' own packages are not listed: they
+ * always bypass it (TunVpnService). A package excluded earlier and since
+ * removed stays on the list, greyed, so it can be seen and taken off.
+ */
+class TunExcludedAppsActivity : ComponentActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            BirdSocksTheme {
+                TunExcludedAppsScreen(onBack = { finish() })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun TunExcludedAppsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val initialExcluded = remember { 
+        GlobalSettings.getTunExcludedApps(context)
+            .filter { !it.startsWith("io.github.bropines.birdsocks") }
+            .toSet() 
+    }
+    val excluded = remember { mutableStateOf(initialExcluded) }
+    var apps by remember { mutableStateOf<List<AppItem>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    
+    // UI states
+    var searchQuery by remember { mutableStateOf("") }
+    var showOnlyExcluded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val installed = withContext(Dispatchers.IO) { loadInstalledApps(context) }
+        // Packages excluded earlier but gone from the phone still count against
+        // the list; show them greyed so they can be seen and removed.
+        val present = installed.map { it.packageName }.toSet()
+        val missing = initialExcluded.filter { it !in present }.sorted().map { AppItem(it, it, null, installed = false) }
+        apps = installed + missing
+        loading = false
+    }
+
+    // Persisting is no longer tied to onBack(): the back gesture is handled by the platform now
+    // (see PredictiveBackContainer), which finishes the Activity without going through us.
+    val persistedExcluded = remember { mutableStateOf(initialExcluded) }
+    fun persistExclusions() {
+        val value = excluded.value
+        if (value == persistedExcluded.value) return
+        persistedExcluded.value = value
+        GlobalSettings.setTunExcludedApps(context, value)
+        // A running VPN rebuilds when its inputs changed; nothing runs, nothing happens.
+        TunVpnService.start(context)
+    }
+
+    fun saveAndExit() {
+        persistExclusions()
+        onBack()
+    }
+
+    // Save on the way out, whichever way the user leaves: back gesture, back key or the arrow.
+    // Only when the Activity is really finishing, so a trip to Home does not restart the tunnel
+    // behind the user's back.
+    val hostActivity = remember(context) {
+        generateSequence(context) { (it as? ContextWrapper)?.baseContext }
+            .filterIsInstance<Activity>()
+            .firstOrNull()
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, hostActivity) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && hostActivity?.isFinishing != false) {
+                persistExclusions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Filter apps based on search query and tab/chip selection
+    val filteredApps = remember(apps, searchQuery, showOnlyExcluded, excluded.value, persistedExcluded.value) {
+        // In the "bypassed" view an app switched off stays on screen, switch off,
+        // until the screen is left — a slip can be undone where it happened.
+        val bypassedView = excluded.value + persistedExcluded.value
+        apps.filter { app ->
+            val matchesSearch = app.label.contains(searchQuery, ignoreCase = true) || 
+                                app.packageName.contains(searchQuery, ignoreCase = true)
+            val matchesFilter = !showOnlyExcluded || app.packageName in bypassedView
+            matchesSearch && matchesFilter
+        }
+    }
+
+    PredictiveBackContainer(
+        onBack = { saveAndExit() },
+        // Back here only closes the Activity, so the container installs no callback and
+        // the platform animates across to the real screen underneath.
+        popsInAppState = false
+    ) {
+        Scaffold(
+            topBar = {
+                AppTopBar(
+                    title = stringResource(R.string.title_activity_tun_excluded_apps),
+                    subtitle = stringResource(R.string.tun_excluded_apps_count, excluded.value.size),
+                    onBack = { saveAndExit() },
+                    actions = {
+                        TextButton(
+                            onClick = { saveAndExit() },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            // Held to a readable width on a tablet; see ReadableWidth.
+            ReadableWidth {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
+            ) {
+                // Search Bar
+                CompactSearchBar(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholderText = stringResource(R.string.logs_search_placeholder),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+
+                val filterOptions = listOf(
+                    stringResource(R.string.tun_apps_filter_all) + " (${apps.size})",
+                    stringResource(R.string.tun_apps_filter_excluded) + " (${excluded.value.size})"
+                )
+                SlidingSegmentedChips(
+                    options = filterOptions,
+                    selectedIndex = if (showOnlyExcluded) 1 else 0,
+                    onOptionSelected = { idx -> showOnlyExcluded = (idx == 1) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    height = 38.dp
+                )
+
+            if (loading) {
+                Box(Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
+                    LoadingIndicator()
+                }
+            } else if (filteredApps.isEmpty()) {
+                Box(Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = stringResource(R.string.nb_tun_apps_empty),
+                        color = MaterialTheme.colorScheme.outline,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(filteredApps, key = { it.packageName }) { app ->
+                        val isExcluded = app.packageName in excluded.value
+                        AppExclusionCard(
+                            app = app,
+                            isExcluded = isExcluded,
+                            onToggle = {
+                                excluded.value = if (isExcluded) {
+                                    excluded.value - app.packageName
+                                } else {
+                                    excluded.value + app.packageName
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppExclusionCard(app: AppItem, isExcluded: Boolean, onToggle: () -> Unit) {
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isExcluded) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+            else 
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .alpha(if (app.installed) 1f else 0.55f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (app.icon != null) {
+                Image(
+                    bitmap = app.icon,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(MaterialTheme.shapes.small)
+                )
+            } else {
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = app.label.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = app.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (app.installed) app.packageName
+                           else stringResource(R.string.tun_excluded_apps_not_installed),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Switch(
+                checked = isExcluded, 
+                onCheckedChange = { onToggle() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
+        }
+    }
+}
+
+private fun loadInstalledApps(context: Context): List<AppItem> {
+    val pm = context.packageManager
+    return pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        .filter { info ->
+            val isSystem = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            val hasLaunchIntent = pm.getLaunchIntentForPackage(info.packageName) != null
+            val isBirdSocks = info.packageName.startsWith("io.github.bropines.birdsocks")
+            (!isSystem || hasLaunchIntent) && !isBirdSocks
+        }
+        .map { info ->
+            val label = try { pm.getApplicationLabel(info).toString() } catch (_: Exception) { info.packageName }
+            val icon = try {
+                pm.getApplicationIcon(info.packageName).toBitmap(48, 48).asImageBitmap()
+            } catch (_: Exception) { null }
+            AppItem(info.packageName, label, icon)
+        }
+        .sortedBy { it.label.lowercase() }
+}
