@@ -343,6 +343,9 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
         withDayDividers(displayedLogs, todayLabel, yesterdayLabel)
     }
 
+    var showBundle by remember { mutableStateOf(false) }
+    if (showBundle) DebugBundleDialog(onDismiss = { showBundle = false })
+
     val saveFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         uri?.let {
             coroutineScope.launch(Dispatchers.IO) {
@@ -470,6 +473,7 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
                             }) { Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.action_copy)) }
                             
                             IconButton(onClick = { saveFileLauncher.launch("birdsocks_logs_${System.currentTimeMillis()}.txt") }) { Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save)) }
+                            IconButton(onClick = { showBundle = true }) { Icon(Icons.Default.Inventory2, contentDescription = stringResource(R.string.nb_bundle_title)) }
 
                             IconButton(onClick = {
                                 includeLogcat = !includeLogcat
@@ -656,5 +660,70 @@ private fun LogEntryRow(log: LogEntry, scale: Float, expanded: Boolean, onToggle
         modifier = Modifier
             .then(if (foldable) Modifier.clickable(onClick = onToggle) else Modifier)
             .padding(vertical = 2.dp)
+    )
+}
+
+/**
+ * NetBird's debug bundle: the daemon's logs, status, routes and system
+ * details in one archive — uploaded to NetBird for support (the key goes to
+ * the clipboard) or saved as a zip. Anonymized by default.
+ */
+@Composable
+private fun DebugBundleDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var anonymize by remember { mutableStateOf(true) }
+    var busy by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<String?>(null) }
+    var bundlePath by remember { mutableStateOf<String?>(null) }
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        val path = bundlePath ?: return@rememberLauncherForActivityResult
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { out -> java.io.File(path).inputStream().use { it.copyTo(out) } }
+            }.isSuccess
+            withContext(Dispatchers.Main) { result = context.getString(if (ok) R.string.logs_saved else R.string.nb_bundle_failed, "") }
+        }
+    }
+
+    fun build(upload: Boolean) {
+        busy = true
+        result = null
+        scope.launch {
+            runCatching { io.github.bropines.birdsocks.core.Netbird.debugBundle(anonymize, upload) }
+                .onSuccess { b ->
+                    bundlePath = b.path
+                    when {
+                        upload && b.uploadedKey.isNotEmpty() -> {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("NetBird debug key", b.uploadedKey))
+                            result = context.getString(R.string.nb_bundle_uploaded, b.uploadedKey)
+                        }
+                        upload -> result = context.getString(R.string.nb_bundle_failed, b.uploadFailureReason)
+                        else -> save.launch("netbird-debug-${System.currentTimeMillis()}.zip")
+                    }
+                }
+                .onFailure { result = context.getString(R.string.nb_bundle_failed, it.message ?: "") }
+            busy = false
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.nb_bundle_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.nb_bundle_desc), style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = anonymize, onCheckedChange = { anonymize = it }, enabled = !busy)
+                    Text(stringResource(R.string.nb_bundle_anonymize))
+                }
+                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                result?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = { TextButton(enabled = !busy, onClick = { build(upload = true) }) { Text(stringResource(R.string.nb_bundle_upload)) } },
+        dismissButton = { TextButton(enabled = !busy, onClick = { build(upload = false) }) { Text(stringResource(R.string.nb_bundle_save)) } }
     )
 }

@@ -48,6 +48,7 @@ fun NetworksScreen(onBack: () -> Unit) {
     val status by NetbirdState.status.collectAsState()
     var networks by remember { mutableStateOf<List<NbNetwork>?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
     val revision = status?.fullStatus?.networksRevision
 
     suspend fun reload() {
@@ -84,12 +85,17 @@ fun NetworksScreen(onBack: () -> Unit) {
         )
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).readableWidth()) {
-            val list = networks
+            val list = networks?.filter { n ->
+                query.isBlank() || n.id.contains(query, true) || n.range.contains(query, true) || n.domains.any { it.contains(query, true) }
+            }
             when {
                 daemon != NetbirdState.Daemon.Running -> EmptyState(Icons.Default.PowerSettingsNew, stringResource(R.string.nb_peers_daemon_off))
                 list == null -> CircularProgressIndicator(Modifier.padding(32.dp))
-                list.isEmpty() -> EmptyState(Icons.Default.Hub, stringResource(R.string.nb_networks_empty))
+                networks.isNullOrEmpty() -> EmptyState(Icons.Default.Hub, stringResource(R.string.nb_networks_empty))
                 else -> LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+                    item {
+                        io.github.bropines.birdsocks.core.CompactSearchBar(query, { query = it }, stringResource(R.string.nb_networks_search), Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    }
                     items(list, key = { it.id }) { net ->
                         val peer = status?.fullStatus?.peers?.firstOrNull { p -> p.networks.any { it in net.range.split(',').map(String::trim) } }
                         ListItem(

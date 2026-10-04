@@ -5,6 +5,9 @@ import appctr.Appctr
 import appctr.StreamHandler
 import appctr.Subscription
 import io.github.bropines.birdsocks.models.NbConfig
+import io.github.bropines.birdsocks.models.NbDebugBundle
+import io.github.bropines.birdsocks.models.NbExtendRequest
+import io.github.bropines.birdsocks.models.NbExtendResult
 import io.github.bropines.birdsocks.models.NbLoginResponse
 import io.github.bropines.birdsocks.models.NbNetwork
 import io.github.bropines.birdsocks.models.NbNetworks
@@ -117,6 +120,34 @@ object Netbird {
         }.toString())
     }
 
+    // --- Session ---
+
+    /** Starts renewing the session: the answer is a page to open; [waitExtend] then waits for it. */
+    suspend fun requestExtend(hint: String? = null): NbExtendRequest =
+        callAs("RequestExtendAuthSession", buildJsonObject {
+            hint?.let { put("hint", it) }
+            // PKCE in the browser, as the login does.
+            put("hasGraphicalSession", true)
+        }.toString(), 60_000)
+
+    suspend fun waitExtend(request: NbExtendRequest): NbExtendResult =
+        callAs("WaitExtendAuthSession", buildJsonObject {
+            put("deviceCode", request.deviceCode)
+            put("userCode", request.userCode)
+        }.toString(), 20 * 60_000)
+
+    // --- Troubleshooting ---
+
+    /** Builds NetBird's debug bundle; with [upload] it goes to NetBird's upload server and returns a key. */
+    suspend fun debugBundle(anonymize: Boolean, upload: Boolean): NbDebugBundle =
+        callAs("DebugBundle", buildJsonObject {
+            put("anonymize", anonymize)
+            put("systemInfo", true)
+            put("logFileCount", 2)
+            put("cliVersion", "BirdSocks")
+            if (upload) put("uploadURL", "https://upload.debug.netbird.io/upload-url")
+        }.toString(), 5 * 60_000)
+
     // --- Profiles: one per account ---
 
     suspend fun profiles(): List<NbProfile> =
@@ -197,6 +228,10 @@ object NetbirdState {
 
     fun dismissError() { errorFlow.value = null }
 
+    internal val networkFlow = MutableStateFlow(true)
+    /** Whether the device has a network at all; the service follows the default network. */
+    val network: StateFlow<Boolean> = networkFlow.asStateFlow()
+
     val isRunning: Boolean get() = daemonFlow.value == Daemon.Running
 }
 
@@ -237,6 +272,7 @@ object LoginFlow {
                 if (answer.needsSSOLogin) {
                     stateFlow.value = State.Browser(answer.verificationURIComplete.ifEmpty { answer.verificationURI }, answer.userCode)
                     Netbird.waitSso(answer.userCode, hostname)
+                    bringToFront(app)
                 }
                 Netbird.up()
                 stateFlow.value = State.Idle
@@ -244,5 +280,52 @@ object LoginFlow {
                 stateFlow.value = State.Failed(e.message ?: e.toString())
             }
         }
+    }
+}
+
+/**
+ * Renewing the session before it expires, in the browser, while the
+ * connection stays up. Like [LoginFlow], run in the app's scope.
+ */
+object ExtendFlow {
+    sealed interface State {
+        data object Idle : State
+        data object Working : State
+        data class Browser(val url: String) : State
+        data class Failed(val message: String) : State
+    }
+
+    private val stateFlow = MutableStateFlow<State>(State.Idle)
+    val state: StateFlow<State> = stateFlow.asStateFlow()
+
+    fun reset() { stateFlow.value = State.Idle }
+
+    fun start(context: Context? = null) {
+        if (stateFlow.value is State.Working || stateFlow.value is State.Browser) return
+        stateFlow.value = State.Working
+        BirdSocksApp.scope.launchIO {
+            try {
+                val request = Netbird.requestExtend()
+                stateFlow.value = State.Browser(request.verificationURIComplete.ifEmpty { request.verificationURI })
+                Netbird.waitExtend(request)
+                stateFlow.value = State.Idle
+                context?.let(::bringToFront)
+            } catch (e: Exception) {
+                stateFlow.value = State.Failed(e.message ?: e.toString())
+            }
+        }
+    }
+}
+
+/**
+ * Brings the main screen back over the browser tab a sign-in left open: the
+ * tab lives in the app's task, so the app may still start its own activity.
+ */
+fun bringToFront(context: Context) {
+    runCatching {
+        context.startActivity(
+            android.content.Intent(context, io.github.bropines.birdsocks.ui.MainActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
     }
 }

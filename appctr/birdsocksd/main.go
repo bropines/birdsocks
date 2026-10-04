@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 	// Android has no /usr/share/zoneinfo for a Linux binary; TZ comes from the app.
@@ -50,7 +51,9 @@ func main() {
 		os.Exit(2)
 	}
 
-	if err := util.InitLog(*logLevel, *logFile); err != nil {
+	// -log-file takes several targets, comma-separated: console and a file.
+	logTargets := strings.Split(*logFile, ",")
+	if err := util.InitLog(*logLevel, logTargets...); err != nil {
 		fmt.Fprintf(os.Stderr, "birdsocksd: log: %v\n", err)
 		os.Exit(1)
 	}
@@ -95,7 +98,16 @@ func main() {
 
 	// Packet capture (`netbird debug capture`) on: the socket is the app's
 	// alone (0600, same UID), and it is how a tunnel problem is seen.
-	s := server.New(ctx, *logFile, *config, false, false, true, false)
+	// The server's log file is what the debug bundle collects: the first
+	// target that is a file.
+	serverLog := "console"
+	for _, t := range logTargets {
+		if t != "console" && t != "syslog" {
+			serverLog = t
+			break
+		}
+	}
+	s := server.New(ctx, serverLog, *config, false, false, true, false)
 	if err := s.Start(); err != nil {
 		log.Fatalf("start daemon: %v", err)
 	}

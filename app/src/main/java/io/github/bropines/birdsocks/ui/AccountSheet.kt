@@ -54,11 +54,18 @@ fun AccountSheet(onDismiss: () -> Unit) {
     val accounts by rememberAccounts(reload to active)
     var busy by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
+    // Accounts live in the daemon: a stopped app starts it to show them.
+    LaunchedEffect(Unit) {
+        if (NetbirdState.daemon.value == NetbirdState.Daemon.Stopped) io.github.bropines.birdsocks.core.NetbirdService.start(context)
+    }
 
     fun act(block: suspend () -> Unit) {
         busy = true
         scope.launch {
-            runCatching { block() }.onFailure { Toast.makeText(context, it.message, Toast.LENGTH_LONG).show() }
+            runCatching {
+                if (!io.github.bropines.birdsocks.core.NetbirdService.awaitRunning(context)) error(context.getString(R.string.nb_error_not_running))
+                block()
+            }.onFailure { Toast.makeText(context, it.message, Toast.LENGTH_LONG).show() }
             busy = false
             reload++
         }

@@ -25,3 +25,17 @@ TailSocks' history is in its own repository.
 - The daemon restarts by itself after a crash, up to three times in five minutes.
 - Peer counts read as peers and active connections, with lazy connections explained.
 - The management server row in Settings opens its dashboard.
+- Short names resolve through NetBird's search domains, in the proxy and the DNS proxy.
+- The proxy and DNS proxy take any 127.x.x.x address, with a dice for a random one.
+- Session expiry on the main screen, a notice ten minutes before, extension in the browser without reconnecting.
+- Sign-in opens in a Custom Tab; an unreachable server is reported before the browser opens.
+- The relay speaks WebSocket only; QUIC is a switch in Settings.
+- Settings: pre-shared key, routing for other peers, remote jobs, MTU, lazy connections (server, on, off).
+- Debug bundle from Logs: anonymized, saved as a zip or uploaded to NetBird.
+- Peers filter for connecting peers; search in Networks; a no-network state on the main screen.
+- Accounts can be switched while BirdSocks is stopped.
+- About: NetBird docs, source code and licenses.
+
+### Fixed
+- An exit node no longer takes the local network's own addresses.
+- A name just added to a domain route goes through it at once.

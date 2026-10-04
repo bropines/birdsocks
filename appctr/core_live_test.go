@@ -26,7 +26,10 @@ func TestDaemonLive(t *testing.T) {
 	if p, err := strconv.Atoi(os.Getenv("BIRDSOCKS_LIVE_SOCKS")); err == nil {
 		port = p
 	}
-	if err := Start(&StartOptions{NativeLibDir: lib, DataDir: dir, SocksPort: port, LogLevel: "debug"}); err != nil {
+	opts := &StartOptions{NativeLibDir: lib, DataDir: dir, SocksPort: port, LogLevel: "debug", Env: os.Getenv("BIRDSOCKS_LIVE_ENV")}
+	// BIRDSOCKS_LIVE_DNS=host:port serves the DNS proxy there.
+	opts.DNSProxy = os.Getenv("BIRDSOCKS_LIVE_DNS")
+	if err := Start(opts); err != nil {
 		t.Fatal(err)
 	}
 	defer Stop()
@@ -61,6 +64,7 @@ func TestDaemonLive(t *testing.T) {
 	}
 	out, err := Call("Login", `{"setupKey":"`+key+`","hostname":"birdsocks-live"`+mgmt+`}`, 30000)
 	t.Logf("login: %s %v", out, err)
+	upAt := time.Now()
 	out, err = Call("Up", `{"async":true}`, 60000)
 	t.Logf("up: %s %v", out, err)
 	deadline := time.After(40 * time.Second)
@@ -68,7 +72,7 @@ func TestDaemonLive(t *testing.T) {
 		select {
 		case s := <-statuses:
 			if strings.Contains(s, `"status":"Connected"`) {
-				t.Logf("connected: %.600s", s)
+				t.Logf("connected %.1fs after Up: %.300s", time.Since(upAt).Seconds(), s)
 				if hold, _ := strconv.Atoi(os.Getenv("BIRDSOCKS_LIVE_HOLD")); hold > 0 {
 					t.Logf("holding %ds", hold)
 					time.Sleep(time.Duration(hold) * time.Second)

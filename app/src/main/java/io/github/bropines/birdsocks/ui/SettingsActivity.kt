@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -170,15 +171,17 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
 
             // --- The SOCKS5 proxy ---
             SettingsCard(stringResource(R.string.nb_socks_title)) {
-                var port by remember { mutableStateOf(GlobalSettings.getSocksPort(context).toString()) }
+                var socksAddress by remember { mutableStateOf(GlobalSettings.getSocksAddress(context)) }
                 var user by remember { mutableStateOf(GlobalSettings.getSocksUser(context)) }
                 var pass by remember { mutableStateOf(GlobalSettings.getSocksPass(context)) }
                 var lan by remember { mutableStateOf(GlobalSettings.isSocksLanShared(context)) }
-                SettingsEditItem(stringResource(R.string.nb_settings_socks_port), port, Icons.Default.SettingsEthernet, placeholder = GlobalSettings.DEFAULT_SOCKS_PORT.toString()) { v ->
-                    val p = v.trim().toIntOrNull()
-                    if (p == null || p !in 1..65535) {
-                        Toast.makeText(context, context.getString(R.string.nb_settings_bad_port), Toast.LENGTH_SHORT).show()
-                    } else startSetting { GlobalSettings.setSocksPort(context, p); port = p.toString() }
+                SettingsEditItem(stringResource(R.string.nb_settings_socks_address), socksAddress, Icons.Default.SettingsEthernet,
+                    placeholder = GlobalSettings.DEFAULT_SOCKS_ADDRESS, description = stringResource(R.string.nb_settings_loopback_desc),
+                    onAction = { GlobalSettings.randomLoopback(GlobalSettings.getSocksPort(context)) }, actionIcon = Icons.Default.Casino
+                ) { v ->
+                    if (!GlobalSettings.isLoopbackAddress(v.trim())) {
+                        Toast.makeText(context, context.getString(R.string.nb_settings_bad_loopback), Toast.LENGTH_SHORT).show()
+                    } else startSetting { GlobalSettings.setSocksAddress(context, v); socksAddress = GlobalSettings.getSocksAddress(context) }
                 }
                 SettingsEditItem(stringResource(R.string.nb_settings_socks_user), user, Icons.Default.Person,
                     description = stringResource(R.string.nb_settings_socks_auth_desc),
@@ -205,11 +208,12 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                     placeholder = stringResource(R.string.nb_settings_dns_upstream_hint), description = stringResource(R.string.nb_settings_dns_upstream_desc), enabled = enabled
                 ) { v -> startSetting { GlobalSettings.setDnsUpstream(context, v); upstream = GlobalSettings.getDnsUpstream(context) } }
                 SettingsEditItem(stringResource(R.string.nb_settings_dns_proxy_address), address, Icons.Default.SettingsEthernet,
-                    placeholder = GlobalSettings.DEFAULT_DNS_PROXY, enabled = enabled
+                    placeholder = GlobalSettings.DEFAULT_DNS_PROXY, description = stringResource(R.string.nb_settings_loopback_desc), enabled = enabled,
+                    onAction = { GlobalSettings.randomLoopback(GlobalSettings.getDnsProxyAddress(context).substringAfterLast(':').toIntOrNull() ?: 48153) },
+                    actionIcon = Icons.Default.Casino
                 ) { v ->
-                    val port = v.substringAfterLast(':', "").toIntOrNull()
-                    if (':' !in v || port == null || port !in 1..65535 || v.substringBeforeLast(':').isBlank()) {
-                        Toast.makeText(context, context.getString(R.string.nb_settings_bad_address), Toast.LENGTH_SHORT).show()
+                    if (!GlobalSettings.isLoopbackAddress(v.trim())) {
+                        Toast.makeText(context, context.getString(R.string.nb_settings_bad_loopback), Toast.LENGTH_SHORT).show()
                     } else startSetting { GlobalSettings.setDnsProxyAddress(context, v); address = GlobalSettings.getDnsProxyAddress(context) }
                 }
             }
@@ -220,16 +224,14 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 if (cfg == null) {
                     HelpText(stringResource(R.string.nb_settings_netbird_off))
                 } else {
-                    SettingsSwitchItem("Rosenpass", stringResource(R.string.nb_settings_rosenpass_desc), Icons.Default.Shield, cfg.rosenpassEnabled) {
-                        setConfig { put("rosenpassEnabled", it) }
-                    }
-                    if (cfg.rosenpassEnabled) {
-                        SettingsSwitchItem(stringResource(R.string.nb_settings_rosenpass_permissive), stringResource(R.string.nb_settings_rosenpass_permissive_desc), Icons.Default.ShieldMoon, cfg.rosenpassPermissive) {
-                            setConfig { put("rosenpassPermissive", it) }
-                        }
-                    }
-                    SettingsSwitchItem(stringResource(R.string.nb_settings_lazy), stringResource(R.string.nb_settings_lazy_desc), Icons.Default.Bedtime, cfg.lazyConnectionEnabled) {
-                        setConfig { put("lazyConnectionEnabled", it) }
+                    // Rosenpass is not offered: its key exchange runs over the overlay
+                    // from a host socket, which userspace mode cannot route, so the
+                    // switch would read "on" without post-quantum keys.
+                    SettingsEditItem(stringResource(R.string.nb_settings_psk), if (cfg.preSharedKey.isEmpty()) "" else "••••••••", Icons.Default.Key,
+                        description = stringResource(R.string.nb_settings_psk_desc)
+                    ) { v -> setConfig { put("optionalPreSharedKey", v.trim()) } }
+                    SettingsSwitchItem(stringResource(R.string.nb_settings_server_routes), stringResource(R.string.nb_settings_server_routes_desc), Icons.Default.AltRoute, !cfg.disableServerRoutes) {
+                        setConfig { put("disableServerRoutes", !it) }
                     }
                     SettingsSwitchItem(stringResource(R.string.nb_settings_block_inbound), stringResource(R.string.nb_settings_block_inbound_desc), Icons.Default.Block, cfg.blockInbound) {
                         setConfig { put("blockInbound", it) }
@@ -243,11 +245,35 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                     SettingsSwitchItem(stringResource(R.string.nb_settings_ipv6), stringResource(R.string.nb_settings_ipv6_desc), Icons.Default.Language, !cfg.disableIpv6) {
                         setConfig { put("disableIpv6", !it) }
                     }
+                    SettingsSwitchItem(stringResource(R.string.nb_settings_remote_jobs), stringResource(R.string.nb_settings_remote_jobs_desc), Icons.Default.BugReport, cfg.remoteJobsAllowed) {
+                        setConfig { put("remoteJobsAllowed", it) }
+                    }
+                    SettingsEditItem("MTU", if (cfg.mtu > 0) cfg.mtu.toString() else "", Icons.Default.Straighten,
+                        placeholder = "1280", description = stringResource(R.string.nb_settings_mtu_desc)
+                    ) { v ->
+                        val mtu = v.trim().toIntOrNull()
+                        if (mtu == null || mtu !in 576..8192) Toast.makeText(context, context.getString(R.string.nb_settings_bad_mtu), Toast.LENGTH_SHORT).show()
+                        else setConfig { put("mtu", mtu) }
+                    }
                 }
             }
 
             // --- How the daemon runs ---
             SettingsCard(stringResource(R.string.nb_settings_daemon)) {
+                var lazy by remember { mutableStateOf(GlobalSettings.getLazyConn(context)) }
+                val lazyValues = listOf("", "on", "off")
+                Text(stringResource(R.string.nb_settings_lazy), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+                HelpText(stringResource(R.string.nb_settings_lazy_desc), Modifier.padding(bottom = 8.dp))
+                SlidingSegmentedChips(
+                    listOf(stringResource(R.string.nb_settings_lazy_server), stringResource(R.string.nb_settings_lazy_on), stringResource(R.string.nb_settings_lazy_off)),
+                    lazyValues.indexOf(lazy).coerceAtLeast(0), { i ->
+                        startSetting { GlobalSettings.setLazyConn(context, lazyValues[i]); lazy = lazyValues[i] }
+                    }, Modifier.fillMaxWidth()
+                )
+                var quic by remember { mutableStateOf(GlobalSettings.isRelayQuic(context)) }
+                SettingsSwitchItem(stringResource(R.string.nb_settings_quic), stringResource(R.string.nb_settings_quic_desc), Icons.Default.Speed, quic) {
+                    startSetting { GlobalSettings.setRelayQuic(context, it); quic = it }
+                }
                 var forceRelay by remember { mutableStateOf(GlobalSettings.isForceRelay(context)) }
                 SettingsSwitchItem(stringResource(R.string.nb_settings_force_relay), stringResource(R.string.nb_settings_force_relay_desc), Icons.Default.CallSplit, forceRelay) {
                     startSetting { GlobalSettings.setForceRelay(context, it); forceRelay = it }
@@ -286,6 +312,22 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 }
                 Spacer(Modifier.height(8.dp))
                 HelpText(stringResource(R.string.nb_settings_about_desc))
+                SettingsClickableItem(stringResource(R.string.nb_about_docs), "docs.netbird.io", Icons.AutoMirrored.Filled.MenuBook) {
+                    openUrl(context, "https://docs.netbird.io/")
+                }
+                SettingsClickableItem(stringResource(R.string.nb_about_source), "github.com/bropines/birdsocks", Icons.Default.Code) {
+                    openUrl(context, "https://github.com/bropines/birdsocks")
+                }
+                var showLicenses by remember { mutableStateOf(false) }
+                SettingsClickableItem(stringResource(R.string.nb_about_licenses), stringResource(R.string.nb_about_licenses_desc), Icons.Default.Gavel) { showLicenses = true }
+                if (showLicenses) {
+                    AlertDialog(
+                        onDismissRequest = { showLicenses = false },
+                        title = { Text(stringResource(R.string.nb_about_licenses)) },
+                        text = { Text(stringResource(R.string.nb_about_licenses_text), style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
+                        confirmButton = { TextButton(onClick = { showLicenses = false }) { Text(stringResource(R.string.action_close)) } }
+                    )
+                }
             }
         }
     }

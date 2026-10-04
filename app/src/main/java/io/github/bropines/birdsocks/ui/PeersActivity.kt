@@ -48,7 +48,7 @@ class PeersActivity : ComponentActivity() {
     }
 }
 
-private enum class PeerFilter { All, Connected, Idle }
+private enum class PeerFilter { All, Connected, Connecting, Idle }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +74,8 @@ fun PeersScreen(onBack: () -> Unit) {
             when (filter) {
                 PeerFilter.All -> true
                 PeerFilter.Connected -> it.connected
-                PeerFilter.Idle -> !it.connected
+                PeerFilter.Connecting -> it.connecting
+                PeerFilter.Idle -> !it.connected && !it.connecting
             }
         }
         .filter { query.isBlank() || it.fqdn.contains(query, true) || it.ip.contains(query) || it.ipv6.contains(query, true) }
@@ -94,6 +95,7 @@ fun PeersScreen(onBack: () -> Unit) {
                 options = listOf(
                     stringResource(R.string.nb_peers_filter_all),
                     stringResource(R.string.nb_peers_filter_connected),
+                    stringResource(R.string.nb_peers_filter_connecting),
                     stringResource(R.string.nb_peers_filter_idle)
                 ),
                 selectedIndex = filter.ordinal,

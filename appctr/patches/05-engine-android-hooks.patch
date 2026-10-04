@@ -1,0 +1,40 @@
+--- netbird_orig/client/internal/engine.go
++++ netbird_src/client/internal/engine.go
+@@ -4,6 +4,7 @@
+ 	"context"
+ 	"errors"
+ 	"fmt"
++	"github.com/netbirdio/netbird/client/internal/anet"
+ 	"math/rand"
+ 	"net"
+ 	"net/netip"
+@@ -609,6 +610,11 @@
+ 		return fmt.Errorf("create dns server: %w", err)
+ 	}
+ 	e.dnsServer = dnsServer
++	// BirdSocks: the proxies expand short names with these (netstack mode
++	// has no system resolver to hand them to).
++	if nbnetstack.IsEnabled() {
++		nbnetstack.SetSearchDomains(dnsServer.SearchDomains)
++	}
+ 
+ 	// Populate DNS cache with NetbirdConfig and management URL for early resolution
+ 	if err := e.PopulateNetbirdConfig(netbirdConfig, mgmtURL); err != nil {
+@@ -2860,7 +2866,7 @@
+ }
+ 
+ func getInterfacePrefixes() ([]netip.Prefix, error) {
+-	ifaces, err := net.Interfaces()
++	ifaces, err := anet.Interfaces()
+ 	if err != nil {
+ 		return nil, fmt.Errorf("get interfaces: %w", err)
+ 	}
+@@ -2869,7 +2875,7 @@
+ 	var merr *multierror.Error
+ 
+ 	for _, iface := range ifaces {
+-		addrs, err := iface.Addrs()
++		addrs, err := anet.InterfaceAddrsByInterface(&iface)
+ 		if err != nil {
+ 			merr = multierror.Append(merr, fmt.Errorf("get addresses for interface %s: %w", iface.Name, err))
+ 			continue

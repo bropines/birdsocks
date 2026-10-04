@@ -61,6 +61,13 @@ type StartOptions struct {
 	// DNSUpstream, comma-separated host:port, answers what NetBird does not;
 	// empty for the network's resolvers.
 	DNSUpstream string
+	// RelayQUIC lets the relay try QUIC; off, it speaks WebSocket only — QUIC
+	// is throttled or dropped on many networks (Russia among them), and the
+	// race costs every connect a dead QUIC attempt.
+	RelayQUIC bool
+	// LazyConn overrides the server's lazy connections: "on", "off", or ""
+	// to follow the server.
+	LazyConn string
 	// LogLevel is NetBird's: panic, fatal, error, warn, info, debug, trace.
 	LogLevel string
 	// Env is extra NAME=value lines, one per line, for the daemon (NB_*
@@ -137,10 +144,12 @@ func Start(opt *StartOptions) error {
 	if level == "" {
 		level = "info"
 	}
+	// The debug bundle collects the daemon's log from a file; console is
+	// what feeds the Logs screen.
 	cmd := exec.Command(bin,
 		"-socket", socketPath(opt.DataDir),
 		"-config", filepath.Join(state, "default.json"),
-		"-log-file", "console",
+		"-log-file", "console,"+filepath.Join(state, "client.log"),
 		"-log-level", level,
 		"-dns-file", dnsFilePath(opt.DataDir),
 		"-hostname", opt.Hostname,
@@ -213,7 +222,11 @@ func daemonEnv(opt *StartOptions, state string) []string {
 	if len(caDirs) > 0 {
 		env = append(env, "SSL_CERT_DIR="+strings.Join(caDirs, ":"))
 	}
+	tmp := filepath.Join(opt.DataDir, "tmp")
+	_ = os.MkdirAll(tmp, 0o700)
 	env = append(env,
+		// os.TempDir is /tmp for a Linux binary; debug bundles and captures go there.
+		"TMPDIR="+tmp,
 		"NB_STATE_DIR="+state,
 		// A userspace netstack instead of a kernel TUN: no VPN slot, apps
 		// reach the network through the proxy below.
@@ -229,6 +242,12 @@ func daemonEnv(opt *StartOptions, state string) []string {
 		if v != "" && v != "0" {
 			env = append(env, k+"="+v)
 		}
+	}
+	if !opt.RelayQUIC {
+		env = append(env, "NB_RELAY_TRANSPORT=ws")
+	}
+	if opt.LazyConn != "" {
+		env = append(env, "NB_LAZY_CONN="+opt.LazyConn)
 	}
 	if opt.DNSProxy != "" {
 		env = append(env, "NB_DNS_PROXY_ADDRESS="+opt.DNSProxy)

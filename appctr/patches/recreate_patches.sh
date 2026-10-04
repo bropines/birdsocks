@@ -38,6 +38,8 @@ make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/dnsproxy.go \
     client/iface/netstack/associate.go \
     client/iface/netstack/associate_test.go \
+    client/iface/netstack/searchdomains.go \
+    client/iface/netstack/searchdomains_test.go \
     client/iface/device/device_netstack.go
 
 # The device as the dashboard shows it: Android, its version and model, which
@@ -56,11 +58,16 @@ make_patch 03-android-interfaces.patch \
     client/internal/anet/anet_linux_test.go \
     client/internal/stdnet/discover_pion.go \
     client/firewall/uspfilter/localip.go \
-    client/system/network_addr.go \
-    client/internal/engine.go
+    client/system/network_addr.go
 
 # Network events in the daemon: NetBird's mobile bindings report network
 # switches to the client, the daemon had no way to receive them, and netstack
 # mode runs no monitor. The app signals birdsocksd, which calls these.
 make_patch 04-daemon-network-events.patch \
     client/server/server.go
+
+# The engine's Android-side hooks: its interface prefixes listed through anet
+# (patch 03's package), and its search domains handed to the proxies, which
+# expand short names themselves — netstack mode has no system resolver.
+make_patch 05-engine-android-hooks.patch \
+    client/internal/engine.go

@@ -49,6 +49,8 @@ class NetbirdService : Service() {
         const val ACTION_RESTART = "RESTART_ACTION"
         private const val NOTIF_ID = 1
         private const val CHANNEL_ID = "status"
+        private const val SESSION_CHANNEL_ID = "session"
+        private const val SESSION_NOTIF_ID = 2
 
         fun start(context: Context) {
             GlobalSettings.setWasRunning(context, true)
@@ -106,6 +108,7 @@ class NetbirdService : Service() {
             // NetBird's netstack mode watches no network: without this a
             // Wi-Fi ↔ mobile switch is noticed only when the old sockets time
             // out. The first network after registering is no switch.
+            NetbirdState.networkFlow.value = true
             if (previous != null && previous != network) {
                 Appctr.logAndroid("INFO", "CORE", "Default network changed: telling the daemon")
                 Appctr.networkChanged()
@@ -125,6 +128,9 @@ class NetbirdService : Service() {
                 kotlinx.coroutines.delay(2000)
                 if (defaultNetwork == null) {
                     networkWasLost = true
+                    NetbirdState.networkFlow.value = false
+                    shownText = null
+                    NetbirdState.statusFlow.value?.let(::updateNotification)
                     Appctr.logAndroid("INFO", "CORE", "No network: telling the daemon")
                     Appctr.networkLost()
                 }
@@ -192,13 +198,15 @@ class NetbirdService : Service() {
     private fun startOptions() = StartOptions().apply {
         nativeLibDir = applicationInfo.nativeLibraryDir
         dataDir = filesDir.absolutePath
-        socksHost = if (GlobalSettings.isSocksLanShared(this@NetbirdService)) "0.0.0.0" else "127.0.0.1"
+        socksHost = if (GlobalSettings.isSocksLanShared(this@NetbirdService)) "0.0.0.0" else GlobalSettings.getSocksHost(this@NetbirdService)
         socksPort = GlobalSettings.getSocksPort(this@NetbirdService).toLong()
         socksUser = GlobalSettings.getSocksUser(this@NetbirdService)
         socksPass = GlobalSettings.getSocksPass(this@NetbirdService)
         logLevel = GlobalSettings.getLogLevel(this@NetbirdService)
         dnsProxy = if (GlobalSettings.isDnsProxyEnabled(this@NetbirdService)) GlobalSettings.getDnsProxyAddress(this@NetbirdService) else ""
         dnsUpstream = GlobalSettings.getDnsUpstream(this@NetbirdService)
+        relayQUIC = GlobalSettings.isRelayQuic(this@NetbirdService)
+        lazyConn = GlobalSettings.getLazyConn(this@NetbirdService)
         hostname = GlobalSettings.getDeviceName(this@NetbirdService)
         androidVersion = Build.VERSION.RELEASE
         model = Build.MODEL
@@ -222,8 +230,10 @@ class NetbirdService : Service() {
                 if (status.status != NetbirdState.statusFlow.value?.status) {
                     scope.launch { runCatching { Netbird.activeProfile() }.onSuccess { NetbirdState.profileFlow.value = it } }
                 }
+                val previous = NetbirdState.statusFlow.value
                 NetbirdState.statusFlow.value = status
                 updateNotification(status)
+                watchSession(previous, status)
             },
             onEnd = { err ->
                 if (err.isNotEmpty() && !stopping && Appctr.isRunning()) {
@@ -317,11 +327,59 @@ class NetbirdService : Service() {
             .onFailure { Log.w(TAG, "dns servers: ${it.message}") }
     }
 
+    // --- Session expiry ---
+
+    private var sessionJob: Job? = null
+    private var sessionWatched: String? = null
+
+    /**
+     * Warns ten minutes before the server signs this device out, and says so
+     * when it has: an expired session stops the engine and with it the proxy,
+     * so every app behind it loses the network.
+     */
+    private fun watchSession(previous: NbStatus?, status: NbStatus) {
+        if (status.state.needsLogin && previous?.state == NbConnState.Connected) {
+            postSessionNotice(getString(R.string.nb_session_expired), extend = false)
+        }
+        val expiry = status.sessionExpiresAt
+        if (expiry == sessionWatched) return
+        sessionWatched = expiry
+        sessionJob?.cancel()
+        val until = expiry?.let { io.github.bropines.birdsocks.ui.parseRfc3339Millis(it) } ?: return
+        sessionJob = scope.launch {
+            val warnAt = until - 10 * 60_000
+            kotlinx.coroutines.delay((warnAt - System.currentTimeMillis()).coerceAtLeast(0))
+            if (NetbirdState.statusFlow.value?.sessionExpiresAt == expiry) {
+                val clock = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(until))
+                postSessionNotice(getString(R.string.nb_session_expiring, clock), extend = true)
+            }
+        }
+    }
+
+    private fun postSessionNotice(text: String, extend: Boolean) {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(SESSION_CHANNEL_ID, getString(R.string.nb_session_channel), NotificationManager.IMPORTANCE_HIGH))
+        val open = PendingIntent.getActivity(
+            this, 2,
+            Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_EXTEND, extend),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val n = NotificationCompat.Builder(this, SESSION_CHANNEL_ID)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_qs_tile)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .apply { if (extend) addAction(0, getString(R.string.nb_session_extend), open) }
+            .build()
+        nm.notify(SESSION_NOTIF_ID, n)
+    }
+
     // --- Notification ---
 
     private fun updateNotification(status: NbStatus) {
         val peers = status.fullStatus.peers
-        val text = when (status.state) {
+        val text = if (!NetbirdState.networkFlow.value && !status.state.needsLogin) getString(R.string.nb_status_offline) else when (status.state) {
             NbConnState.Connected -> getString(
                 R.string.nb_notif_connected,
                 status.fullStatus.localPeerState.address,

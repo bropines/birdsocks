@@ -231,6 +231,8 @@ dependencies {
     implementation(project(":appctr"))
     implementation(libs.kotlinx.serialization.json)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Custom Tabs: sign-in pages open over the app and share Chrome's cookies.
+    implementation("androidx.browser:browser:1.8.0")
     implementation("androidx.biometric:biometric:1.1.0")
     implementation(libs.androidx.appcompat)
     

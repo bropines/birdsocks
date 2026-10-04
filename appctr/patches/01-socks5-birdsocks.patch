@@ -223,7 +223,7 @@
  	}
 --- netbird_orig/client/iface/netstack/route.go
 +++ netbird_src/client/iface/netstack/route.go
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,249 @@
 +package netstack
 +
 +// route.go — BirdSocks: which destinations the SOCKS5 proxy sends through
@@ -241,6 +241,8 @@
 +
 +	log "github.com/sirupsen/logrus"
 +	"golang.zx2c4.com/wireguard/tun/netstack"
++
++	"github.com/netbirdio/netbird/client/internal/anet"
 +)
 +
 +// routeRefresh bounds how stale the cached peer routes may be.
@@ -248,23 +250,37 @@
 +
 +var routes struct {
 +	sync.Mutex
-+	overlay  netip.Prefix           // the NetBird network: peers, and its DNS address
++	overlay  []netip.Prefix         // the NetBird network, IPv4 and IPv6: peers, and the DNS address
 +	dump     func() (string, error) // the WireGuard device's peer dump (IpcGet)
 +	prefixes []netip.Prefix         // allowed IPs of every peer, at last read
 +	read     time.Time
 +}
 +
++// routeMissRefresh: a destination no peer carries re-reads the dump when it
++// is older than this, so a route added a moment ago (a domain route the DNS
++// proxy just resolved) is not missed for the whole of routeRefresh.
++const routeMissRefresh = 300 * time.Millisecond
++
 +// SetRouteSource tells the proxy the NetBird network and how to read the
 +// WireGuard device's peers; the netstack device calls it once it exists.
 +// Until it does, everything goes through the tunnel, as upstream.
-+func SetRouteSource(overlay netip.Prefix, dump func() (string, error)) {
++func SetRouteSource(overlay, overlay6 netip.Prefix, dump func() (string, error)) {
 +	routes.Lock()
 +	defer routes.Unlock()
-+	routes.overlay, routes.dump, routes.prefixes, routes.read = overlay, dump, nil, time.Time{}
++	routes.overlay = nil
++	for _, p := range []netip.Prefix{overlay, overlay6} {
++		if p.IsValid() {
++			routes.overlay = append(routes.overlay, p.Masked())
++		}
++	}
++	routes.dump, routes.prefixes, routes.read = dump, nil, time.Time{}
 +}
 +
 +// overlayDestination reports whether addr ("ip:port") is reached through
-+// the tunnel.
++// the tunnel: the NetBird network, and whatever a peer routes. A match on a
++// default route alone (an exit node) leaves the device's own surroundings
++// out — loopback, link-local and the subnets it is attached to — as a
++// desktop's connected routes win over an exit node's default route.
 +func overlayDestination(addr string) bool {
 +	host, _, err := net.SplitHostPort(addr)
 +	if err != nil {
@@ -276,23 +292,107 @@
 +	}
 +	ip = ip.Unmap()
 +	routes.Lock()
-+	defer routes.Unlock()
 +	if routes.dump == nil {
++		routes.Unlock()
 +		return true
 +	}
-+	if routes.overlay.IsValid() && routes.overlay.Contains(ip) {
-+		return true
++	for _, p := range routes.overlay {
++		if p.Contains(ip) {
++			routes.Unlock()
++			return true
++		}
 +	}
 +	if time.Since(routes.read) > routeRefresh {
 +		routes.prefixes = allowedIPs(routes.dump)
 +		routes.read = time.Now()
 +	}
-+	for _, p := range routes.prefixes {
++	best := longestMatch(routes.prefixes, ip)
++	if best < 0 && time.Since(routes.read) > routeMissRefresh {
++		routes.prefixes = allowedIPs(routes.dump)
++		routes.read = time.Now()
++		best = longestMatch(routes.prefixes, ip)
++	}
++	routes.Unlock()
++	switch {
++	case best < 0:
++		return false
++	case best == 0:
++		return !localDestination(ip)
++	default:
++		return true
++	}
++}
++
++// longestMatch is the prefix length of the most specific prefix holding ip,
++// or -1 when none does.
++func longestMatch(prefixes []netip.Prefix, ip netip.Addr) int {
++	best := -1
++	for _, p := range prefixes {
++		if p.Contains(ip) && p.Bits() > best {
++			best = p.Bits()
++		}
++	}
++	return best
++}
++
++var localNets struct {
++	sync.Mutex
++	prefixes []netip.Prefix
++	read     time.Time
++}
++
++// localDestination: an address on this device or a network it is attached to.
++func localDestination(ip netip.Addr) bool {
++	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
++		return true
++	}
++	localNets.Lock()
++	defer localNets.Unlock()
++	if time.Since(localNets.read) > 10*time.Second {
++		localNets.prefixes = attachedPrefixes()
++		localNets.read = time.Now()
++	}
++	for _, p := range localNets.prefixes {
 +		if p.Contains(ip) {
 +			return true
 +		}
 +	}
 +	return false
++}
++
++// attachedPrefixes are the subnets of the device's interfaces. anet: inside
++// an Android app the standard library cannot list them.
++func attachedPrefixes() []netip.Prefix {
++	ifaces, err := anet.Interfaces()
++	if err != nil {
++		log.Debugf("socks5: interfaces not read: %v", err)
++		return nil
++	}
++	var out []netip.Prefix
++	for i := range ifaces {
++		if ifaces[i].Flags&net.FlagUp == 0 {
++			continue
++		}
++		addrs, err := anet.InterfaceAddrsByInterface(&ifaces[i])
++		if err != nil {
++			continue
++		}
++		for _, a := range addrs {
++			ipn, ok := a.(*net.IPNet)
++			if !ok {
++				continue
++			}
++			addr, ok := netip.AddrFromSlice(ipn.IP)
++			if !ok {
++				continue
++			}
++			bits, _ := ipn.Mask.Size()
++			if p := netip.PrefixFrom(addr.Unmap(), bits).Masked(); p.Bits() > 0 {
++				out = append(out, p)
++			}
++		}
++	}
++	return out
 +}
 +
 +// allowedIPs reads every peer's allowed_ip lines from a UAPI dump.
@@ -325,6 +425,17 @@
 +func newNSResolver(n *netstack.Net) *nsResolver { return &nsResolver{net: n} }
 +
 +func (r *nsResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
++	// A short name: NetBird's search domains first, as a system resolver would.
++	for _, full := range expansions(name) {
++		tctx, cancel := context.WithTimeout(ctx, 2*time.Second)
++		addrs, err := r.net.LookupContextHost(tctx, full)
++		cancel()
++		if err == nil {
++			if ip := pickIP(addrs); ip != nil {
++				return ctx, ip, nil
++			}
++		}
++	}
 +	tctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 +	addrs, err := r.net.LookupContextHost(tctx, name)
 +	cancel()
@@ -364,22 +475,29 @@
 +}
 --- netbird_orig/client/iface/netstack/route_test.go
 +++ netbird_src/client/iface/netstack/route_test.go
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,87 @@
 +package netstack
 +
 +import (
 +	"net/netip"
 +	"testing"
++	"time"
++)
++
++var (
++	overlay4 = netip.MustParsePrefix("100.90.0.0/16")
++	overlay6 = netip.MustParsePrefix("fd00:1234::/64")
 +)
 +
 +func TestOverlayDestination(t *testing.T) {
 +	dump := "private_key=00\npublic_key=aa\nallowed_ip=100.90.1.2/32\nallowed_ip=10.10.0.0/16\npublic_key=bb\nallowed_ip=100.90.1.3/32\n"
-+	SetRouteSource(netip.MustParsePrefix("100.90.0.0/16"), func() (string, error) { return dump, nil })
-+	defer SetRouteSource(netip.Prefix{}, nil)
++	SetRouteSource(overlay4, overlay6, func() (string, error) { return dump, nil })
++	defer SetRouteSource(netip.Prefix{}, netip.Prefix{}, nil)
 +
 +	for addr, want := range map[string]bool{
 +		"100.90.1.2:80":     true,  // a peer
 +		"100.90.255.254:53": true,  // the network's DNS address, no peer carries it
++		"[fd00:1234::5]:80": true,  // the IPv6 overlay
 +		"10.10.5.5:443":     true,  // a routed network
 +		"1.1.1.1:443":       false, // the internet, no exit node
 +		"[::1]:80":          false,
@@ -390,21 +508,64 @@
 +	}
 +
 +	dump += "public_key=cc\nallowed_ip=0.0.0.0/0\n"
-+	SetRouteSource(netip.MustParsePrefix("100.90.0.0/16"), func() (string, error) { return dump, nil })
++	SetRouteSource(overlay4, overlay6, func() (string, error) { return dump, nil })
 +	if !overlayDestination("1.1.1.1:443") {
 +		t.Error("with an exit node the internet goes through the tunnel")
++	}
++	if overlayDestination("127.0.0.1:80") || overlayDestination("[fe80::1]:80") || overlayDestination("169.254.1.1:80") {
++		t.Error("loopback and link-local stay on the device with an exit node")
++	}
++	if !overlayDestination("10.10.5.5:443") {
++		t.Error("a network a peer routes wins over the exit node's default route")
++	}
++}
++
++// The device's own subnets bypass an exit node; a peer's route for the same
++// subnet still wins.
++func TestExitNodeLeavesAttachedSubnets(t *testing.T) {
++	localNets.Lock()
++	localNets.prefixes = []netip.Prefix{netip.MustParsePrefix("192.168.1.0/24")}
++	localNets.read = time.Now()
++	localNets.Unlock()
++	defer func() { localNets.Lock(); localNets.read = time.Time{}; localNets.Unlock() }()
++
++	dump := "public_key=cc\nallowed_ip=0.0.0.0/0\n"
++	SetRouteSource(overlay4, overlay6, func() (string, error) { return dump, nil })
++	defer SetRouteSource(netip.Prefix{}, netip.Prefix{}, nil)
++	if overlayDestination("192.168.1.10:80") {
++		t.Error("the LAN went into the exit node")
++	}
++	dump += "public_key=dd\nallowed_ip=192.168.1.0/24\n"
++	SetRouteSource(overlay4, overlay6, func() (string, error) { return dump, nil })
++	if !overlayDestination("192.168.1.10:80") {
++		t.Error("a peer routing the same subnet must win")
++	}
++}
++
++// A route added after the last read is seen on the next miss, not 2 s later.
++func TestMissRereadsTheDump(t *testing.T) {
++	dump := "public_key=aa\nallowed_ip=100.90.1.2/32\n"
++	SetRouteSource(overlay4, overlay6, func() (string, error) { return dump, nil })
++	defer SetRouteSource(netip.Prefix{}, netip.Prefix{}, nil)
++	if overlayDestination("203.0.113.7:443") {
++		t.Fatal("unrouted destination went into the tunnel")
++	}
++	dump += "allowed_ip=203.0.113.7/32\n"
++	time.Sleep(routeMissRefresh + 50*time.Millisecond)
++	if !overlayDestination("203.0.113.7:443") {
++		t.Error("a freshly added /32 was missed")
 +	}
 +}
 +
 +func TestOverlayDestinationBeforeTheDevice(t *testing.T) {
-+	SetRouteSource(netip.Prefix{}, nil)
++	SetRouteSource(netip.Prefix{}, netip.Prefix{}, nil)
 +	if !overlayDestination("1.1.1.1:443") {
 +		t.Error("without a route source everything goes through the tunnel, as upstream")
 +	}
 +}
 --- netbird_orig/client/iface/netstack/dnsproxy.go
 +++ netbird_src/client/iface/netstack/dnsproxy.go
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,264 @@
 +package netstack
 +
 +// dnsproxy.go — BirdSocks: a plain DNS server on the host side of the
@@ -424,6 +585,7 @@
 +	"time"
 +
 +	log "github.com/sirupsen/logrus"
++	"golang.org/x/net/dns/dnsmessage"
 +	"golang.zx2c4.com/wireguard/tun/netstack"
 +)
 +
@@ -525,8 +687,12 @@
 +	}
 +}
 +
-+// resolve answers one query: NetBird's resolver, then the network's.
++// resolve answers one query: NetBird's resolver, then the network's. A
++// single-label name is first tried under NetBird's search domains.
 +func (p *dnsProxy) resolve(q []byte) []byte {
++	if resp := p.resolveShort(q); resp != nil {
++		return resp
++	}
 +	nb, err := p.askNetBird(q)
 +	if err == nil && !retryable(nb) {
 +		return nb
@@ -584,6 +750,85 @@
 +			return append([]byte(nil), buf[:n]...), nil
 +		}
 +	}
++}
++
++// resolveShort answers a single-label name from the first search domain
++// NetBird has it under, renamed back to the name asked; nil when it is not a
++// short name or no domain has it. The domains are asked at once — some are
++// forwarded upstream and take seconds to say no — and the earliest domain in
++// the list that answers wins, as a system resolver's search order would.
++func (p *dnsProxy) resolveShort(q []byte) []byte {
++	var msg dnsmessage.Message
++	if err := msg.Unpack(q); err != nil || len(msg.Questions) != 1 {
++		return nil
++	}
++	asked := msg.Questions[0].Name
++	names := expansions(asked.String())
++	if len(names) == 0 {
++		return nil
++	}
++	type result struct {
++		i    int
++		resp []byte
++	}
++	results := make(chan result, len(names))
++	for i, full := range names {
++		go func(i int, full string) {
++			results <- result{i, p.askExpanded(msg, full, asked)}
++		}(i, full)
++	}
++	got := make([][]byte, len(names))
++	done := make([]bool, len(names))
++	for range names {
++		r := <-results
++		got[r.i], done[r.i] = r.resp, true
++		// The earliest domain decides as soon as it and everything before it have answered.
++		for i := range names {
++			if !done[i] {
++				break
++			}
++			if got[i] != nil {
++				log.Debugf("DNS proxy: %s found as %s", asked, names[i])
++				return got[i]
++			}
++		}
++	}
++	return nil
++}
++
++// askExpanded asks NetBird for full in place of the short name, and returns
++// a positive answer renamed back to asked; nil otherwise.
++func (p *dnsProxy) askExpanded(msg dnsmessage.Message, full string, asked dnsmessage.Name) []byte {
++	name, err := dnsmessage.NewName(full + ".")
++	if err != nil {
++		return nil
++	}
++	msg.Questions = []dnsmessage.Question{{Name: name, Type: msg.Questions[0].Type, Class: msg.Questions[0].Class}}
++	expanded, err := msg.Pack()
++	if err != nil {
++		return nil
++	}
++	resp, err := p.askNetBird(expanded)
++	if err != nil {
++		return nil
++	}
++	var r dnsmessage.Message
++	if r.Unpack(resp) != nil || r.Header.RCode != dnsmessage.RCodeSuccess || len(r.Answers) == 0 {
++		return nil
++	}
++	for i := range r.Questions {
++		r.Questions[i].Name = asked
++	}
++	for i := range r.Answers {
++		if r.Answers[i].Header.Name == name {
++			r.Answers[i].Header.Name = asked
++		}
++	}
++	out, err := r.Pack()
++	if err != nil {
++		return nil
++	}
++	return out
 +}
 --- netbird_orig/client/iface/netstack/associate.go
 +++ netbird_src/client/iface/netstack/associate.go
@@ -857,6 +1102,92 @@
 +	}
 +	return b
 +}
+--- netbird_orig/client/iface/netstack/searchdomains.go
++++ netbird_src/client/iface/netstack/searchdomains.go
+@@ -0,0 +1,56 @@
++package netstack
++
++// searchdomains.go — BirdSocks: short names. A desktop client hands NetBird's
++// search domains to the system resolver, so "sleeperpc" finds
++// sleeperpc.<domain>; in netstack mode there is no system resolver to hand
++// them to, and the proxies resolve names themselves. The engine supplies the
++// list here, and both proxies try a single-label name under each domain.
++
++import (
++	"strings"
++	"sync"
++)
++
++var searchDomains struct {
++	sync.RWMutex
++	source func() []string
++}
++
++// SetSearchDomains supplies NetBird's current search domains; the engine
++// calls it once its DNS server exists.
++func SetSearchDomains(source func() []string) {
++	searchDomains.Lock()
++	searchDomains.source = source
++	searchDomains.Unlock()
++}
++
++func currentSearchDomains() []string {
++	searchDomains.RLock()
++	defer searchDomains.RUnlock()
++	if searchDomains.source == nil {
++		return nil
++	}
++	return searchDomains.source()
++}
++
++// singleLabel reports whether name, with or without its trailing dot, has no
++// dot of its own: the names search domains apply to.
++func singleLabel(name string) bool {
++	n := strings.TrimSuffix(name, ".")
++	return n != "" && !strings.Contains(n, ".")
++}
++
++// expansions are the names to try for a single-label name, in order.
++func expansions(name string) []string {
++	if !singleLabel(name) || strings.EqualFold(strings.TrimSuffix(name, "."), "localhost") {
++		return nil
++	}
++	n := strings.TrimSuffix(name, ".")
++	var out []string
++	for _, d := range currentSearchDomains() {
++		if d = strings.Trim(d, "."); d != "" {
++			out = append(out, n+"."+d)
++		}
++	}
++	return out
++}
+--- netbird_orig/client/iface/netstack/searchdomains_test.go
++++ netbird_src/client/iface/netstack/searchdomains_test.go
+@@ -0,0 +1,24 @@
++package netstack
++
++import (
++	"reflect"
++	"testing"
++)
++
++func TestExpansions(t *testing.T) {
++	SetSearchDomains(func() []string { return []string{"corp.example.", "example.com"} })
++	defer SetSearchDomains(nil)
++	if got := expansions("sleeperpc."); !reflect.DeepEqual(got, []string{"sleeperpc.corp.example", "sleeperpc.example.com"}) {
++		t.Errorf("short name: %v", got)
++	}
++	if got := expansions("argocd-internal"); len(got) != 2 {
++		t.Errorf("short name without the root dot: %v", got)
++	}
++	if got := expansions("ams.corp.example."); got != nil {
++		t.Errorf("a dotted name must not be expanded: %v", got)
++	}
++	SetSearchDomains(nil)
++	if got := expansions("sleeperpc"); got != nil {
++		t.Errorf("no domains: %v", got)
++	}
++}
 --- netbird_orig/client/iface/device/device_netstack.go
 +++ netbird_src/client/iface/device/device_netstack.go
 @@ -84,6 +84,10 @@
@@ -865,7 +1196,7 @@
  
 +	// BirdSocks: the SOCKS5 proxy sends through the tunnel only what a peer
 +	// carries, and the rest over the host's network.
-+	nbnetstack.SetRouteSource(t.address.Network, t.device.IpcGet)
++	nbnetstack.SetRouteSource(t.address.Network, t.address.IPv6Net, t.device.IpcGet)
 +
  	t.configurer = configurer.NewUSPConfigurerNoUAPI(t.device, t.name, t.bind.ActivityRecorder())
  	err = t.configurer.ConfigureInterface(t.key, t.port)

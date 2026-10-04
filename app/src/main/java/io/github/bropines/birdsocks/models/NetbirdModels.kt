@@ -189,7 +189,8 @@ data class NbConfig(
     val disableClientRoutes: Boolean = false,
     val disableServerRoutes: Boolean = false,
     val blockLanAccess: Boolean = false,
-    val disableIpv6: Boolean = false
+    val disableIpv6: Boolean = false,
+    val remoteJobsAllowed: Boolean = false
 )
 
 /** One NetBird profile: an account on a server, with its own keys and settings. */
@@ -207,3 +208,24 @@ data class NbProfiles(val profiles: List<NbProfile> = emptyList())
 
 @Serializable
 data class NbActiveProfile(val profileName: String = "", val id: String = "")
+
+/** RequestExtendAuthSession: a browser page that renews the session without dropping the connection. */
+@Serializable
+data class NbExtendRequest(
+    val verificationURI: String = "",
+    val verificationURIComplete: String = "",
+    val userCode: String = "",
+    val deviceCode: String = "",
+    val expiresIn: Long = 0
+)
+
+@Serializable
+data class NbExtendResult(val sessionExpiresAt: String? = null)
+
+/** DebugBundle: where the archive is, and its key when it was uploaded. */
+@Serializable
+data class NbDebugBundle(
+    val path: String = "",
+    val uploadedKey: String = "",
+    val uploadFailureReason: String = ""
+)
