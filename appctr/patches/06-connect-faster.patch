@@ -49,7 +49,7 @@
  			Timeout: 10 * time.Second,
 --- netbird_orig/client/grpc/dialer_generic.go
 +++ netbird_src/client/grpc/dialer_generic.go
-@@ -44,6 +44,30 @@
+@@ -44,7 +44,39 @@
  	})
  }
  
@@ -77,9 +77,18 @@
 +	})
 +}
 +
++// dialContext reaches a management or signal server, through the control
++// proxy when the app names one (BirdSocks, see client/net/birdsocks_ctlproxy.go).
  func dialContext(ctx context.Context, addr string) (net.Conn, error) {
++	return nbnet.DialControl(ctx, addr, func(ctx context.Context, _, addr string) (net.Conn, error) {
++		return dialDirect(ctx, addr)
++	})
++}
++
++func dialDirect(ctx context.Context, addr string) (net.Conn, error) {
  	if runtime.GOOS == "linux" {
  		currentUser, err := user.Current()
+ 		if err != nil {
 --- netbird_orig/shared/signal/client/grpc.go
 +++ netbird_src/shared/signal/client/grpc.go
 @@ -5,6 +5,7 @@

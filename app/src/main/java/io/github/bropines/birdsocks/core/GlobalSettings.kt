@@ -87,6 +87,64 @@ object GlobalSettings {
     /** The relay may race QUIC against WebSocket; off by default, QUIC is throttled on many networks. */
     fun isRelayQuic(context: Context): Boolean = getBoolean(context, "relay_quic", false)
     fun setRelayQuic(context: Context, enabled: Boolean) = setBoolean(context, "relay_quic", enabled)
+
+    // The control plane's way to the server: direct, a proxy of the user's, or ByeDPI.
+    const val CONTROL_DIRECT = "direct"
+    const val CONTROL_PROXY = "proxy"
+    const val CONTROL_BYEDPI = "byedpi"
+    fun getControlMode(context: Context): String = getString(context, "cp_mode", CONTROL_DIRECT)
+    fun setControlMode(context: Context, mode: String) = setString(context, "cp_mode", mode)
+    /** "socks5" or "http". */
+    fun getControlProxyType(context: Context): String = getString(context, "cp_type", "socks5")
+    fun setControlProxyType(context: Context, type: String) = setString(context, "cp_type", type)
+    fun getControlProxyHost(context: Context): String = getString(context, "cp_host", "")
+    fun setControlProxyHost(context: Context, host: String) = setString(context, "cp_host", host.trim())
+    fun getControlProxyPort(context: Context): String = getString(context, "cp_port", "")
+    fun setControlProxyPort(context: Context, port: String) = setString(context, "cp_port", port.trim())
+    fun getControlProxyUser(context: Context): String = getString(context, "cp_user", "")
+    fun setControlProxyUser(context: Context, user: String) = setString(context, "cp_user", user)
+    fun getControlProxyPass(context: Context): String = getString(context, "cp_pass", "")
+    fun setControlProxyPass(context: Context, pass: String) = setString(context, "cp_pass", pass)
+    fun getByeDpiFlags(context: Context): String = getString(context, "byedpi_flags", ByeDpiProxy.DEFAULT_FLAGS)
+    fun setByeDpiFlags(context: Context, flags: String) = setString(context, "byedpi_flags", flags.trim())
+    fun isByeDpiIpv4Only(context: Context): Boolean = getBoolean(context, "byedpi_ipv4", false)
+    fun setByeDpiIpv4Only(context: Context, on: Boolean) = setBoolean(context, "byedpi_ipv4", on)
+
+    /**
+     * The user's own control proxy as a URL (socks5h:// or http://), or ""
+     * when it is not the chosen way or has no host. ByeDPI's URL comes from
+     * NetbirdService, which runs it.
+     */
+    fun getControlProxyUrl(context: Context): String {
+        if (getControlMode(context) != CONTROL_PROXY) return ""
+        val host = getControlProxyHost(context).ifEmpty { return "" }
+        val http = getControlProxyType(context) == "http"
+        val port = getControlProxyPort(context).ifEmpty { if (http) "8080" else "1080" }
+        val user = getControlProxyUser(context)
+        val auth = if (user.isNotEmpty()) "${pctEncodeUserInfo(user)}:${pctEncodeUserInfo(getControlProxyPass(context))}@" else ""
+        // An IPv6 literal needs its brackets in a URL.
+        val h = if (':' in host && !host.startsWith("[")) "[$host]" else host
+        return "${if (http) "http" else "socks5h"}://$auth$h:$port"
+    }
+
+    /**
+     * Percent-encodes a URL userinfo component: RFC 3986 unreserved characters
+     * stay, everything else becomes %XX of its UTF-8 bytes. A `/`, `?`, `#`,
+     * `@` or `%` in a password would otherwise break the URL the daemon parses.
+     */
+    fun pctEncodeUserInfo(value: String): String {
+        val sb = StringBuilder(value.length + 8)
+        for (b in value.toByteArray(Charsets.UTF_8)) {
+            val c = b.toInt() and 0xFF
+            val ch = c.toChar()
+            if (ch in 'A'..'Z' || ch in 'a'..'z' || ch in '0'..'9' || ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+                sb.append(ch)
+            } else {
+                sb.append('%').append(Character.forDigit(c shr 4, 16).uppercaseChar()).append(Character.forDigit(c and 0xF, 16).uppercaseChar())
+            }
+        }
+        return sb.toString()
+    }
     /** Lazy connections: "" follows the server, "on" or "off" overrides it. */
     fun getLazyConn(context: Context): String = getString(context, "lazy_conn", "")
     fun setLazyConn(context: Context, value: String) = setString(context, "lazy_conn", value)

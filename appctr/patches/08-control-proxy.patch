@@ -1,0 +1,432 @@
+--- netbird_orig/client/net/birdsocks_ctlproxy.go
++++ netbird_src/client/net/birdsocks_ctlproxy.go
+@@ -0,0 +1,176 @@
++package net
++
++// birdsocks_ctlproxy.go — BirdSocks: the control plane through a proxy.
++// Where the management server is blocked or its TLS handshake filtered, the
++// app names a proxy in NB_BIRDSOCKS_CONTROL_PROXY — socks5://[user:pass@]
++// host:port or http://… — another proxy of the user's, or the app's own
++// ByeDPI, a SOCKS5 listener on loopback that desyncs the handshake. The
++// gRPC connections (management, signal), the relay's WebSocket and the
++// daemon's HTTP requests (sign-in, uploads) go through it; the WireGuard
++// traffic and ICE, which are UDP, do not.
++//
++// HTTPS_PROXY would not do: gRPC speaks only HTTP CONNECT to a proxy, and
++// the relay's transport ignores the environment.
++
++import (
++	"bufio"
++	"context"
++	"encoding/base64"
++	"fmt"
++	"net"
++	"net/http"
++	"net/url"
++	"os"
++	"strings"
++	"sync"
++	"time"
++
++	"golang.org/x/net/proxy"
++)
++
++// EnvControlProxy names the control plane's proxy.
++const EnvControlProxy = "NB_BIRDSOCKS_CONTROL_PROXY"
++
++var controlProxy = sync.OnceValues(func() (*url.URL, error) {
++	return parseControlProxy(os.Getenv(EnvControlProxy))
++})
++
++func parseControlProxy(raw string) (*url.URL, error) {
++	if raw = strings.TrimSpace(raw); raw == "" {
++		return nil, nil
++	}
++	u, err := url.Parse(raw)
++	if err != nil {
++		return nil, fmt.Errorf("control proxy: %w", err)
++	}
++	switch u.Scheme {
++	case "socks5", "socks5h", "http":
++	default:
++		return nil, fmt.Errorf("control proxy: scheme %q is not socks5 or http", u.Scheme)
++	}
++	if u.Hostname() == "" || u.Port() == "" {
++		return nil, fmt.Errorf("control proxy: %q has no host:port", u.Redacted())
++	}
++	return u, nil
++}
++
++// ControlProxy is the control plane's proxy, nil when it goes direct. A
++// proxy that does not parse is an error rather than a silent direct path.
++func ControlProxy() (*url.URL, error) { return controlProxy() }
++
++// DialFunc dials like net.Dialer.DialContext.
++type DialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
++
++func (f DialFunc) Dial(network, addr string) (net.Conn, error) {
++	return f(context.Background(), network, addr)
++}
++
++func (f DialFunc) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
++	return f(ctx, network, addr)
++}
++
++// DialControl reaches addr (host:port of a control-plane server) through
++// the control proxy, with base for the hop to the proxy; without one, base
++// dials addr itself. The name goes to the proxy unresolved, so a poisoned
++// local resolver cannot redirect it.
++func DialControl(ctx context.Context, addr string, base DialFunc) (net.Conn, error) {
++	u, err := ControlProxy()
++	if err != nil {
++		return nil, err
++	}
++	if u == nil || isLoopbackAddr(addr) {
++		return base(ctx, "tcp", addr)
++	}
++	if u.Scheme == "http" {
++		return dialConnect(ctx, u, addr, base)
++	}
++	var auth *proxy.Auth
++	if u.User != nil {
++		pass, _ := u.User.Password()
++		auth = &proxy.Auth{User: u.User.Username(), Password: pass}
++	}
++	d, err := proxy.SOCKS5("tcp", u.Host, auth, base)
++	if err != nil {
++		return nil, fmt.Errorf("control proxy: %w", err)
++	}
++	conn, err := d.(proxy.ContextDialer).DialContext(ctx, "tcp", addr)
++	if err != nil {
++		return nil, fmt.Errorf("control proxy %s: %w", u.Host, err)
++	}
++	return conn, nil
++}
++
++// ControlHTTPProxy is an http.Transport Proxy func: the control proxy for
++// every request but those to loopback.
++func ControlHTTPProxy(req *http.Request) (*url.URL, error) {
++	u, err := ControlProxy()
++	if err != nil || u == nil {
++		return nil, err
++	}
++	if isLoopbackAddr(req.URL.Host) {
++		return nil, nil
++	}
++	if u.Scheme == "socks5h" {
++		// net/http knows the scheme as socks5, and resolves through the proxy either way.
++		c := *u
++		c.Scheme = "socks5"
++		return &c, nil
++	}
++	return u, nil
++}
++
++func isLoopbackAddr(addr string) bool {
++	host := addr
++	if h, _, err := net.SplitHostPort(addr); err == nil {
++		host = h
++	}
++	if host == "localhost" {
++		return true
++	}
++	ip := net.ParseIP(host)
++	return ip != nil && ip.IsLoopback()
++}
++
++// dialConnect opens a tunnel to addr with HTTP CONNECT.
++func dialConnect(ctx context.Context, u *url.URL, addr string, base DialFunc) (net.Conn, error) {
++	conn, err := base(ctx, "tcp", u.Host)
++	if err != nil {
++		return nil, fmt.Errorf("control proxy %s: %w", u.Host, err)
++	}
++	if deadline, ok := ctx.Deadline(); ok {
++		_ = conn.SetDeadline(deadline)
++		defer func() { _ = conn.SetDeadline(time.Time{}) }()
++	}
++	req := "CONNECT " + addr + " HTTP/1.1\r\nHost: " + addr + "\r\n"
++	if u.User != nil {
++		pass, _ := u.User.Password()
++		req += "Proxy-Authorization: Basic " + base64.StdEncoding.EncodeToString([]byte(u.User.Username()+":"+pass)) + "\r\n"
++	}
++	if _, err := conn.Write([]byte(req + "\r\n")); err != nil {
++		conn.Close()
++		return nil, fmt.Errorf("control proxy %s: %w", u.Host, err)
++	}
++	br := bufio.NewReader(conn)
++	resp, err := http.ReadResponse(br, &http.Request{Method: http.MethodConnect})
++	if err != nil {
++		conn.Close()
++		return nil, fmt.Errorf("control proxy %s: %w", u.Host, err)
++	}
++	resp.Body.Close()
++	if resp.StatusCode != http.StatusOK {
++		conn.Close()
++		return nil, fmt.Errorf("control proxy %s: CONNECT %s: %s", u.Host, addr, resp.Status)
++	}
++	if br.Buffered() > 0 {
++		return &bufferedConn{Conn: conn, r: br}, nil
++	}
++	return conn, nil
++}
++
++// bufferedConn reads what the proxy sent after its answer before the rest.
++type bufferedConn struct {
++	net.Conn
++	r *bufio.Reader
++}
++
++func (c *bufferedConn) Read(p []byte) (int, error) { return c.r.Read(p) }
+--- netbird_orig/client/net/birdsocks_ctlproxy_test.go
++++ netbird_src/client/net/birdsocks_ctlproxy_test.go
+@@ -0,0 +1,239 @@
++package net
++
++import (
++	"bufio"
++	"bytes"
++	"context"
++	"encoding/binary"
++	"io"
++	"net"
++	"net/http"
++	"net/url"
++	"strconv"
++	"testing"
++	"time"
++)
++
++// echoServer answers every connection with what it reads.
++func echoServer(t *testing.T) string {
++	t.Helper()
++	ln, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() { ln.Close() })
++	go func() {
++		for {
++			c, err := ln.Accept()
++			if err != nil {
++				return
++			}
++			go func() { defer c.Close(); _, _ = io.Copy(c, c) }()
++		}
++	}()
++	return ln.Addr().String()
++}
++
++// socks5Server is a minimal SOCKS5 server (CONNECT, no auth or user/pass)
++// that records the destination it was asked for and connects to target.
++func socks5Server(t *testing.T, target string, asked chan<- string) string {
++	t.Helper()
++	ln, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() { ln.Close() })
++	go func() {
++		for {
++			c, err := ln.Accept()
++			if err != nil {
++				return
++			}
++			go func() {
++				defer c.Close()
++				r := bufio.NewReader(c)
++				head := make([]byte, 2)
++				if _, err := io.ReadFull(r, head); err != nil {
++					return
++				}
++				methods := make([]byte, head[1])
++				_, _ = io.ReadFull(r, methods)
++				if bytes.IndexByte(methods, 2) >= 0 { // user/pass offered
++					_, _ = c.Write([]byte{5, 2})
++					ver := make([]byte, 2)
++					_, _ = io.ReadFull(r, ver)
++					user := make([]byte, ver[1])
++					_, _ = io.ReadFull(r, user)
++					plen, _ := r.ReadByte()
++					pass := make([]byte, plen)
++					_, _ = io.ReadFull(r, pass)
++					asked <- "auth " + string(user) + ":" + string(pass)
++					_, _ = c.Write([]byte{1, 0})
++				} else {
++					_, _ = c.Write([]byte{5, 0})
++				}
++				req := make([]byte, 4)
++				_, _ = io.ReadFull(r, req)
++				var host string
++				switch req[3] {
++				case 3:
++					n, _ := r.ReadByte()
++					name := make([]byte, n)
++					_, _ = io.ReadFull(r, name)
++					host = string(name)
++				case 1:
++					ip := make([]byte, 4)
++					_, _ = io.ReadFull(r, ip)
++					host = net.IP(ip).String()
++				}
++				pb := make([]byte, 2)
++				_, _ = io.ReadFull(r, pb)
++				asked <- net.JoinHostPort(host, strconv.Itoa(int(binary.BigEndian.Uint16(pb))))
++				up, err := net.Dial("tcp", target)
++				if err != nil {
++					return
++				}
++				defer up.Close()
++				_, _ = c.Write([]byte{5, 0, 0, 1, 0, 0, 0, 0, 0, 0})
++				go func() { _, _ = io.Copy(up, r) }()
++				_, _ = io.Copy(c, up)
++			}()
++		}
++	}()
++	return ln.Addr().String()
++}
++
++// connectServer is a minimal HTTP CONNECT proxy to target.
++func connectServer(t *testing.T, target string, asked chan<- string) string {
++	t.Helper()
++	ln, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() { ln.Close() })
++	go func() {
++		for {
++			c, err := ln.Accept()
++			if err != nil {
++				return
++			}
++			go func() {
++				defer c.Close()
++				r := bufio.NewReader(c)
++				req, err := http.ReadRequest(r)
++				if err != nil {
++					return
++				}
++				asked <- req.Method + " " + req.Host + " " + req.Header.Get("Proxy-Authorization")
++				up, err := net.Dial("tcp", target)
++				if err != nil {
++					return
++				}
++				defer up.Close()
++				_, _ = c.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
++				go func() { _, _ = io.Copy(up, r) }()
++				_, _ = io.Copy(c, up)
++			}()
++		}
++	}()
++	return ln.Addr().String()
++}
++
++func withProxy(t *testing.T, raw string) {
++	t.Helper()
++	u, err := parseControlProxy(raw)
++	if err != nil {
++		t.Fatal(err)
++	}
++	old := controlProxy
++	controlProxy = func() (*url.URL, error) { return u, nil }
++	t.Cleanup(func() { controlProxy = old })
++}
++
++func roundTrip(t *testing.T, conn net.Conn) {
++	t.Helper()
++	defer conn.Close()
++	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
++	if _, err := conn.Write([]byte("ping")); err != nil {
++		t.Fatal(err)
++	}
++	buf := make([]byte, 4)
++	if _, err := io.ReadFull(conn, buf); err != nil || string(buf) != "ping" {
++		t.Fatalf("echo: %q %v", buf, err)
++	}
++}
++
++var plainDial DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
++	var d net.Dialer
++	return d.DialContext(ctx, network, addr)
++}
++
++func TestDialControlSOCKS5(t *testing.T) {
++	echo := echoServer(t)
++	asked := make(chan string, 4)
++	withProxy(t, "socks5://user:p%40ss@"+socks5Server(t, echo, asked))
++	conn, err := DialControl(context.Background(), "management.example.com:443", plainDial)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if a := <-asked; a != "auth user:p@ss" {
++		t.Fatalf("auth: %q", a)
++	}
++	// The name reaches the proxy unresolved.
++	if a := <-asked; a != "management.example.com:443" {
++		t.Fatalf("destination: %q", a)
++	}
++	roundTrip(t, conn)
++}
++
++func TestDialControlCONNECT(t *testing.T) {
++	echo := echoServer(t)
++	asked := make(chan string, 2)
++	withProxy(t, "http://u:pw@"+connectServer(t, echo, asked))
++	conn, err := DialControl(context.Background(), "signal.example.com:443", plainDial)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if a := <-asked; a != "CONNECT signal.example.com:443 Basic dTpwdw==" {
++		t.Fatalf("request: %q", a)
++	}
++	roundTrip(t, conn)
++}
++
++func TestDialControlDirect(t *testing.T) {
++	echo := echoServer(t)
++	withProxy(t, "")
++	conn, err := DialControl(context.Background(), echo, plainDial)
++	if err != nil {
++		t.Fatal(err)
++	}
++	roundTrip(t, conn)
++
++	// Loopback skips a proxy, which here does not even listen.
++	withProxy(t, "socks5://127.0.0.1:1")
++	conn, err = DialControl(context.Background(), echo, plainDial)
++	if err != nil {
++		t.Fatal(err)
++	}
++	roundTrip(t, conn)
++}
++
++func TestParseControlProxy(t *testing.T) {
++	for _, bad := range []string{"ftp://h:1", "socks5://h", "socks5://:1080", "::"} {
++		if _, err := parseControlProxy(bad); err == nil {
++			t.Errorf("%q: no error", bad)
++		}
++	}
++	if u, err := parseControlProxy(" socks5h://127.4.5.6:31000 "); err != nil || u.Host != "127.4.5.6:31000" {
++		t.Fatalf("socks5h: %v %v", u, err)
++	}
++	req, _ := http.NewRequest(http.MethodGet, "https://api.example.com/x", nil)
++	withProxy(t, "socks5h://127.4.5.6:31000")
++	if u, _ := ControlHTTPProxy(req); u == nil || u.Scheme != "socks5" {
++		t.Fatalf("http proxy for socks5h: %v", u)
++	}
++	local, _ := http.NewRequest(http.MethodGet, "http://127.0.0.1:53000/cb", nil)
++	if u, _ := ControlHTTPProxy(local); u != nil {
++		t.Fatalf("loopback proxied: %v", u)
++	}
++}
+--- netbird_orig/shared/relay/client/dialer/ws/ws.go
++++ netbird_src/shared/relay/client/dialer/ws/ws.go
+@@ -91,6 +91,8 @@
+ 	}
+ 
+ 	customTransport := &http.Transport{
++		// BirdSocks: the relay is part of the control plane the app may proxy.
++		Proxy: nbnet.ControlHTTPProxy,
+ 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+ 			c, err := customDialer.DialContext(ctx, network, addr)
+ 			if err == nil && underlyingOut != nil {

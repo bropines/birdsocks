@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -29,6 +30,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddAccountDialog(existing: Collection<String>, onDismiss: () -> Unit, onDone: (name: String, server: String, setupKey: String?) -> Unit) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var own by rememberSaveable { mutableStateOf(true) }
     var server by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
@@ -118,7 +120,7 @@ fun AddAccountDialog(existing: Collection<String>, onDismiss: () -> Unit, onDone
                     else scope.launch {
                         // A typo in an own server's address should not end in a 30 s timeout.
                         probing = true
-                        val problem = probeServer(url)
+                        val problem = probeServer(context, url)
                         probing = false
                         if (problem == null) onDone(finalName, url, key) else unreachable = problem
                     }

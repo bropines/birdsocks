@@ -487,7 +487,7 @@ private fun LoginCard(login: LoginFlow.State, serverMessage: String) {
                                 LoginFlow.start(context, url, setupKey.takeIf { useKey })
                             } else scope.launch {
                                 // A typo in an own server's address should not end in a 30 s timeout.
-                                val problem = probeServer(url)
+                                val problem = probeServer(context, url)
                                 if (problem == null) LoginFlow.start(context, url, setupKey.takeIf { useKey })
                                 else unreachable = problem
                             }
@@ -614,10 +614,13 @@ fun MenuCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, ic
 /**
  * Null when [url] answers at all (any status counts), the reason otherwise.
  * An http:// server is not probed: the app may not speak cleartext, the
- * daemon may, so a refusal here would say nothing about the server.
+ * daemon may, so a refusal here would say nothing about the server. Nor is
+ * one behind a control proxy or ByeDPI: the daemon goes that way, this
+ * probe would go direct, where the server may well be blocked.
  */
-suspend fun probeServer(url: String): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+suspend fun probeServer(context: Context, url: String): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
     if (url.startsWith("http://", ignoreCase = true)) return@withContext null
+    if (GlobalSettings.getControlMode(context) != GlobalSettings.CONTROL_DIRECT) return@withContext null
     runCatching {
         val client = okhttp3.OkHttpClient.Builder()
             .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)

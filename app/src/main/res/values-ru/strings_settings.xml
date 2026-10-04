@@ -32,6 +32,22 @@
     <string name="settings_card_inbound">Подключения к телефону</string>
     <string name="settings_card_peers">Узлы и relay</string>
     <string name="settings_card_packets">Адреса и пакеты</string>
+    <string name="settings_card_server_connection">Подключение к серверу</string>
+    <string name="cp_desc">Как BirdSocks достаёт до сервера NetBird: управление, signal и relay. Если сервер заблокирован, идите через прокси или дайте ByeDPI провести TLS-рукопожатие мимо DPI. Трафик между узлами идёт своим путём.</string>
+    <string name="cp_mode_direct">Напрямую</string>
+    <string name="cp_mode_proxy">Прокси</string>
+    <string name="cp_host">Прокси-сервер</string>
+    <string name="cp_port">Порт</string>
+    <string name="cp_bad_port">Порт — число от 1 до 65535</string>
+    <string name="cp_user">Логин</string>
+    <string name="cp_pass">Пароль</string>
+    <string name="cp_auth_desc">Только если прокси их требует.</string>
+    <string name="cp_no_host">Прокси-сервер не задан: подключение идёт напрямую.</string>
+    <string name="cp_byedpi_flags">Флаги ByeDPI</string>
+    <string name="cp_byedpi_flags_desc">Параметры десинхронизации в синтаксисе byedpi. Опции, которые слушают порты, порождают процессы или трогают файлы, отбрасываются.</string>
+    <string name="cp_byedpi_ipv4">Только IPv4</string>
+    <string name="cp_byedpi_ipv4_desc">Для сетей, где IPv6-адрес сервера не работает.</string>
+    <string name="cp_byedpi_running">ByeDPI слушает %1$s</string>
     <string name="settings_card_developer">Для разработчика</string>
     <string name="settings_sect_tools">Инструменты</string>
 

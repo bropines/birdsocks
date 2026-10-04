@@ -229,6 +229,7 @@ class NetbirdService : Service() {
         dnsUpstream = GlobalSettings.getDnsUpstream(this@NetbirdService)
         tunDNS = TunRoutes.DNS_IP
         relayQUIC = GlobalSettings.isRelayQuic(this@NetbirdService)
+        controlProxy = controlProxyUrl()
         lazyConn = GlobalSettings.getLazyConn(this@NetbirdService)
         inboundAccess = GlobalSettings.isInboundAccess(this@NetbirdService)
         hostname = GlobalSettings.getDeviceName(this@NetbirdService)
@@ -240,6 +241,27 @@ class NetbirdService : Service() {
             if (GlobalSettings.isForceRelay(this@NetbirdService)) appendLine("NB_FORCE_RELAY=true")
             append(GlobalSettings.getExtraEnv(this@NetbirdService))
         }
+    }
+
+    /** The flags and IPv4 switch ByeDPI runs with, to restart it when they change. */
+    private var byeDpiArgs: Pair<String, Boolean>? = null
+
+    /**
+     * The control plane's proxy for this start: the user's own, or ByeDPI's
+     * loopback listener, started (or restarted with new flags) here; ByeDPI
+     * stops when it is not the chosen way.
+     */
+    private fun controlProxyUrl(): String {
+        if (GlobalSettings.getControlMode(this) != GlobalSettings.CONTROL_BYEDPI) {
+            ByeDpiProxy.stop()
+            byeDpiArgs = null
+            return GlobalSettings.getControlProxyUrl(this)
+        }
+        val args = GlobalSettings.getByeDpiFlags(this) to GlobalSettings.isByeDpiIpv4Only(this)
+        if (args != byeDpiArgs) ByeDpiProxy.stop()
+        byeDpiArgs = args
+        val address = ByeDpiProxy.activeAddress ?: ByeDpiProxy.start(this, args.first, args.second) ?: return ""
+        return "socks5h://${address.first}:${address.second}"
     }
 
     /** Mirrors the daemon's status stream into NetbirdState and the notification. */
@@ -367,6 +389,8 @@ class NetbirdService : Service() {
             ExposeFlow.stop()
             // SIGTERM: the daemon takes the tunnel down itself before it exits.
             runCatching { Appctr.stop() }
+            ByeDpiProxy.stop()
+            byeDpiArgs = null
             finish()
         }
     }
@@ -419,6 +443,7 @@ class NetbirdService : Service() {
         // and a start queued behind it must reach startForeground in time —
         // Android kills the app otherwise (ForegroundServiceDidNotStartInTime).
         if (Appctr.isRunning()) Thread { runCatching { Appctr.stop() } }.start()
+        ByeDpiProxy.stop()
         if (NetbirdState.daemonFlow.value != NetbirdState.Daemon.Stopped) {
             NetbirdState.statusFlow.value = null
             NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopped

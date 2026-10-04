@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -34,6 +35,7 @@ import (
 	"github.com/netbirdio/netbird/client/iface/netstack"
 	"github.com/netbirdio/netbird/client/internal"
 	"github.com/netbirdio/netbird/client/internal/ipcauth"
+	nbnet "github.com/netbirdio/netbird/client/net"
 	"github.com/netbirdio/netbird/client/proto"
 	"github.com/netbirdio/netbird/client/server"
 	"github.com/netbirdio/netbird/client/system"
@@ -62,6 +64,18 @@ func main() {
 
 	if *dnsServers != "" {
 		installResolver(*dnsServers)
+	}
+	// The control plane through the app's proxy or its ByeDPI: gRPC and the
+	// relay dial it themselves (client/net/birdsocks_ctlproxy.go); the
+	// daemon's HTTP requests take it here.
+	if u, err := nbnet.ControlProxy(); err != nil {
+		// Never direct instead: whoever set a proxy may not want the server to see this network.
+		log.Errorf("%v: control-plane connections will fail", err)
+	} else if u != nil {
+		log.Infof("control plane through %s://%s", u.Scheme, u.Host)
+		if t, ok := http.DefaultTransport.(*http.Transport); ok {
+			t.Proxy = nbnet.ControlHTTPProxy
+		}
 	}
 	// The proxies live as long as the daemon, not one engine: with no
 	// engine (no login, an expired session, a reconnect) they reach the

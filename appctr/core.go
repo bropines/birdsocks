@@ -79,6 +79,10 @@ type StartOptions struct {
 	// port (adb over Wi-Fi, Termux's sshd, a local web server), as the ACLs
 	// allow. The app's own proxies stay out of reach.
 	InboundAccess bool
+	// ControlProxy carries the control plane — management, signal, the
+	// relay, sign-in requests — through socks5://[user:pass@]host:port or
+	// http://…: a proxy of the user's, or the app's ByeDPI. Empty: direct.
+	ControlProxy string
 	// LogLevel is NetBird's: panic, fatal, error, warn, info, debug, trace.
 	LogLevel string
 	// Env is extra NAME=value lines, one per line, for the daemon (NB_*
@@ -254,8 +258,13 @@ func daemonEnv(opt *StartOptions, state string) []string {
 			env = append(env, k+"="+v)
 		}
 	}
-	if !opt.RelayQUIC {
+	// QUIC is UDP, which no control proxy carries: the relay keeps to its
+	// WebSocket through one.
+	if !opt.RelayQUIC || opt.ControlProxy != "" {
 		env = append(env, "NB_RELAY_TRANSPORT=ws")
+	}
+	if opt.ControlProxy != "" {
+		env = append(env, "NB_BIRDSOCKS_CONTROL_PROXY="+opt.ControlProxy)
 	}
 	if opt.LazyConn != "" {
 		env = append(env, "NB_LAZY_CONN="+opt.LazyConn)

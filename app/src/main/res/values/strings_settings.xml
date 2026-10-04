@@ -33,6 +33,22 @@
     <string name="settings_card_inbound">Connections to this phone</string>
     <string name="settings_card_peers">Peers and relays</string>
     <string name="settings_card_packets">Addresses and packets</string>
+    <string name="settings_card_server_connection">Server connection</string>
+    <string name="cp_desc">How BirdSocks reaches the NetBird server: management, signal and the relay. Where the server is blocked, go through a proxy, or let ByeDPI get the TLS handshake past DPI. Traffic between peers keeps its own way.</string>
+    <string name="cp_mode_direct">Direct</string>
+    <string name="cp_mode_proxy">Proxy</string>
+    <string name="cp_host">Proxy server</string>
+    <string name="cp_port">Port</string>
+    <string name="cp_bad_port">A port is 1 to 65535</string>
+    <string name="cp_user">Username</string>
+    <string name="cp_pass">Password</string>
+    <string name="cp_auth_desc">Only if the proxy asks for them.</string>
+    <string name="cp_no_host">No proxy server set: the connection goes direct.</string>
+    <string name="cp_byedpi_flags">ByeDPI flags</string>
+    <string name="cp_byedpi_flags_desc">Desync options in byedpi\'s syntax. Options that bind, fork or touch files are dropped.</string>
+    <string name="cp_byedpi_ipv4">IPv4 only</string>
+    <string name="cp_byedpi_ipv4_desc">For networks where the server\'s IPv6 address fails.</string>
+    <string name="cp_byedpi_running">ByeDPI is listening on %1$s</string>
     <string name="settings_card_developer">Developer</string>
     <string name="settings_sect_tools">Tools</string>
 

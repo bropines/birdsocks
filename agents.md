@@ -56,6 +56,14 @@ VPN slot.
   `files/dns-servers` on the real network). The VPN is down whenever the
   daemon is: stop it before any daemon stop or restart and on a crash. hev
   gets no `mapdns` — its fake-IP pool is NetBird's 100.64.0.0/10.
+* **The control plane may go through a proxy (patch 08).** The app hands the
+  daemon `NB_BIRDSOCKS_CONTROL_PROXY` (`socks5h://` or `http://`): a proxy of
+  the user's, or ByeDPI (`core/ByeDpiProxy`, JNI, on a random loopback address,
+  flags allow-listed by `ByeDpiFlags`). Management and signal dial through it
+  in `client/grpc`, the relay's WebSocket and the daemon's HTTP requests take
+  it as their `Proxy`. Not `HTTPS_PROXY`: gRPC speaks only CONNECT and the
+  relay's transport ignores the environment. A bad URL fails the dials rather
+  than going direct, and with a proxy the relay keeps to WebSocket.
 * **Signing in** is `Login` then, when it asks, the browser (device-code flow:
   `verificationURIComplete` and `userCode`) and `WaitSSOLogin`, then `Up`.
   `LoginFlow` runs it in the app's scope so the browser taking the screen does

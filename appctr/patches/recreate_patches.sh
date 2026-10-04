@@ -90,6 +90,8 @@ make_patch 05-engine-android-hooks.patch \
 # netstack mode (on Android it closed Signal's or the relay's socket from a
 # GC finalizer), a connection attempt cut after 10 s, not 20, and a Signal
 # stream left unanswered dropped with its transport after 6 s, not 40.
+# client/grpc/dialer_generic.go also routes its dials through patch 08's
+# control proxy; the file can sit in one patch only.
 make_patch 06-connect-faster.patch \
     client/internal/connect.go \
     client/grpc/dialer.go \
@@ -106,3 +108,12 @@ make_patch 07-inbound-forwarding.patch \
     client/firewall/uspfilter/forwarder/birdsocks_test.go \
     client/firewall/uspfilter/forwarder/tcp.go \
     client/firewall/uspfilter/forwarder/udp.go
+
+# The control plane through a proxy: management, signal, the relay's
+# WebSocket and the daemon's HTTP requests take the SOCKS5 or HTTP proxy the
+# app names (another proxy, or its own ByeDPI against DPI), since gRPC
+# knows only HTTP CONNECT and the relay's transport ignores HTTPS_PROXY.
+make_patch 08-control-proxy.patch \
+    client/net/birdsocks_ctlproxy.go \
+    client/net/birdsocks_ctlproxy_test.go \
+    shared/relay/client/dialer/ws/ws.go
