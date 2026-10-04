@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diagnostics: the connection, the events, the tools. -->
+<resources>
+    <string name="diag_tools">Инструменты</string>
+    <string name="diag_tool_logs_desc">Лог приложения и NetBird: поиск, копирование, сохранение.</string>
+    <string name="diag_tool_trace_desc">Что firewall NetBird сделает с пакетом между телефоном и узлом.</string>
+    <string name="diag_forwarding_desc">Порты, которые сеть пробрасывает на это устройство как на маршрутизирующий узел. Сами правила задаются на сервере.</string>
+</resources>

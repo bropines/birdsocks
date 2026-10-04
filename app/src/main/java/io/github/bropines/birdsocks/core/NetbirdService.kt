@@ -25,7 +25,7 @@ import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.models.NbConnState
 import io.github.bropines.birdsocks.models.NbEvent
 import io.github.bropines.birdsocks.models.NbStatus
-import io.github.bropines.birdsocks.ui.EventsActivity
+import io.github.bropines.birdsocks.ui.DiagnosticsActivity
 import io.github.bropines.birdsocks.ui.ExposeActivity
 import io.github.bropines.birdsocks.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -284,7 +284,7 @@ class NetbirdService : Service() {
             if (e.severity !in setOf("WARNING", "ERROR", "CRITICAL")) continue
             val at = e.timestamp?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: continue
             if (now - at > 2 * 60_000) continue
-            val open = PendingIntent.getActivity(this, 4, Intent(this, EventsActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val open = PendingIntent.getActivity(this, 4, DiagnosticsActivity.intent(this, DiagnosticsActivity.PAGE_EVENTS), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val n = NotificationCompat.Builder(this, EVENTS_CHANNEL_ID)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(e.userMessage.ifEmpty { e.message })

@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdState
+import io.github.bropines.birdsocks.core.SegmentedChipItem
+import io.github.bropines.birdsocks.core.SlidingSegmentedChips
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.models.NbTrace
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
@@ -43,6 +47,9 @@ class TraceActivity : ComponentActivity() {
     }
 }
 
+/** What TracePacket takes as a protocol, in the order the chips show them. */
+private val TRACE_PROTOCOLS = listOf("tcp", "udp", "icmp")
+
 /**
  * Asks NetBird's firewall what it would do with one packet between this
  * device and a peer: each step it takes, and which ACL rule decides.
@@ -51,6 +58,7 @@ class TraceActivity : ComponentActivity() {
 fun TraceScreen(initialPeer: String, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val status by NetbirdState.status.collectAsState()
+    val daemon by NetbirdState.daemon.collectAsState()
     val self = status?.fullStatus?.localPeerState?.address.orEmpty()
     val peers = status?.fullStatus?.peers.orEmpty()
     var peer by remember { mutableStateOf(initialPeer) }
@@ -76,6 +84,11 @@ fun TraceScreen(initialPeer: String, onBack: () -> Unit) {
     }
 
     Scaffold(topBar = { AppTopBar(title = stringResource(R.string.nb_trace_title), onBack = onBack) }) { padding ->
+        // The firewall that answers is the running daemon's.
+        if (daemon != NetbirdState.Daemon.Running) {
+            DaemonStoppedState(onStarted = {}, modifier = Modifier.fillMaxSize().padding(padding))
+            return@Scaffold
+        }
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).readableWidth(),
             contentPadding = PaddingValues(16.dp),
@@ -92,23 +105,31 @@ fun TraceScreen(initialPeer: String, onBack: () -> Unit) {
                 )
             }
             item {
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(selected = inbound, onClick = { inbound = true }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.nb_trace_in)) }
-                    SegmentedButton(selected = !inbound, onClick = { inbound = false }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.nb_trace_out)) }
-                }
+                SlidingSegmentedChips(
+                    items = listOf(
+                        SegmentedChipItem(stringResource(R.string.nb_trace_in), Icons.AutoMirrored.Filled.CallReceived),
+                        SegmentedChipItem(stringResource(R.string.nb_trace_out), Icons.AutoMirrored.Filled.CallMade)
+                    ),
+                    selectedIndex = if (inbound) 0 else 1,
+                    onOptionSelected = { inbound = it == 0 },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    listOf("tcp", "udp", "icmp").forEach { p ->
-                        FilterChip(selected = protocol == p, onClick = { protocol = p }, label = { Text(p.uppercase()) })
-                    }
-                    if (protocol != "icmp") {
-                        OutlinedTextField(
-                            value = port, onValueChange = { port = it.filter(Char::isDigit).take(5) },
-                            label = { Text(stringResource(R.string.nb_trace_port)) }, singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f)
-                        )
-                    }
+                SlidingSegmentedChips(
+                    options = TRACE_PROTOCOLS.map { it.uppercase() },
+                    selectedIndex = TRACE_PROTOCOLS.indexOf(protocol).coerceAtLeast(0),
+                    onOptionSelected = { protocol = TRACE_PROTOCOLS[it] },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (protocol != "icmp") {
+                item {
+                    OutlinedTextField(
+                        value = port, onValueChange = { port = it.filter(Char::isDigit).take(5) },
+                        label = { Text(stringResource(R.string.nb_trace_port)) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
             item {
@@ -123,18 +144,16 @@ fun TraceScreen(initialPeer: String, onBack: () -> Unit) {
                     Card(colors = CardDefaults.cardColors(containerColor = if (ok) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer)) {
                         ListItem(
                             leadingContent = { Icon(if (ok) Icons.Default.CheckCircle else Icons.Default.Block, null) },
-                            headlineContent = { Text(stringResource(if (ok) R.string.nb_trace_allowed else R.string.nb_trace_denied)) },
                             supportingContent = { Text(r.stages.lastOrNull()?.message.orEmpty()) },
                             colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-                        )
+                        ) { Text(stringResource(if (ok) R.string.nb_trace_allowed else R.string.nb_trace_denied)) }
                     }
                 }
                 items(r.stages) { s ->
                     ListItem(
                         leadingContent = { Icon(if (s.allowed) Icons.Default.Check else Icons.Default.Remove, null, tint = if (s.allowed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline) },
-                        headlineContent = { Text(s.name) },
                         supportingContent = { Text(listOfNotNull(s.message, s.forwardingDetails).joinToString("\n")) }
-                    )
+                    ) { Text(s.name) }
                 }
             }
         }

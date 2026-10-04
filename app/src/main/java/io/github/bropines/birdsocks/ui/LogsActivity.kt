@@ -26,15 +26,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -343,11 +340,6 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
         withDayDividers(displayedLogs, todayLabel, yesterdayLabel)
     }
 
-    var showBundle by remember { mutableStateOf(false) }
-    if (showBundle) DebugBundleDialog(onDismiss = { showBundle = false })
-    var showCapture by remember { mutableStateOf(false) }
-    if (showCapture) CaptureDialog(onDismiss = { showCapture = false })
-
     val saveFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         uri?.let {
             coroutineScope.launch(Dispatchers.IO) {
@@ -475,8 +467,6 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
                             }) { Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.action_copy)) }
                             
                             IconButton(onClick = { saveFileLauncher.launch("birdsocks_logs_${System.currentTimeMillis()}.txt") }) { Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save)) }
-                            IconButton(onClick = { showCapture = true }) { Icon(Icons.Default.Sensors, contentDescription = stringResource(R.string.nb_capture_title)) }
-                            IconButton(onClick = { showBundle = true }) { Icon(Icons.Default.Inventory2, contentDescription = stringResource(R.string.nb_bundle_title)) }
 
                             IconButton(onClick = {
                                 includeLogcat = !includeLogcat
@@ -663,149 +653,5 @@ private fun LogEntryRow(log: LogEntry, scale: Float, expanded: Boolean, onToggle
         modifier = Modifier
             .then(if (foldable) Modifier.clickable(onClick = onToggle) else Modifier)
             .padding(vertical = 2.dp)
-    )
-}
-
-/**
- * NetBird's debug bundle: the daemon's logs, status, routes and system
- * details in one archive — uploaded to NetBird for support (the key goes to
- * the clipboard) or saved as a zip. Anonymized by default.
- */
-@Composable
-private fun DebugBundleDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var anonymize by remember { mutableStateOf(true) }
-    var busy by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf<String?>(null) }
-    var bundlePath by remember { mutableStateOf<String?>(null) }
-    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
-        val path = bundlePath ?: return@rememberLauncherForActivityResult
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch(Dispatchers.IO) {
-            val ok = runCatching {
-                context.contentResolver.openOutputStream(uri)?.use { out -> java.io.File(path).inputStream().use { it.copyTo(out) } }
-            }.isSuccess
-            withContext(Dispatchers.Main) { result = context.getString(if (ok) R.string.logs_saved else R.string.nb_bundle_failed, "") }
-        }
-    }
-
-    fun build(upload: Boolean) {
-        busy = true
-        result = null
-        scope.launch {
-            runCatching { io.github.bropines.birdsocks.core.Netbird.debugBundle(anonymize, upload) }
-                .onSuccess { b ->
-                    bundlePath = b.path
-                    when {
-                        upload && b.uploadedKey.isNotEmpty() -> {
-                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            cm.setPrimaryClip(ClipData.newPlainText("NetBird debug key", b.uploadedKey))
-                            result = context.getString(R.string.nb_bundle_uploaded, b.uploadedKey)
-                        }
-                        upload -> result = context.getString(R.string.nb_bundle_failed, b.uploadFailureReason)
-                        else -> save.launch("netbird-debug-${System.currentTimeMillis()}.zip")
-                    }
-                }
-                .onFailure { result = context.getString(R.string.nb_bundle_failed, it.message ?: "") }
-            busy = false
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text(stringResource(R.string.nb_bundle_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.nb_bundle_desc), style = MaterialTheme.typography.bodyMedium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = anonymize, onCheckedChange = { anonymize = it }, enabled = !busy)
-                    Text(stringResource(R.string.nb_bundle_anonymize))
-                }
-                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                result?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-            }
-        },
-        confirmButton = { TextButton(enabled = !busy, onClick = { build(upload = true) }) { Text(stringResource(R.string.nb_bundle_upload)) } },
-        dismissButton = { TextButton(enabled = !busy, onClick = { build(upload = false) }) { Text(stringResource(R.string.nb_bundle_save)) } }
-    )
-}
-
-/**
- * Records the tunnel's packets for a while as a .pcap file — what Wireshark
- * opens — and saves it where the user picks.
- */
-@Composable
-private fun CaptureDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var seconds by remember { mutableStateOf(30) }
-    var filter by remember { mutableStateOf("") }
-    var running by remember { mutableStateOf(false) }
-    var bytes by remember { mutableStateOf(0L) }
-    var message by remember { mutableStateOf<String?>(null) }
-    val file = remember { java.io.File(context.cacheDir, "capture.pcap") }
-    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.tcpdump.pcap")) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch(Dispatchers.IO) {
-            runCatching {
-                context.contentResolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
-            }.onFailure { message = it.message }
-            file.delete()
-            launch(Dispatchers.Main) { if (message == null) onDismiss() }
-        }
-    }
-    var sub by remember { mutableStateOf<appctr.Subscription?>(null) }
-    DisposableEffect(Unit) { onDispose { sub?.cancel() } }
-
-    fun start() {
-        running = true; bytes = 0; message = null
-        val out = java.io.FileOutputStream(file)
-        sub = Netbird.capture(seconds, filter,
-            onData = { chunk -> synchronized(out) { out.write(chunk); bytes += chunk.size } },
-            onEnd = { err ->
-                synchronized(out) { runCatching { out.close() } }
-                scope.launch(Dispatchers.Main) {
-                    running = false
-                    sub = null
-                    // Whatever was recorded is worth saving, however the capture ended.
-                    when {
-                        file.length() > 24 -> save.launch("birdsocks-${System.currentTimeMillis()}.pcap")
-                        err.isEmpty() || err == Netbird.STREAM_DONE -> message = context.getString(R.string.nb_capture_empty)
-                        else -> message = err.substringAfter("desc = ")
-                    }
-                }
-            })
-    }
-
-    AlertDialog(
-        onDismissRequest = { if (!running) onDismiss() },
-        icon = { Icon(Icons.Default.Sensors, null) },
-        title = { Text(stringResource(R.string.nb_capture_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.nb_capture_desc), style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(10, 30, 60, 120).forEach { s ->
-                        FilterChip(selected = seconds == s, enabled = !running, onClick = { seconds = s }, label = { Text(stringResource(R.string.nb_capture_seconds, s)) })
-                    }
-                }
-                OutlinedTextField(
-                    value = filter, onValueChange = { filter = it }, enabled = !running, singleLine = true,
-                    label = { Text(stringResource(R.string.nb_capture_filter)) },
-                    supportingText = { Text(stringResource(R.string.nb_capture_filter_desc)) }
-                )
-                if (running) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Text(stringResource(R.string.nb_capture_progress, bytes / 1024), style = MaterialTheme.typography.bodySmall)
-                }
-                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            }
-        },
-        confirmButton = {
-            if (running) TextButton(onClick = { sub?.cancel() }) { Text(stringResource(R.string.nb_capture_stop)) }
-            else TextButton(onClick = ::start) { Text(stringResource(R.string.nb_capture_start)) }
-        },
-        dismissButton = { TextButton(enabled = !running, onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }

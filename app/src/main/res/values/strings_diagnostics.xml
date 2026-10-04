@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diagnostics: the connection, the events, the tools. -->
+<resources>
+    <string name="diag_tools">Tools</string>
+    <string name="diag_tool_logs_desc">The app\'s and NetBird\'s log: search it, copy it, save it.</string>
+    <string name="diag_tool_trace_desc">What NetBird\'s firewall would do with a packet between this phone and a peer.</string>
+    <string name="diag_forwarding_desc">Ports the network forwards to this device as a routing peer. The rules are set on the server.</string>
+</resources>
