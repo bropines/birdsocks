@@ -176,15 +176,18 @@ object Netbird {
         }.toString())
     }
 
-    /** Makes [name] the active profile and connects it; one not logged in yet asks for a login. */
-    suspend fun switchProfile(name: String) {
+    /**
+     * Makes [name] the active profile and connects it; one not logged in yet
+     * asks for a login. [connect] false leaves that to a login about to start.
+     */
+    suspend fun switchProfile(name: String, connect: Boolean = true) {
         runCatching { down() }
         call("SwitchProfile", buildJsonObject {
             put("profileName", name)
             put("username", userFor(name))
         }.toString())
         NetbirdState.profileFlow.value = name
-        up()
+        if (connect) up()
     }
 
     /** Removes [name], its keys and settings; never the active or the default one. */

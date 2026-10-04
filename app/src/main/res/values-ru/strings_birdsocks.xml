@@ -101,6 +101,9 @@
     <string name="nb_accounts_add">Добавить аккаунт</string>
     <string name="nb_accounts_name">Название</string>
     <string name="nb_accounts_name_hint">Работа, дом…</string>
+    <string name="nb_accounts_name_taken">Аккаунт с таким именем уже есть</string>
+    <string name="nb_accounts_add_sign_in">Добавить и войти</string>
+    <string name="nb_accounts_add_anyway">Всё равно добавить</string>
     <string name="nb_accounts_rename">Переименовать</string>
     <string name="nb_accounts_remove">Удалить аккаунт</string>
     <string name="nb_accounts_remove_confirm">%1$s: ключи и настройки аккаунта будут удалены с телефона. Узел в панели останется — удалите его там.</string>

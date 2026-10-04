@@ -386,7 +386,9 @@ private fun LoginCard(login: LoginFlow.State, serverMessage: String) {
     var selfHosted by rememberSaveable { mutableStateOf(false) }
     var server by rememberSaveable { mutableStateOf("") }
     // The server the profile already points at: a re-login is to that one.
-    LaunchedEffect(Unit) {
+    // Read again when a login fails: one started with a server (a new
+    // account) has stored it by then.
+    LaunchedEffect(login is LoginFlow.State.Failed) {
         val url = runCatching { Netbird.config().managementUrl }.getOrNull()?.trimEnd('/') ?: return@LaunchedEffect
         if (server.isEmpty() && url.isNotEmpty() && !url.startsWith(GlobalSettings.CLOUD_MANAGEMENT_URL.substringBeforeLast(':'))) {
             selfHosted = true

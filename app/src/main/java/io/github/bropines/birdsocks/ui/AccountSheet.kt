@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.BirdSocksApp
 import io.github.bropines.birdsocks.core.GlobalSettings
+import io.github.bropines.birdsocks.core.LoginFlow
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdService
 import io.github.bropines.birdsocks.core.NetbirdState
@@ -93,13 +94,15 @@ fun AccountSheet(onDismiss: () -> Unit) {
 
     // A switch outlives the sheet, which closes at once: the status card
     // shows the reconnect, and a profile not signed in yet its sign-in card.
-    fun switchTo(name: String, add: Boolean = false) {
+    // A new account with its server signs in right after the switch instead of connecting.
+    fun switchTo(name: String, add: Boolean = false, server: String? = null, setupKey: String? = null) {
         val app = context.applicationContext
         BirdSocksApp.scope.launch {
             runCatching {
                 if (!NetbirdService.awaitRunning(app)) error(app.getString(R.string.nb_error_not_running))
                 if (add) Netbird.addProfile(name)
-                Netbird.switchProfile(name)
+                Netbird.switchProfile(name, connect = server == null)
+                if (server != null) LoginFlow.start(app, server, setupKey)
             }.onFailure { Toast.makeText(app, it.message, Toast.LENGTH_LONG).show() }
         }
         onDismiss()
@@ -189,14 +192,13 @@ fun AccountSheet(onDismiss: () -> Unit) {
     }
 
     if (adding) {
-        ProfileNameDialog(
-            title = strAdd,
-            initial = "",
+        AddAccountDialog(
+            existing = accounts.map { it.profile.name },
             onDismiss = { adding = false }
-        ) { name ->
+        ) { name, server, setupKey ->
             adding = false
-            // A new profile is not logged in: switching to it brings the sign-in card.
-            switchTo(name, add = true)
+            // The main screen's sign-in card follows the login from here.
+            switchTo(name, add = true, server = server, setupKey = setupKey)
         }
     }
     renaming?.let { a ->
