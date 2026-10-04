@@ -8,7 +8,7 @@ package main
 // which reads /etc/resolv.conf, and Android has none: it would ask
 // 127.0.0.1:53 and get nothing. So the app writes the network's DNS servers
 // into a file, one address per line, and every lookup that has no tunnel
-// resolver of its own asks them in turn.
+// resolver of its own asks them.
 
 import (
 	"bufio"
@@ -78,26 +78,22 @@ func readDNSServers(path string) []string {
 
 // installResolver points Go's resolver, for this whole process, at the
 // servers in path, and hands the same servers to the DNS proxy as its
-// fallback.
+// fallback. A query over UDP goes to all of them at once (dnsrace.go); the
+// TCP retry of a truncated answer tries them in turn.
 func installResolver(path string) {
 	f := &dnsFile{path: path}
 	netstack.SetFallbackDNS(f.current)
-	var next uint32
-	var nextMu sync.Mutex
 	net.DefaultResolver = &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
 			servers := f.current()
-			nextMu.Lock()
-			start := int(next % uint32(len(servers)))
-			next++
-			nextMu.Unlock()
+			if strings.HasPrefix(network, "udp") {
+				return dialRace(ctx, servers)
+			}
 			var d net.Dialer
 			var errs []error
-			// Go's resolver retries on another Dial when one server times
-			// out, so a dead first server costs one timeout, not every lookup.
-			for i := range servers {
-				conn, err := d.DialContext(ctx, network, servers[(start+i)%len(servers)])
+			for _, s := range servers {
+				conn, err := d.DialContext(ctx, network, s)
 				if err == nil {
 					return conn, nil
 				}

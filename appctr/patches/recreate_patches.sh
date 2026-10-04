@@ -71,3 +71,14 @@ make_patch 04-daemon-network-events.patch \
 # expand short names themselves — netstack mode has no system resolver.
 make_patch 05-engine-android-hooks.patch \
     client/internal/engine.go
+
+# Connecting fast and keeping the connections: no kernel-WireGuard probe in
+# netstack mode (on Android it closed Signal's or the relay's socket from a
+# GC finalizer), a connection attempt cut after 10 s, not 20, and a Signal
+# stream left unanswered dropped with its transport after 6 s, not 40.
+make_patch 06-connect-faster.patch \
+    client/internal/connect.go \
+    client/grpc/dialer.go \
+    client/grpc/dialer_generic.go \
+    shared/signal/client/grpc.go \
+    shared/signal/client/registration_test.go

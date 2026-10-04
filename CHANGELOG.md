@@ -40,3 +40,6 @@ TailSocks' history is in its own repository.
 ### Fixed
 - An exit node no longer takes the local network's own addresses.
 - A name just added to a domain route goes through it at once.
+- Connecting often took 40 s or more: on Android a kernel-WireGuard probe closed the Signal or relay socket a moment later.
+- A DNS answer lost on weak Wi-Fi no longer costs 5 s: the daemon asks all the network's resolvers at once.
+- A Signal stream left unanswered is redialed after 6 s, not 40; a stuck connection attempt after 10 s, not 20.

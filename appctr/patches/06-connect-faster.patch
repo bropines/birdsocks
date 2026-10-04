@@ -1,0 +1,270 @@
+--- netbird_orig/client/internal/connect.go
++++ netbird_src/client/internal/connect.go
+@@ -367,7 +367,11 @@
+ 		localPeerState := peer.LocalPeerState{
+ 			IP:              loginResp.GetPeerConfig().GetAddress(),
+ 			PubKey:          myPrivateKey.PublicKey().String(),
+-			KernelInterface: device.WireGuardModuleIsLoaded() && !netstack.IsEnabled(),
++			// netstack first: the kernel probe is a netlink LinkAdd, and on
++			// Android its denied bind leaks an *os.File (vishvananda/netlink
++			// v1.3.1) whose finalizer later closes a reused descriptor —
++			// Signal's or the relay's socket, silently.
++			KernelInterface: !netstack.IsEnabled() && device.WireGuardModuleIsLoaded(),
+ 			FQDN:            loginResp.GetPeerConfig().GetFqdn(),
+ 		}
+ 		c.statusRecorder.UpdateLocalPeerState(localPeerState)
+--- netbird_orig/client/grpc/dialer.go
++++ netbird_src/client/grpc/dialer.go
+@@ -11,6 +11,7 @@
+ 	"github.com/cenkalti/backoff/v4"
+ 	log "github.com/sirupsen/logrus"
+ 	"google.golang.org/grpc"
++	grpcbackoff "google.golang.org/grpc/backoff"
+ 	"google.golang.org/grpc/credentials"
+ 	"google.golang.org/grpc/credentials/insecure"
+ 	"google.golang.org/grpc/keepalive"
+@@ -18,6 +19,10 @@
+ 	"github.com/netbirdio/netbird/util/embeddedroots"
+ )
+ 
++// minConnectTimeout bounds one connection attempt: DNS, TCP and TLS, which
++// take well under a second to a healthy server even over mobile data.
++const minConnectTimeout = 10 * time.Second
++
+ // Backoff returns a backoff configuration for gRPC calls
+ func Backoff(ctx context.Context) backoff.BackOff {
+ 	b := backoff.NewExponentialBackOff()
+@@ -50,6 +55,9 @@
+ 		transportOption,
+ 		WithCustomDialer(tlsEnabled, component),
+ 		grpc.WithBlock(),
++		// A connection attempt that hangs (a TLS handshake never answered) is
++		// cut after 10 s rather than gRPC's 20 s, and the next one dialed.
++		grpc.WithConnectParams(grpc.ConnectParams{Backoff: grpcbackoff.DefaultConfig, MinConnectTimeout: minConnectTimeout}),
+ 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+ 			Time:    30 * time.Second,
+ 			Timeout: 10 * time.Second,
+--- netbird_orig/client/grpc/dialer_generic.go
++++ netbird_src/client/grpc/dialer_generic.go
+@@ -44,6 +44,30 @@
+ 	})
+ }
+ 
++// WithDialHook dials as WithSweeper does (as WithCustomDialer when sweeper
++// is nil) and hands every new connection to hook, so its owner can drop a
++// transport that gRPC still believes healthy. Append it after the others.
++func WithDialHook(sweeper Sweeper, hook func(net.Conn)) grpc.DialOption {
++	return grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
++		var conn net.Conn
++		var err error
++		if sweeper == nil {
++			conn, err = dialContext(ctx, addr)
++		} else {
++			dial := sweeper.StartDial(ctx)
++			defer dial.Release()
++			if conn, err = dialContext(dial.Ctx(), addr); err == nil {
++				conn, err = dial.WrapConn(conn)
++			}
++		}
++		if err != nil {
++			return nil, err
++		}
++		hook(conn)
++		return conn, nil
++	})
++}
++
+ func dialContext(ctx context.Context, addr string) (net.Conn, error) {
+ 	if runtime.GOOS == "linux" {
+ 		currentUser, err := user.Current()
+--- netbird_orig/shared/signal/client/grpc.go
++++ netbird_src/shared/signal/client/grpc.go
+@@ -5,6 +5,7 @@
+ 	"errors"
+ 	"fmt"
+ 	"io"
++	"net"
+ 	"sync"
+ 	"sync/atomic"
+ 	"time"
+@@ -40,6 +41,12 @@
+ 	receiveWatchdogInterval = 10 * time.Second
+ )
+ 
++// registrationTimeout is how long a new stream may wait for the server's
++// registration header — a tenth of a second when the server is healthy.
++// Fresh connections were seen to go unanswered until keepalive gave up
++// on them 40 s later, while a redial registered at once.
++var registrationTimeout = 6 * time.Second
++
+ // errReceiveStreamStalled is reported when the receive stream is transport-alive
+ // but no longer delivering messages, so the stream is torn down to reconnect.
+ var errReceiveStreamStalled = errors.New("signal receive stream stalled")
+@@ -72,6 +79,10 @@
+ 
+ 	onReconnectedListenerFn func()
+ 
++	// transport is the connection under signalConn, closed to make gRPC
++	// redial when a stream goes unanswered.
++	transport atomic.Pointer[net.Conn]
++
+ 	decryptionWorker       *Worker
+ 	decryptionWorkerCancel context.CancelFunc
+ 	decryptionWg           sync.WaitGroup
+@@ -115,10 +126,11 @@
+ 		opt(c)
+ 	}
+ 
+-	var extraOpts []grpc.DialOption
++	var sweeper nbgrpc.Sweeper
+ 	if c.netMgr != nil {
+-		extraOpts = append(extraOpts, nbgrpc.WithSweeper(c.netMgr))
++		sweeper = c.netMgr
+ 	}
++	extraOpts := []grpc.DialOption{nbgrpc.WithDialHook(sweeper, func(conn net.Conn) { c.transport.Store(&conn) })}
+ 
+ 	var conn *grpc.ClientConn
+ 	operation := func() error {
+@@ -316,10 +328,26 @@
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	// blocks
+-	header, err := c.stream.Header()
+-	if err != nil {
+-		return nil, err
++	// blocks; gRPC reports a failed stream as no header, without the error
++	type headerResult struct {
++		md  metadata.MD
++		err error
++	}
++	got := make(chan headerResult, 1)
++	go func() {
++		md, err := stream.Header()
++		got <- headerResult{md, err}
++	}()
++	var header metadata.MD
++	select {
++	case r := <-got:
++		if r.err != nil {
++			return nil, r.err
++		}
++		header = r.md
++	case <-time.After(registrationTimeout):
++		c.dropTransport()
++		return nil, fmt.Errorf("no registration header from the Signal server in %v, redialing", registrationTimeout)
+ 	}
+ 	registered := header.Get(proto.HeaderRegistered)
+ 	if len(registered) == 0 {
+@@ -329,6 +357,15 @@
+ 	return stream, nil
+ }
+ 
++// dropTransport closes the connection gRPC dialed last, so the next stream
++// gets a new one instead of the transport that left this one unanswered.
++func (c *GrpcClient) dropTransport() {
++	if conn := c.transport.Load(); conn != nil {
++		log.Debugf("closing signal transport %s -> %s", (*conn).LocalAddr(), (*conn).RemoteAddr())
++		_ = (*conn).Close()
++	}
++}
++
+ // Ready indicates whether the client is okay and Ready to be used
+ // for now it just checks whether gRPC connection to the service is in state Ready
+ func (c *GrpcClient) Ready() bool {
+--- netbird_orig/shared/signal/client/registration_test.go
++++ netbird_src/shared/signal/client/registration_test.go
+@@ -0,0 +1,93 @@
++package client
++
++import (
++	"context"
++	"net"
++	"sync"
++	"testing"
++	"time"
++
++	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
++	"google.golang.org/grpc"
++	"google.golang.org/grpc/metadata"
++	"google.golang.org/grpc/peer"
++
++	"github.com/netbirdio/netbird/shared/signal/proto"
++)
++
++// silentFirstServer never answers a stream on the first connection it sees,
++// and registers peers normally on any later one.
++type silentFirstServer struct {
++	proto.UnimplementedSignalExchangeServer
++	mu    sync.Mutex
++	first string
++	conns map[string]bool
++}
++
++func (s *silentFirstServer) ConnectStream(stream proto.SignalExchange_ConnectStreamServer) error {
++	p, _ := peer.FromContext(stream.Context())
++	addr := p.Addr.String()
++	s.mu.Lock()
++	if s.first == "" {
++		s.first = addr
++	}
++	s.conns[addr] = true
++	silent := addr == s.first
++	s.mu.Unlock()
++	if silent {
++		<-stream.Context().Done()
++		return nil
++	}
++	if err := stream.SendHeader(metadata.Pairs(proto.HeaderRegistered, "1")); err != nil {
++		return err
++	}
++	<-stream.Context().Done()
++	return nil
++}
++
++func TestUnansweredStreamRedials(t *testing.T) {
++	old := registrationTimeout
++	registrationTimeout = 500 * time.Millisecond
++	defer func() { registrationTimeout = old }()
++
++	lis, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	srv := grpc.NewServer()
++	fake := &silentFirstServer{conns: map[string]bool{}}
++	proto.RegisterSignalExchangeServer(srv, fake)
++	go srv.Serve(lis)
++	defer srv.Stop()
++
++	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
++	defer cancel()
++	key, _ := wgtypes.GeneratePrivateKey()
++	start := time.Now()
++	c, err := NewClient(ctx, lis.Addr().String(), key, false)
++	if err != nil {
++		t.Fatal(err)
++	}
++	received := make(chan struct{})
++	go func() {
++		defer close(received)
++		_ = c.Receive(ctx, func(*proto.Message) error { return nil })
++	}()
++	// Close only after Receive has returned: upstream's Close races a live Receive.
++	defer func() { cancel(); <-received; _ = c.Close() }()
++	c.WaitStreamConnected(ctx)
++	if ctx.Err() != nil {
++		t.Fatal("never registered")
++	}
++	took := time.Since(start)
++	fake.mu.Lock()
++	n := len(fake.conns)
++	fake.mu.Unlock()
++	if n < 2 {
++		t.Fatalf("registered over %d connection(s); the silent one should have been dropped", n)
++	}
++	if took > 5*time.Second {
++		t.Fatalf("registered after %v", took)
++	}
++	t.Logf("registered after %v over %d connections", took, n)
++}
