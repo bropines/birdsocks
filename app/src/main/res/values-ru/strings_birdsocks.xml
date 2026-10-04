@@ -71,8 +71,6 @@
     <string name="nb_settings_logout">Выйти</string>
     <string name="nb_settings_logout_desc">Убрать устройство из сети</string>
     <string name="nb_settings_logout_confirm">Устройство удаляется из сети и забывает свои ключи. Повторный вход зарегистрирует его как новый узел.</string>
-    <string name="nb_settings_socks_port">Порт</string>
-    <string name="nb_settings_bad_port">Порт — число от 1 до 65535</string>
     <string name="nb_settings_socks_user">Имя пользователя</string>
     <string name="nb_settings_socks_pass">Пароль</string>
     <string name="nb_settings_socks_auth_desc">Прокси на localhost найдёт любое приложение на телефоне. С именем и паролем им пользуются только те, кому вы их дали. Задайте оба или ни одного.</string>
@@ -81,12 +79,8 @@
     <string name="nb_settings_dns_proxy">DNS-прокси</string>
     <string name="nb_settings_dns_proxy_desc">Отвечает на обычный DNS по этому адресу: сначала имена NetBird, остальное — через DNS сети. Укажите его в AdGuard или другом приложении.</string>
     <string name="nb_settings_dns_proxy_address">Адрес</string>
-    <string name="nb_settings_bad_address">Адрес — это host:port, например 127.0.0.1:48153</string>
     <string name="nb_settings_netbird">NetBird</string>
     <string name="nb_settings_netbird_off">Запустите BirdSocks, чтобы их менять: они хранятся в профиле NetBird.</string>
-    <string name="nb_settings_rosenpass_desc">Постквантовые ключи поверх WireGuard. Нужен на обоих узлах.</string>
-    <string name="nb_settings_rosenpass_permissive">Rosenpass, мягкий режим</string>
-    <string name="nb_settings_rosenpass_permissive_desc">Всё равно подключаться к узлам без Rosenpass.</string>
     <string name="nb_settings_lazy">Ленивые соединения</string>
     <string name="nb_settings_lazy_desc">Подключаться к узлу, только когда к нему идёт трафик. Бережёт батарею при множестве узлов; первый пакет подождёт.</string>
     <string name="nb_settings_block_inbound">Блокировать входящие</string>

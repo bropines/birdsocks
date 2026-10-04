@@ -696,8 +696,13 @@ fun MenuCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, ic
     }
 }
 
-/** Null when [url] answers HTTPS at all (any status counts), the reason otherwise. */
+/**
+ * Null when [url] answers at all (any status counts), the reason otherwise.
+ * An http:// server is not probed: the app may not speak cleartext, the
+ * daemon may, so a refusal here would say nothing about the server.
+ */
 suspend fun probeServer(url: String): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    if (url.startsWith("http://", ignoreCase = true)) return@withContext null
     runCatching {
         val client = okhttp3.OkHttpClient.Builder()
             .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)

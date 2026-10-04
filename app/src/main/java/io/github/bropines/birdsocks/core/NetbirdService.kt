@@ -310,7 +310,10 @@ class NetbirdService : Service() {
     override fun onDestroy() {
         runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
         Appctr.setDaemonListener(null)
-        if (Appctr.isRunning()) runCatching { Appctr.stop() }
+        // Off the main thread: Stop waits for the daemon to exit (up to 10 s),
+        // and a start queued behind it must reach startForeground in time —
+        // Android kills the app otherwise (ForegroundServiceDidNotStartInTime).
+        if (Appctr.isRunning()) Thread { runCatching { Appctr.stop() } }.start()
         if (NetbirdState.daemonFlow.value != NetbirdState.Daemon.Stopped) {
             NetbirdState.statusFlow.value = null
             NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopped

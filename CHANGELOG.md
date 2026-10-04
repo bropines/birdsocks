@@ -38,6 +38,8 @@ TailSocks' history is in its own repository.
 - The exit node row checks the internet through the proxy and offers to turn off a node that forwards nothing.
 
 ### Fixed
+- Stopping and at once starting BirdSocks could crash it: the stop held the main thread while Android waited for the start.
+- A management server given as http:// is not reported unreachable before sign-in.
 - An exit node no longer takes the local network's own addresses.
 - A name just added to a domain route goes through it at once.
 - Connecting often took 40 s or more: on Android a kernel-WireGuard probe closed the Signal or relay socket a moment later.

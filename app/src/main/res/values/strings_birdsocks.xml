@@ -79,8 +79,6 @@
     <string name="nb_settings_logout">Log out</string>
     <string name="nb_settings_logout_desc">Remove this device from the network</string>
     <string name="nb_settings_logout_confirm">The device is removed from the network and forgets its keys. Signing in again registers it as a new peer.</string>
-    <string name="nb_settings_socks_port">Port</string>
-    <string name="nb_settings_bad_port">A port is a number from 1 to 65535</string>
     <string name="nb_settings_socks_user">Username</string>
     <string name="nb_settings_socks_pass">Password</string>
     <string name="nb_settings_socks_auth_desc">Any app on this phone can find a proxy on localhost. With a username and a password only the apps you give them to can use it. Set both or neither.</string>
@@ -89,12 +87,8 @@
     <string name="nb_settings_dns_proxy">DNS proxy</string>
     <string name="nb_settings_dns_proxy_desc">Answers plain DNS on this address: NetBird names first, everything else through the network\'s resolvers. Point AdGuard or another app\'s DNS here.</string>
     <string name="nb_settings_dns_proxy_address">Address</string>
-    <string name="nb_settings_bad_address">An address is host:port, such as 127.0.0.1:48153</string>
     <string name="nb_settings_netbird">NetBird</string>
     <string name="nb_settings_netbird_off">Start BirdSocks to change these: they live in NetBird\'s profile.</string>
-    <string name="nb_settings_rosenpass_desc">Post-quantum keys on top of WireGuard. Both peers need it on.</string>
-    <string name="nb_settings_rosenpass_permissive">Rosenpass permissive</string>
-    <string name="nb_settings_rosenpass_permissive_desc">Still connect to peers that have no Rosenpass.</string>
     <string name="nb_settings_lazy">Lazy connections</string>
     <string name="nb_settings_lazy_desc">Connect to a peer only when traffic goes to it. Saves battery with many peers; the first packet waits a moment.</string>
     <string name="nb_settings_block_inbound">Block inbound</string>
