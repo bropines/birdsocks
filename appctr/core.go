@@ -60,8 +60,13 @@ type StartOptions struct {
 	// first, the network's after), host:port; empty for none.
 	DNSProxy string
 	// DNSUpstream, comma-separated host:port, answers what NetBird does not;
-	// empty for the network's resolvers.
+	// empty for the network's resolvers. The DNS proxy and the VPN's
+	// resolver both use it.
 	DNSUpstream string
+	// TunDNS is the address the app's VPN announces as its DNS server; the
+	// SOCKS5 proxy answers queries to it itself (netstack/tundns.go). Set
+	// whether or not the VPN runs, so turning it on needs no restart.
+	TunDNS string
 	// RelayQUIC lets the relay try QUIC; off, it speaks WebSocket only — QUIC
 	// is throttled or dropped on many networks (Russia among them), and the
 	// race costs every connect a dead QUIC attempt.
@@ -260,9 +265,12 @@ func daemonEnv(opt *StartOptions, state string) []string {
 	}
 	if opt.DNSProxy != "" {
 		env = append(env, "NB_DNS_PROXY_ADDRESS="+opt.DNSProxy)
-		if opt.DNSUpstream != "" {
-			env = append(env, "NB_DNS_PROXY_UPSTREAM="+opt.DNSUpstream)
-		}
+	}
+	if opt.DNSUpstream != "" {
+		env = append(env, "NB_DNS_PROXY_UPSTREAM="+opt.DNSUpstream)
+	}
+	if opt.TunDNS != "" {
+		env = append(env, "NB_TUN_DNS_ADDRESS="+opt.TunDNS)
 	}
 	if opt.SocksHost != "" {
 		env = append(env, "NB_SOCKS5_LISTENER_ADDRESS="+opt.SocksHost)

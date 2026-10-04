@@ -595,15 +595,17 @@
 +}
 --- netbird_orig/client/iface/netstack/dnsproxy.go
 +++ netbird_src/client/iface/netstack/dnsproxy.go
-@@ -0,0 +1,273 @@
+@@ -0,0 +1,469 @@
 +package netstack
 +
 +// dnsproxy.go — BirdSocks: a plain DNS server on the host side of the
 +// daemon, for apps and ad-blockers that take a DNS address rather than a
-+// proxy. A query goes to NetBird's own resolver first, through the netstack
-+// (peer names, the account's zones and nameserver groups are only there);
-+// what NetBird has no handler for (REFUSED) or cannot answer (SERVFAIL) goes
-+// to the network's resolvers.
++// proxy, and the chain behind it, which the VPN mode's resolver shares
++// (tundns.go). A query goes to NetBird's own resolver first, through the
++// netstack (peer names, the account's zones and nameserver groups are only
++// there); what NetBird has no handler for (REFUSED) or cannot answer
++// (SERVFAIL) goes to the fallbacks, all at once — unless the name is
++// NetBird's own, which never leaves for a public resolver.
 +
 +import (
 +	"context"
@@ -718,31 +720,119 @@
 +	}
 +}
 +
-+// resolve answers one query: NetBird's resolver, then the network's. A
-+// single-label name is first tried under NetBird's search domains.
-+func (p *dnsProxy) resolve(q []byte) []byte {
-+	b := p.fixed
++// resolve answers one query for this proxy's engine, or the running one.
++func (p *dnsProxy) resolve(q []byte) []byte { return resolveQuery(p.fixed, q) }
++
++// When NetBird's resolver cannot reach its upstream — a match-all
++// nameserver group out of reach from this network — every public name waits
++// out its timeout before a fallback answers, and each new name a page needs
++// costs seconds. After one public name took resolverSlow and still got no
++// answer, public names go straight to the fallbacks for resolverPause; then
++// NetBird is tried again. NetBird's own names always ask it.
++const (
++	resolverSlow  = 2 * time.Second
++	resolverPause = 30 * time.Second
++)
++
++var resolverPausedUntil atomic.Int64 // Unix milliseconds
++
++func resolverPaused() bool { return time.Now().UnixMilli() < resolverPausedUntil.Load() }
++
++// resolveQuery answers one query: NetBird's resolver (a single-label name
++// first under its search domains), then the fallbacks, raced. fixed is the
++// engine to ask; nil asks whichever runs, waiting a moment for one that is
++// expected. A name of NetBird's own is never sent to a fallback: its
++// SERVFAIL or REFUSED is the answer. nil means nobody answered.
++func resolveQuery(fixed *backend, q []byte) []byte {
++	b := fixed
 +	if b == nil {
 +		b = waitBackend(context.Background(), backendWaitDNS)
 +	}
++	name := questionName(q)
++	own := name != "" && ownName(name)
 +	var nb []byte
-+	if b != nil {
-+		if resp := p.resolveShort(b, q); resp != nil {
++	if b != nil && (own || !resolverPaused()) {
++		if resp := resolveShort(b, q); resp != nil {
 +			return resp
 +		}
++		asked := time.Now()
 +		var err error
 +		nb, err = askNetBird(b, q)
 +		if err == nil && !retryable(nb) {
 +			return nb
 +		}
-+	}
-+	for _, s := range fallbackServers() {
-+		if resp, err := askUDP(q, s); err == nil {
-+			return resp
++		if !own && time.Since(asked) >= resolverSlow {
++			resolverPausedUntil.Store(time.Now().Add(resolverPause).UnixMilli())
++			log.Infof("DNS proxy: NetBird's resolver is not answering (%s took %v); public names go to the fallbacks for %v",
++				name, time.Since(asked).Round(time.Millisecond), resolverPause)
 +		}
++	}
++	if own {
++		if nb == nil {
++			nb = servfail(q)
++		}
++		return nb
++	}
++	if resp := askFallbacks(b, q); resp != nil {
++		return resp
 +	}
 +	// Nothing better: NetBird's own answer, SERVFAIL or REFUSED as it is.
 +	return nb
++}
++
++// publicResolvers join the fallbacks while an exit node carries the default
++// route: they are reached through it, as the rest of the traffic is, when
++// the network's own resolvers may not be (a carrier's answers only its
++// subscribers).
++var publicResolvers = []string{"1.1.1.1:53", "8.8.8.8:53"}
++
++// askFallbacks races the fallbacks (dns_upstream, else the network's
++// resolvers). With an engine, each is dialed the way the proxy dials it —
++// through an exit node when one is in use, a LAN resolver directly — and
++// when that brings nothing behind an exit node, the fallbacks are tried
++// once more directly.
++func askFallbacks(b *backend, q []byte) []byte {
++	servers := fallbackServers()
++	if b == nil || b.dialer == nil {
++		return raceExchange(context.Background(), q, servers, dialUDPDirect)
++	}
++	exit := exitNodeInUse()
++	if exit {
++		servers = appendNew(servers, publicResolvers...)
++	}
++	viaEngine := func(ctx context.Context, server string) (net.Conn, error) {
++		return b.dialer.Dial(ctx, "udp", server)
++	}
++	if resp := raceExchange(context.Background(), q, servers, viaEngine); resp != nil || !exit {
++		return resp
++	}
++	return raceExchange(context.Background(), q, fallbackServers(), dialUDPDirect)
++}
++
++func appendNew(list []string, more ...string) []string {
++	out := append([]string(nil), list...)
++	for _, m := range more {
++		dup := false
++		for _, s := range out {
++			if s == m {
++				dup = true
++				break
++			}
++		}
++		if !dup {
++			out = append(out, m)
++		}
++	}
++	return out
++}
++
++// exitNodeInUse: a peer carries the default route (its allowed IPs hold the
++// public internet).
++func exitNodeInUse() bool {
++	routes.Lock()
++	known := routes.dump != nil
++	routes.Unlock()
++	return known && overlayDestination(net.JoinHostPort(publicResolvers[0], "53"))
 +}
 +
 +// retryable is a response someone else may answer: no handler for the name
@@ -764,13 +854,119 @@
 +	return exchange(conn, q)
 +}
 +
-+func askUDP(q []byte, server string) ([]byte, error) {
-+	conn, err := net.DialTimeout("udp", server, dnsTimeout)
-+	if err != nil {
-+		return nil, err
++func dialUDPDirect(ctx context.Context, server string) (net.Conn, error) {
++	var d net.Dialer
++	return d.DialContext(ctx, "udp", server)
++}
++
++// negativeGrace is how long a negative answer (NXDOMAIN, or no records)
++// waits for another server to answer better: a network that mixes an
++// internal resolver with a public one gets the internal name, not the
++// public "no" (as birdsocksd/dnsrace.go does for the daemon's own lookups).
++const negativeGrace = 250 * time.Millisecond
++
++// raceExchange sends q to every server at once and returns the first
++// positive answer; a negative one waits negativeGrace for a better one, a
++// failure (SERVFAIL, REFUSED) is kept only when nobody does better. One
++// server at a time, three seconds each, made a dead first server cost every
++// lookup three seconds. nil when no server answered within dnsTimeout.
++func raceExchange(ctx context.Context, q []byte, servers []string, dial func(context.Context, string) (net.Conn, error)) []byte {
++	if len(servers) == 0 {
++		return nil
 +	}
-+	defer conn.Close()
-+	return exchange(conn, q)
++	ctx, cancel := context.WithTimeout(ctx, dnsTimeout)
++	defer cancel()
++	answers := make(chan []byte, len(servers))
++	for _, s := range servers {
++		go func(s string) {
++			conn, err := dial(ctx, s)
++			if err != nil {
++				answers <- nil
++				return
++			}
++			stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
++			defer stop()
++			defer conn.Close()
++			resp, err := exchange(conn, q)
++			if err != nil {
++				resp = nil
++			}
++			answers <- resp
++		}(s)
++	}
++	var negative, failure []byte
++	var grace <-chan time.Time
++	for settled := 0; settled < len(servers); {
++		select {
++		case p := <-answers:
++			settled++
++			switch {
++			case p == nil:
++			case positiveAnswer(p):
++				return p
++			case p[3]&0x0f == 0 || p[3]&0x0f == 3:
++				if negative == nil {
++					negative = p
++					grace = time.After(negativeGrace)
++				}
++			default:
++				if failure == nil {
++					failure = p
++				}
++			}
++		case <-grace:
++			return negative
++		case <-ctx.Done():
++			settled = len(servers)
++		}
++	}
++	if negative != nil {
++		return negative
++	}
++	return failure
++}
++
++// positiveAnswer: NOERROR with at least one answer record.
++func positiveAnswer(p []byte) bool { return len(p) >= 12 && p[3]&0x0f == 0 && (p[6] != 0 || p[7] != 0) }
++
++// questionName is the name asked, lower case with its trailing dot; "" when
++// q is not a query with one question.
++func questionName(q []byte) string {
++	var p dnsmessage.Parser
++	if _, err := p.Start(q); err != nil {
++		return ""
++	}
++	qs, err := p.AllQuestions()
++	if err != nil || len(qs) != 1 {
++		return ""
++	}
++	return strings.ToLower(qs[0].Name.String())
++}
++
++// servfail is a SERVFAIL for q: its id, its question, no records.
++func servfail(q []byte) []byte {
++	var p dnsmessage.Parser
++	h, err := p.Start(q)
++	if err != nil {
++		return nil
++	}
++	qs, err := p.AllQuestions()
++	if err != nil {
++		return nil
++	}
++	msg := dnsmessage.Message{
++		Header: dnsmessage.Header{
++			ID: h.ID, Response: true, OpCode: h.OpCode,
++			RecursionDesired: h.RecursionDesired, RecursionAvailable: true,
++			RCode: dnsmessage.RCodeServerFailure,
++		},
++		Questions: qs,
++	}
++	out, err := msg.Pack()
++	if err != nil {
++		return nil
++	}
++	return out
 +}
 +
 +// exchange sends q on conn and reads the response with q's id.
@@ -796,7 +992,7 @@
 +// short name or no domain has it. The domains are asked at once — some are
 +// forwarded upstream and take seconds to say no — and the earliest domain in
 +// the list that answers wins, as a system resolver's search order would.
-+func (p *dnsProxy) resolveShort(b *backend, q []byte) []byte {
++func resolveShort(b *backend, q []byte) []byte {
 +	var msg dnsmessage.Message
 +	if err := msg.Unpack(q); err != nil || len(msg.Questions) != 1 {
 +		return nil
@@ -868,6 +1064,654 @@
 +		return nil
 +	}
 +	return out
++}
+--- netbird_orig/client/iface/netstack/dnsproxy_test.go
++++ netbird_src/client/iface/netstack/dnsproxy_test.go
+@@ -0,0 +1,93 @@
++package netstack
++
++import (
++	"context"
++	"net/netip"
++	"testing"
++	"time"
++
++	"golang.org/x/net/dns/dnsmessage"
++)
++
++// The fallbacks are asked at once: a dead first server costs nothing.
++func TestFallbacksRace(t *testing.T) {
++	dead, _ := fakeDNS(t, 0, func([]byte) []byte { return nil })
++	slow, _ := fakeDNS(t, 2*time.Second, func(q []byte) []byte { return answerA(q, [4]byte{1, 1, 1, 1}) })
++	good, _ := fakeDNS(t, 0, func(q []byte) []byte { return answerA(q, [4]byte{2, 2, 2, 2}) })
++	start := time.Now()
++	resp := raceExchange(context.Background(), dnsQuery(t, 1, "example.com."), []string{dead, slow, good}, dialUDPDirect)
++	if resp == nil || firstA(t, resp) != [4]byte{2, 2, 2, 2} {
++		t.Fatalf("got %x", resp)
++	}
++	if took := time.Since(start); took > time.Second {
++		t.Fatalf("took %v", took)
++	}
++}
++
++// A quick "no such name" waits a moment for a server that knows better.
++func TestFallbackNegativeWaitsForPositive(t *testing.T) {
++	nx, _ := fakeDNS(t, 0, func(q []byte) []byte {
++		var m dnsmessage.Message
++		_ = m.Unpack(q)
++		m.Response, m.RCode = true, dnsmessage.RCodeNameError
++		b, _ := m.Pack()
++		return b
++	})
++	inner, _ := fakeDNS(t, 100*time.Millisecond, func(q []byte) []byte { return answerA(q, [4]byte{10, 1, 2, 3}) })
++	resp := raceExchange(context.Background(), dnsQuery(t, 1, "intranet.example."), []string{nx, inner}, dialUDPDirect)
++	if resp == nil || firstA(t, resp) != [4]byte{10, 1, 2, 3} {
++		t.Fatalf("got %x", resp)
++	}
++}
++
++// With no engine, a NetBird name is never sent to a fallback.
++func TestOwnNameNeverLeaks(t *testing.T) {
++	resetFront(t, time.Now().Add(-time.Hour))
++	up, count := fakeDNS(t, 0, func(q []byte) []byte { return answerA(q, [4]byte{6, 6, 6, 6}) })
++	t.Setenv(EnvDNSProxyUpstream, up)
++	SetOwnDomains(func() []string { return []string{"netbird.cloud"} })
++	t.Cleanup(func() { SetOwnDomains(nil) })
++
++	resp := resolveQuery(nil, dnsQuery(t, 3, "peer.NetBird.cloud."))
++	if rcodeOf(t, resp) != dnsmessage.RCodeServerFailure {
++		t.Fatalf("own name: %x", resp)
++	}
++	resp = resolveQuery(nil, dnsQuery(t, 4, "example.com."))
++	if firstA(t, resp) != [4]byte{6, 6, 6, 6} {
++		t.Fatalf("public name: %x", resp)
++	}
++	if got := count.Load(); got != 1 {
++		t.Fatalf("upstream asked %d times, want once (the public name)", got)
++	}
++}
++
++func TestOwnNameReverse(t *testing.T) {
++	routes.Lock()
++	saved := routes.overlay
++	routes.overlay = []netip.Prefix{netip.MustParsePrefix("100.92.0.0/16"), netip.MustParsePrefix("fd00:1234::/64")}
++	routes.Unlock()
++	t.Cleanup(func() { routes.Lock(); routes.overlay = saved; routes.Unlock() })
++
++	for name, want := range map[string]bool{
++		"2.1.92.100.in-addr.arpa.": true,
++		"8.8.8.8.in-addr.arpa.":    false,
++		"1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.4.3.2.1.0.0.d.f.ip6.arpa.": true,
++		"1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.": false,
++		"92.100.in-addr.arpa.": false,
++	} {
++		if got := ownName(name); got != want {
++			t.Errorf("%s: %v, want %v", name, got, want)
++		}
++	}
++}
++
++func TestServfailKeepsQuestion(t *testing.T) {
++	q := dnsQuery(t, 0xabcd, "x.example.")
++	var m dnsmessage.Message
++	if err := m.Unpack(servfail(q)); err != nil {
++		t.Fatal(err)
++	}
++	if m.ID != 0xabcd || !m.Response || m.RCode != dnsmessage.RCodeServerFailure || len(m.Questions) != 1 {
++		t.Fatalf("%+v", m)
++	}
++}
+--- netbird_orig/client/iface/netstack/tundns.go
++++ netbird_src/client/iface/netstack/tundns.go
+@@ -0,0 +1,242 @@
++package netstack
++
++// tundns.go — BirdSocks: the resolver of the app's VPN mode. The VPN
++// announces one DNS server, an address nothing owns that is routed into the
++// tunnel (NB_TUN_DNS_ADDRESS); hev-socks5-tunnel hands its packets to the
++// SOCKS5 proxy, which answers them here, in memory, with the DNS proxy's
++// chain — NetBird's resolver first, the fallbacks raced after. It needs no
++// listener (the DNS proxy may be off) and outlives engines, as the proxies
++// do: with no engine the fallbacks answer, and the device keeps its DNS.
++
++import (
++	"io"
++	"net"
++	"net/netip"
++	"os"
++	"sync"
++	"syscall"
++	"time"
++)
++
++// EnvTunDNSAddress is the address the VPN announces as its DNS server; unset,
++// nothing is intercepted.
++const EnvTunDNSAddress = "NB_TUN_DNS_ADDRESS"
++
++// tunDNSResolve answers one query; tests replace it.
++var tunDNSResolve = func(q []byte) []byte { return resolveQuery(nil, q) }
++
++func tunDNSAddress() (netip.Addr, bool) {
++	v := os.Getenv(EnvTunDNSAddress)
++	if v == "" {
++		return netip.Addr{}, false
++	}
++	a, err := netip.ParseAddr(v)
++	if err != nil {
++		return netip.Addr{}, false
++	}
++	return a.Unmap(), true
++}
++
++// tunDNSDial takes over a dial to the VPN's DNS address: port 53 gets the
++// in-memory resolver; any other port is refused at once — Private DNS on
++// "automatic" probes 853, and a refusal sends it back to 53 without a wait.
++// handled is false for every other destination.
++func tunDNSDial(network, addr string) (conn net.Conn, handled bool, err error) {
++	dns, ok := tunDNSAddress()
++	if !ok {
++		return nil, false, nil
++	}
++	ap, perr := netip.ParseAddrPort(addr)
++	if perr != nil || ap.Addr().Unmap() != dns {
++		return nil, false, nil
++	}
++	stream := false
++	switch network {
++	case "tcp", "tcp4", "tcp6":
++		stream = true
++	case "udp", "udp4", "udp6":
++	default:
++		return nil, true, &net.OpError{Op: "dial", Net: network, Err: net.UnknownNetworkError(network)}
++	}
++	if ap.Port() != 53 {
++		var raddr net.Addr = net.UDPAddrFromAddrPort(ap)
++		if stream {
++			raddr = net.TCPAddrFromAddrPort(ap)
++		}
++		return nil, true, &net.OpError{Op: "dial", Net: network, Addr: raddr, Err: syscall.ECONNREFUSED}
++	}
++	return newTunDNSConn(ap, stream, tunDNSResolve), true, nil
++}
++
++// tunDNSConn is a DNS server behind a net.Conn. Datagram: every Write is a
++// query, every Read one answer. Stream: two-byte length framing both ways,
++// queries answered concurrently and in any order (RFC 7766).
++type tunDNSConn struct {
++	stream  bool
++	remote  netip.AddrPort
++	resolve func([]byte) []byte
++
++	mu          sync.Mutex
++	in          []byte   // stream: written bytes not yet a whole query
++	out         [][]byte // answers not yet read (stream: framed)
++	pending     int      // queries being answered
++	writeClosed bool
++	closed      bool
++	deadline    time.Time
++	wake        chan struct{}
++}
++
++func newTunDNSConn(remote netip.AddrPort, stream bool, resolve func([]byte) []byte) *tunDNSConn {
++	return &tunDNSConn{stream: stream, remote: remote, resolve: resolve, wake: make(chan struct{}, 1)}
++}
++
++func (c *tunDNSConn) signal() {
++	select {
++	case c.wake <- struct{}{}:
++	default:
++	}
++}
++
++// answer resolves q and queues the answer; a query nobody answered gets a
++// SERVFAIL, so the client moves on instead of waiting out its timeout.
++func (c *tunDNSConn) answer(q []byte) {
++	resp := c.resolve(q)
++	if resp == nil {
++		resp = servfail(q)
++	}
++	if resp != nil && len(resp) >= 2 && len(q) >= 2 {
++		resp = append([]byte(nil), resp...)
++		resp[0], resp[1] = q[0], q[1]
++	}
++	c.mu.Lock()
++	c.pending--
++	if resp != nil && !c.closed {
++		if c.stream {
++			if len(resp) > 0xffff {
++				resp = nil
++			} else {
++				resp = append([]byte{byte(len(resp) >> 8), byte(len(resp))}, resp...)
++			}
++		}
++		if resp != nil {
++			c.out = append(c.out, resp)
++		}
++	}
++	c.mu.Unlock()
++	c.signal()
++}
++
++func (c *tunDNSConn) Write(b []byte) (int, error) {
++	c.mu.Lock()
++	defer c.mu.Unlock()
++	if c.closed || c.writeClosed {
++		return 0, net.ErrClosed
++	}
++	if !c.stream {
++		if len(b) >= 12 {
++			c.pending++
++			go c.answer(append([]byte(nil), b...))
++		}
++		return len(b), nil
++	}
++	c.in = append(c.in, b...)
++	for len(c.in) >= 2 {
++		n := int(c.in[0])<<8 | int(c.in[1])
++		if len(c.in) < 2+n {
++			break
++		}
++		q := append([]byte(nil), c.in[2:2+n]...)
++		c.in = c.in[2+n:]
++		if n >= 12 {
++			c.pending++
++			go c.answer(q)
++		}
++	}
++	return len(b), nil
++}
++
++func (c *tunDNSConn) Read(b []byte) (int, error) {
++	for {
++		c.mu.Lock()
++		switch {
++		case c.closed:
++			c.mu.Unlock()
++			return 0, net.ErrClosed
++		case len(c.out) > 0:
++			head := c.out[0]
++			n := copy(b, head)
++			if c.stream && n < len(head) {
++				c.out[0] = head[n:]
++			} else {
++				// A datagram that does not fit is cut, as a UDP socket does.
++				c.out = c.out[1:]
++			}
++			c.mu.Unlock()
++			return n, nil
++		case c.writeClosed && c.pending == 0:
++			c.mu.Unlock()
++			return 0, io.EOF
++		}
++		deadline := c.deadline
++		c.mu.Unlock()
++		var timeout <-chan time.Time
++		if !deadline.IsZero() {
++			d := time.Until(deadline)
++			if d <= 0 {
++				return 0, os.ErrDeadlineExceeded
++			}
++			t := time.NewTimer(d)
++			timeout = t.C
++			select {
++			case <-c.wake:
++			case <-timeout:
++			}
++			t.Stop()
++			continue
++		}
++		<-c.wake
++	}
++}
++
++// CloseWrite: the client sent its last query; Read ends once the answers
++// are out. The SOCKS5 server calls it when the app half-closes.
++func (c *tunDNSConn) CloseWrite() error {
++	c.mu.Lock()
++	c.writeClosed = true
++	c.mu.Unlock()
++	c.signal()
++	return nil
++}
++
++func (c *tunDNSConn) Close() error {
++	c.mu.Lock()
++	c.closed = true
++	c.out = nil
++	c.mu.Unlock()
++	c.signal()
++	return nil
++}
++
++// LocalAddr and RemoteAddr are both the resolver's address: the SOCKS5
++// server reports the local one to the client, and takes only a *net.TCPAddr
++// or *net.UDPAddr there.
++func (c *tunDNSConn) LocalAddr() net.Addr { return c.RemoteAddr() }
++
++func (c *tunDNSConn) RemoteAddr() net.Addr {
++	if c.stream {
++		return net.TCPAddrFromAddrPort(c.remote)
++	}
++	return net.UDPAddrFromAddrPort(c.remote)
++}
++
++func (c *tunDNSConn) SetDeadline(t time.Time) error { return c.SetReadDeadline(t) }
++
++func (c *tunDNSConn) SetReadDeadline(t time.Time) error {
++	c.mu.Lock()
++	c.deadline = t
++	c.mu.Unlock()
++	c.signal()
++	return nil
++}
++
++func (c *tunDNSConn) SetWriteDeadline(time.Time) error { return nil }
+--- netbird_orig/client/iface/netstack/tundns_test.go
++++ netbird_src/client/iface/netstack/tundns_test.go
+@@ -0,0 +1,304 @@
++package netstack
++
++import (
++	"bytes"
++	"io"
++	"net"
++	"net/netip"
++	"strings"
++	"sync/atomic"
++	"testing"
++	"time"
++
++	"github.com/things-go/go-socks5"
++	"github.com/things-go/go-socks5/statute"
++	"golang.org/x/net/dns/dnsmessage"
++)
++
++const testTunDNS = "198.18.0.2"
++
++func dnsQuery(t *testing.T, id uint16, name string) []byte {
++	t.Helper()
++	msg := dnsmessage.Message{
++		Header:    dnsmessage.Header{ID: id, RecursionDesired: true},
++		Questions: []dnsmessage.Question{{Name: dnsmessage.MustNewName(name), Type: dnsmessage.TypeA, Class: dnsmessage.ClassINET}},
++	}
++	b, err := msg.Pack()
++	if err != nil {
++		t.Fatal(err)
++	}
++	return b
++}
++
++// answerA is a positive answer to q: name → ip.
++func answerA(q []byte, ip [4]byte) []byte {
++	var msg dnsmessage.Message
++	if err := msg.Unpack(q); err != nil {
++		return nil
++	}
++	msg.Response, msg.RecursionAvailable = true, true
++	msg.Answers = []dnsmessage.Resource{{
++		Header: dnsmessage.ResourceHeader{Name: msg.Questions[0].Name, Type: dnsmessage.TypeA, Class: dnsmessage.ClassINET, TTL: 60},
++		Body:   &dnsmessage.AResource{A: ip},
++	}}
++	b, _ := msg.Pack()
++	return b
++}
++
++func rcodeOf(t *testing.T, resp []byte) dnsmessage.RCode {
++	t.Helper()
++	var msg dnsmessage.Message
++	if err := msg.Unpack(resp); err != nil {
++		t.Fatalf("bad answer: %v", err)
++	}
++	return msg.RCode
++}
++
++func firstA(t *testing.T, resp []byte) [4]byte {
++	t.Helper()
++	var msg dnsmessage.Message
++	if err := msg.Unpack(resp); err != nil || len(msg.Answers) == 0 {
++		t.Fatalf("no answer: %v", err)
++	}
++	return msg.Answers[0].Body.(*dnsmessage.AResource).A
++}
++
++// fakeDNS is a UDP server on 127.0.0.1 that answers with reply (nil: never),
++// after delay, and counts the queries it got.
++func fakeDNS(t *testing.T, delay time.Duration, reply func(q []byte) []byte) (string, *atomic.Int32) {
++	t.Helper()
++	pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() { pc.Close() })
++	var count atomic.Int32
++	go func() {
++		b := make([]byte, 1500)
++		for {
++			n, from, err := pc.ReadFrom(b)
++			if err != nil {
++				return
++			}
++			count.Add(1)
++			q := append([]byte(nil), b[:n]...)
++			go func() {
++				time.Sleep(delay)
++				if r := reply(q); r != nil {
++					_, _ = pc.WriteTo(r, from)
++				}
++			}()
++		}
++	}()
++	return pc.LocalAddr().String(), &count
++}
++
++func withResolve(t *testing.T, f func([]byte) []byte) {
++	t.Helper()
++	saved := tunDNSResolve
++	tunDNSResolve = f
++	t.Cleanup(func() { tunDNSResolve = saved })
++}
++
++func TestTunDNSOnlyItsAddress(t *testing.T) {
++	t.Setenv(EnvTunDNSAddress, testTunDNS)
++	if _, handled, _ := tunDNSDial("udp", "1.1.1.1:53"); handled {
++		t.Fatal("took over a dial to another address")
++	}
++	conn, handled, err := tunDNSDial("udp", testTunDNS+":53")
++	if !handled || err != nil || conn == nil {
++		t.Fatalf("port 53: handled %v, %v", handled, err)
++	}
++	conn.Close()
++	// Private DNS "automatic" probes 853: refused at once, and the SOCKS5
++	// server turns the message into "connection refused".
++	_, handled, err = tunDNSDial("tcp", testTunDNS+":853")
++	if !handled || err == nil || !strings.Contains(err.Error(), "refused") {
++		t.Fatalf("853: handled %v, err %v", handled, err)
++	}
++	t.Setenv(EnvTunDNSAddress, "")
++	if _, handled, _ := tunDNSDial("udp", testTunDNS+":53"); handled {
++		t.Fatal("intercepting with no VPN address set")
++	}
++}
++
++func TestTunDNSDatagram(t *testing.T) {
++	withResolve(t, func(q []byte) []byte { return answerA(q, [4]byte{100, 92, 1, 2}) })
++	c := newTunDNSConn(netip.MustParseAddrPort(testTunDNS+":53"), false, tunDNSResolve)
++	defer c.Close()
++	if _, err := c.Write(dnsQuery(t, 7, "peer.netbird.cloud.")); err != nil {
++		t.Fatal(err)
++	}
++	_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
++	b := make([]byte, 1500)
++	n, err := c.Read(b)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if b[0] != 0 || b[1] != 7 || firstA(t, b[:n]) != [4]byte{100, 92, 1, 2} {
++		t.Fatalf("wrong answer %x", b[:n])
++	}
++}
++
++// Over TCP two pipelined queries, one slow, both answer; after the client's
++// half-close Read ends with EOF once they are out.
++func TestTunDNSStream(t *testing.T) {
++	withResolve(t, func(q []byte) []byte {
++		if q[1] == 1 {
++			time.Sleep(100 * time.Millisecond)
++		}
++		return answerA(q, [4]byte{10, 0, 0, q[1]})
++	})
++	c := newTunDNSConn(netip.MustParseAddrPort(testTunDNS+":53"), true, tunDNSResolve)
++	defer c.Close()
++	var framed []byte
++	for _, id := range []uint16{1, 2} {
++		q := dnsQuery(t, id, "a.example.")
++		framed = append(framed, byte(len(q)>>8), byte(len(q)))
++		framed = append(framed, q...)
++	}
++	// Written in odd pieces, as a stream may arrive.
++	for len(framed) > 0 {
++		n := min(5, len(framed))
++		if _, err := c.Write(framed[:n]); err != nil {
++			t.Fatal(err)
++		}
++		framed = framed[n:]
++	}
++	_ = c.CloseWrite()
++	_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
++	all, err := io.ReadAll(c)
++	if err != nil {
++		t.Fatal(err)
++	}
++	got := map[byte]bool{}
++	for len(all) >= 2 {
++		n := int(all[0])<<8 | int(all[1])
++		msg := all[2 : 2+n]
++		all = all[2+n:]
++		if a := firstA(t, msg); a[3] != msg[1] {
++			t.Fatalf("answer %v for id %d", a, msg[1])
++		}
++		got[msg[1]] = true
++	}
++	if !got[1] || !got[2] || len(all) != 0 {
++		t.Fatalf("answers %v, %d bytes left", got, len(all))
++	}
++}
++
++func TestTunDNSUnansweredIsServfail(t *testing.T) {
++	withResolve(t, func([]byte) []byte { return nil })
++	c := newTunDNSConn(netip.MustParseAddrPort(testTunDNS+":53"), false, tunDNSResolve)
++	defer c.Close()
++	_, _ = c.Write(dnsQuery(t, 9, "nothing.example."))
++	_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
++	b := make([]byte, 1500)
++	n, err := c.Read(b)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if rcodeOf(t, b[:n]) != dnsmessage.RCodeServerFailure {
++		t.Fatalf("want SERVFAIL, got %x", b[:n])
++	}
++}
++
++func TestTunDNSReadDeadlineAndClose(t *testing.T) {
++	c := newTunDNSConn(netip.MustParseAddrPort(testTunDNS+":53"), false, func([]byte) []byte { return nil })
++	_ = c.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
++	if _, err := c.Read(make([]byte, 10)); err == nil {
++		t.Fatal("no deadline error")
++	}
++	_ = c.SetReadDeadline(time.Time{})
++	done := make(chan error, 1)
++	go func() { _, err := c.Read(make([]byte, 10)); done <- err }()
++	time.Sleep(20 * time.Millisecond)
++	c.Close()
++	select {
++	case err := <-done:
++		if err == nil {
++			t.Fatal("read after close succeeded")
++		}
++	case <-time.After(time.Second):
++		t.Fatal("Close did not wake Read")
++	}
++}
++
++// The whole path a VPN's DNS takes: hev's UDP ASSOCIATE and TCP CONNECT
++// to the virtual address through the daemon's SOCKS5 server, answered with
++// no engine by the fallback, while a probe of 853 is refused.
++func TestTunDNSThroughSocks(t *testing.T) {
++	resetFront(t, time.Now().Add(-time.Hour)) // no engine, none expected
++	t.Setenv(EnvTunDNSAddress, testTunDNS)
++	up, _ := fakeDNS(t, 0, func(q []byte) []byte { return answerA(q, [4]byte{93, 184, 216, 34}) })
++	t.Setenv(EnvDNSProxyUpstream, up)
++
++	srv := socks5.NewServer(socks5.WithDial(frontDialer{}.Dial), socks5.WithAssociateHandle(associateHandler(frontDialer{})))
++	ln, err := net.Listen("tcp4", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer ln.Close()
++	go func() { _ = srv.Serve(ln) }()
++
++	greet := func() net.Conn {
++		c, err := net.Dial("tcp4", ln.Addr().String())
++		if err != nil {
++			t.Fatal(err)
++		}
++		_ = c.SetDeadline(time.Now().Add(8 * time.Second))
++		_, _ = c.Write([]byte{5, 1, 0})
++		if b := readN(t, c, 2); !bytes.Equal(b, []byte{5, 0}) {
++			t.Fatalf("greeting %v", b)
++		}
++		return c
++	}
++
++	// UDP.
++	ctrl := greet()
++	defer ctrl.Close()
++	_, _ = ctrl.Write([]byte{5, 3, 0, 1, 0, 0, 0, 0, 0, 0})
++	rep := readN(t, ctrl, 10)
++	if rep[1] != 0 {
++		t.Fatalf("associate refused %v", rep)
++	}
++	u, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.IP(rep[4:8]), Port: int(rep[8])<<8 | int(rep[9])})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer u.Close()
++	dg, _ := statute.NewDatagram(testTunDNS+":53", dnsQuery(t, 0x4242, "example.com."))
++	_, _ = u.Write(dg.Bytes())
++	_ = u.SetReadDeadline(time.Now().Add(8 * time.Second))
++	b := make([]byte, 1500)
++	n, err := u.Read(b)
++	if err != nil {
++		t.Fatal(err)
++	}
++	back, err := statute.ParseDatagram(b[:n])
++	if err != nil || firstA(t, back.Data) != [4]byte{93, 184, 216, 34} || back.Data[0] != 0x42 {
++		t.Fatalf("udp answer %x, %v", back.Data, err)
++	}
++
++	// TCP.
++	tc := greet()
++	defer tc.Close()
++	_, _ = tc.Write([]byte{5, 1, 0, 1, 198, 18, 0, 2, 0, 53})
++	if rep := readN(t, tc, 10); rep[1] != 0 {
++		t.Fatalf("connect refused %v", rep)
++	}
++	q := dnsQuery(t, 0x0102, "example.com.")
++	_, _ = tc.Write(append([]byte{byte(len(q) >> 8), byte(len(q))}, q...))
++	l := readN(t, tc, 2)
++	resp := readN(t, tc, int(l[0])<<8|int(l[1]))
++	if firstA(t, resp) != [4]byte{93, 184, 216, 34} {
++		t.Fatalf("tcp answer %x", resp)
++	}
++
++	// DNS over TLS: refused, not left to time out.
++	dot := greet()
++	defer dot.Close()
++	_, _ = dot.Write([]byte{5, 1, 0, 1, 198, 18, 0, 2, 3, 85})
++	if rep := readN(t, dot, 10); rep[1] != statute.RepConnectionRefused {
++		t.Fatalf("853 got reply %d, want refused", rep[1])
++	}
 +}
 --- netbird_orig/client/iface/netstack/associate.go
 +++ netbird_src/client/iface/netstack/associate.go
@@ -1143,7 +1987,7 @@
 +}
 --- netbird_orig/client/iface/netstack/searchdomains.go
 +++ netbird_src/client/iface/netstack/searchdomains.go
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,155 @@
 +package netstack
 +
 +// searchdomains.go — BirdSocks: short names. A desktop client hands NetBird's
@@ -1153,6 +1997,8 @@
 +// list here, and both proxies try a single-label name under each domain.
 +
 +import (
++	"net/netip"
++	"strconv"
 +	"strings"
 +	"sync"
 +)
@@ -1199,6 +2045,103 @@
 +		}
 +	}
 +	return out
++}
++
++// ownDomains are the domains NetBird answers for itself or forwards to the
++// account's nameservers: its peers' zone, custom zones, nameserver groups'
++// match domains. The DNS proxies never send those names to a public
++// resolver — a NetBird failure stays a failure instead of leaking the name
++// (and, worse, answering it from outside).
++var ownDomains struct {
++	sync.RWMutex
++	source func() []string
++}
++
++// SetOwnDomains supplies NetBird's own domains; the engine calls it beside
++// SetSearchDomains.
++func SetOwnDomains(source func() []string) {
++	ownDomains.Lock()
++	ownDomains.source = source
++	ownDomains.Unlock()
++}
++
++// ownName reports whether name (lower case, a trailing dot or none) is one
++// of NetBird's: under its own or search domains, or the reverse name of an
++// address in the NetBird network.
++func ownName(name string) bool {
++	n := strings.TrimSuffix(strings.ToLower(name), ".")
++	if n == "" {
++		return false
++	}
++	if ip, ok := reverseAddr(n); ok {
++		routes.Lock()
++		defer routes.Unlock()
++		for _, p := range routes.overlay {
++			if p.Contains(ip) {
++				return true
++			}
++		}
++		return false
++	}
++	ownDomains.RLock()
++	src := ownDomains.source
++	ownDomains.RUnlock()
++	var domains []string
++	if src != nil {
++		domains = src()
++	}
++	domains = append(domains, currentSearchDomains()...)
++	for _, d := range domains {
++		d = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(d)), ".")
++		if d == "" {
++			continue
++		}
++		if n == d || strings.HasSuffix(n, "."+d) {
++			return true
++		}
++	}
++	return false
++}
++
++// reverseAddr is the address a PTR name stands for: 4.3.2.1.in-addr.arpa
++// or the 32 nibbles of ip6.arpa.
++func reverseAddr(n string) (netip.Addr, bool) {
++	if rest, ok := strings.CutSuffix(n, ".in-addr.arpa"); ok {
++		labels := strings.Split(rest, ".")
++		if len(labels) != 4 {
++			return netip.Addr{}, false
++		}
++		var b [4]byte
++		for i, l := range labels {
++			v, err := strconv.ParseUint(l, 10, 8)
++			if err != nil {
++				return netip.Addr{}, false
++			}
++			b[3-i] = byte(v)
++		}
++		return netip.AddrFrom4(b), true
++	}
++	if rest, ok := strings.CutSuffix(n, ".ip6.arpa"); ok {
++		labels := strings.Split(rest, ".")
++		if len(labels) != 32 {
++			return netip.Addr{}, false
++		}
++		var b [16]byte
++		for i, l := range labels {
++			v, err := strconv.ParseUint(l, 16, 4)
++			if err != nil || len(l) != 1 {
++				return netip.Addr{}, false
++			}
++			pos := 31 - i
++			if pos%2 == 0 {
++				b[pos/2] |= byte(v) << 4
++			} else {
++				b[pos/2] |= byte(v)
++			}
++		}
++		return netip.AddrFrom16(b), true
++	}
++	return netip.Addr{}, false
 +}
 --- netbird_orig/client/iface/netstack/searchdomains_test.go
 +++ netbird_src/client/iface/netstack/searchdomains_test.go
@@ -1491,7 +2434,7 @@
 +}
 --- netbird_orig/client/iface/netstack/front.go
 +++ netbird_src/client/iface/netstack/front.go
-@@ -0,0 +1,198 @@
+@@ -0,0 +1,202 @@
 +package netstack
 +
 +// front.go — BirdSocks: the SOCKS5 proxy and the DNS proxy belong to the
@@ -1649,6 +2592,10 @@
 +type frontDialer struct{}
 +
 +func (frontDialer) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
++	// The VPN's resolver answers here with or without an engine (tundns.go).
++	if conn, handled, err := tunDNSDial(network, addr); handled {
++		return conn, err
++	}
 +	if b := waitBackend(ctx, backendWaitDial); b != nil {
 +		return b.dialer.Dial(ctx, network, addr)
 +	}

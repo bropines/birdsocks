@@ -8,7 +8,7 @@
  	"math/rand"
  	"net"
  	"net/netip"
-@@ -609,6 +610,11 @@
+@@ -609,6 +610,15 @@
  		return fmt.Errorf("create dns server: %w", err)
  	}
  	e.dnsServer = dnsServer
@@ -16,11 +16,15 @@
 +	// has no system resolver to hand them to).
 +	if nbnetstack.IsEnabled() {
 +		nbnetstack.SetSearchDomains(dnsServer.SearchDomains)
++		// ...and the domains that must never reach a public resolver.
++		if own, ok := dnsServer.(interface{ OwnDomains() []string }); ok {
++			nbnetstack.SetOwnDomains(own.OwnDomains)
++		}
 +	}
  
  	// Populate DNS cache with NetbirdConfig and management URL for early resolution
  	if err := e.PopulateNetbirdConfig(netbirdConfig, mgmtURL); err != nil {
-@@ -2860,7 +2866,7 @@
+@@ -2860,7 +2870,7 @@
  }
  
  func getInterfacePrefixes() ([]netip.Prefix, error) {
@@ -29,7 +33,7 @@
  	if err != nil {
  		return nil, fmt.Errorf("get interfaces: %w", err)
  	}
-@@ -2869,7 +2875,7 @@
+@@ -2869,7 +2879,7 @@
  	var merr *multierror.Error
  
  	for _, iface := range ifaces {
@@ -38,3 +42,28 @@
  		if err != nil {
  			merr = multierror.Append(merr, fmt.Errorf("get addresses for interface %s: %w", iface.Name, err))
  			continue
+--- netbird_orig/client/internal/dns/birdsocks.go
++++ netbird_src/client/internal/dns/birdsocks.go
+@@ -0,0 +1,22 @@
++package dns
++
++// birdsocks.go — BirdSocks: the domains NetBird resolves itself or sends to
++// the account's nameservers, for the app's DNS proxies, which must never ask
++// a public resolver about them (iface/netstack/searchdomains.go).
++
++import "strings"
++
++// OwnDomains lists every domain of the current DNS configuration — the
++// peers' zone, custom zones, nameserver groups' match domains — whether or
++// not it is a search domain or currently disabled.
++func (s *DefaultServer) OwnDomains() []string {
++	s.mux.Lock()
++	defer s.mux.Unlock()
++	out := make([]string, 0, len(s.currentConfig.Domains))
++	for _, d := range s.currentConfig.Domains {
++		if name := strings.TrimSuffix(d.Domain, "."); name != "" {
++			out = append(out, name)
++		}
++	}
++	return out
++}

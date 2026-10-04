@@ -38,6 +38,7 @@ TailSocks' history is in its own repository.
 - Access to the phone: peers reach its own services (adb over Wi-Fi, Termux's sshd, a web server) by its NetBird address; BirdSocks' proxies stay closed to them.
 - Publish: a local port gets a public address through the server's NetBird reverse proxy, with a PIN, a password or SSO groups.
 - Events: NetBird's network, DNS, sign-in and connection events in a list; warnings arrive as notifications.
+- The DNS proxy asks its fallbacks at once, skips a NetBird resolver that stalls for 30 s, and never sends a NetBird name to a public server.
 - Access check: what NetBird's firewall does with a packet to or from a peer, and which rule decides.
 - Packet capture from Logs into a .pcap file.
 - Connection: management, signal, relays with their transport, NetBird's DNS servers and this device's details.

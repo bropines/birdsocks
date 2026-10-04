@@ -28,7 +28,8 @@ make_patch() {
 # NetBird names resolvable through it, the internet reached directly when no
 # peer carries the destination (falling back over a name's other addresses),
 # a DNS proxy beside it, both kept for the daemon's life and lent to
-# whichever engine runs (front.go).
+# whichever engine runs (front.go), and the resolver of the app's VPN mode
+# answered inside the proxy (tundns.go).
 make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/env.go \
     client/iface/netstack/proxy.go \
@@ -37,6 +38,9 @@ make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/route.go \
     client/iface/netstack/route_test.go \
     client/iface/netstack/dnsproxy.go \
+    client/iface/netstack/dnsproxy_test.go \
+    client/iface/netstack/tundns.go \
+    client/iface/netstack/tundns_test.go \
     client/iface/netstack/associate.go \
     client/iface/netstack/associate_test.go \
     client/iface/netstack/searchdomains.go \
@@ -73,9 +77,11 @@ make_patch 04-daemon-network-events.patch \
 
 # The engine's Android-side hooks: its interface prefixes listed through anet
 # (patch 03's package), and its search domains handed to the proxies, which
-# expand short names themselves — netstack mode has no system resolver.
+# expand short names themselves — netstack mode has no system resolver —
+# with the domains they must never send to a public resolver.
 make_patch 05-engine-android-hooks.patch \
-    client/internal/engine.go
+    client/internal/engine.go \
+    client/internal/dns/birdsocks.go
 
 # Connecting fast and keeping the connections: no kernel-WireGuard probe in
 # netstack mode (on Android it closed Signal's or the relay's socket from a
