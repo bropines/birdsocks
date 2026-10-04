@@ -26,7 +26,6 @@
 
     <string name="settings_amoled_black_desc">Чисто чёрный фон в тёмном режиме</string>
     <string name="settings_field_example">Пример: %1$s</string>
-    <string name="settings_suggested">Рекомендуется:</string>
 
     <!-- ======================== Logs Screen ======================== -->
     <string name="logs_saved">Логи сохранены</string>
@@ -49,7 +48,6 @@
     <string name="main_status_starting">Запуск…</string>
     <string name="main_status_please_wait">Пожалуйста, подождите…</string>
     <string name="main_status_starting_desc">Пробуждение демона…</string>
-    <string name="menu_logs">Логи</string>
     <string name="menu_settings">Настройки</string>
 
     <!-- Backup compatibility -->

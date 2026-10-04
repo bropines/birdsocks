@@ -348,7 +348,10 @@ fun StatusCard(
                 CardState.Offline -> stringResource(R.string.nb_status_offline_desc)
                 CardState.Stopped -> stringResource(R.string.tap_to_start)
             }
-            Text(subtitle, textAlign = TextAlign.Center, color = content, modifier = Modifier.alpha(0.8f))
+            // The VPN mode says itself, as the notification and the tile do.
+            val vpn by io.github.bropines.birdsocks.core.TunVpnService.running.collectAsState()
+            val line = if (vpn && state == CardState.Connected) "$subtitle · VPN" else subtitle
+            Text(line, textAlign = TextAlign.Center, color = content, modifier = Modifier.alpha(0.8f))
             if (state == CardState.Idle) {
                 Spacer(Modifier.height(8.dp))
                 FilledTonalButton(onClick = onConnect) { Text(stringResource(R.string.nb_action_connect)) }

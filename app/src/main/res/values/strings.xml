@@ -27,7 +27,6 @@
 
     <string name="settings_amoled_black_desc">Pure black background in dark mode</string>
     <string name="settings_field_example">Example: %1$s</string>
-    <string name="settings_suggested">Suggested:</string>
 
     <!-- ======================== Logs Screen ======================== -->
     <string name="logs_saved">Logs saved</string>
@@ -50,7 +49,6 @@
     <string name="main_status_starting">Starting…</string>
     <string name="main_status_please_wait">Please wait…</string>
     <string name="main_status_starting_desc">Waking up the daemon…</string>
-    <string name="menu_logs">Logs</string>
     <string name="menu_settings">Settings</string>
 
     <!-- Backup compatibility -->

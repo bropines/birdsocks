@@ -8,8 +8,12 @@ TailSocks' history is in its own repository.
 ### Added
 - NetBird v0.80.0 as a userspace node with a local SOCKS5 proxy, without the VPN slot.
 - Sign-in to NetBird Cloud or an own server, with a setup key or through the browser.
-- Status card, device addresses, the proxy's URI and an exit node picker on the main screen.
-- Peers with search, filters and connection details; Networks with route selection.
+- A main screen like TailSocks': status, the exit node and six tiles — Peers, Networks, DNS, Publish, Diagnostics, Settings.
+- Peers like TailSocks': this device first with its addresses, key and session; peer details swipe from one peer to the next; filters swipe.
+- Settings as a hub of sections; accounts switched, renamed and removed in one sheet.
+- Diagnostics: connection and events on swiped pages, with logs, access check, packet capture and the debug bundle.
+- A DNS screen: the DNS proxy's test, lookups, NetBird's DNS and its servers.
+- Networks with the exit node on top; chip rows follow a dragged finger everywhere.
 - Settings: device name, logout, proxy port, credentials and LAN sharing, NetBird's profile switches, force relay, log level.
 - Quick Settings tile, start on boot, `birdsocks://` links to screens.
 - The proxy listens on 127.0.0.1:48125 and asks for a username and password when they are set.

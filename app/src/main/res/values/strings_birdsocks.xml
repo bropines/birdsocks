@@ -14,7 +14,6 @@
 
     <!-- Main screen -->
     <string name="nb_menu_peers">Peers</string>
-    <string name="nb_menu_peers_count">Peers · %1$d</string>
     <string name="nb_menu_networks">Networks</string>
     <string name="nb_address_name">Name</string>
     <string name="nb_socks_title">SOCKS5 proxy</string>
@@ -41,16 +40,12 @@
     <string name="nb_peers_filter_connected">Connected</string>
     <string name="nb_peers_filter_idle">Idle</string>
     <string name="nb_peers_empty">No peers here</string>
-    <string name="nb_peers_daemon_off">BirdSocks is not running</string>
     <string name="nb_peer_direct">P2P</string>
     <string name="nb_peer_relayed">Relayed</string>
-    <string name="nb_peer_path">Connection</string>
     <string name="nb_peer_relay">Relay</string>
     <string name="nb_peer_ice">ICE candidates</string>
-    <string name="nb_peer_endpoint">Endpoint</string>
     <string name="nb_peer_latency">Latency</string>
     <string name="nb_peer_handshake">Last handshake</string>
-    <string name="nb_peer_transfer">Transfer</string>
     <string name="nb_peer_pubkey">Public key</string>
 
     <!-- Networks -->
@@ -72,7 +67,6 @@
     <!-- Settings -->
     <string name="nb_settings_restart_needed">Restart BirdSocks to apply the change</string>
     <string name="nb_settings_restart">Restart</string>
-    <string name="nb_settings_account">Device and account</string>
     <string name="nb_settings_device_name">Device name</string>
     <string name="nb_settings_device_name_desc">How this device appears among the peers. NetBird takes it when the device registers; a renamed device keeps its old DNS name until it registers again.</string>
     <string name="nb_settings_server">Management server</string>
@@ -87,7 +81,6 @@
     <string name="nb_settings_dns_proxy">DNS proxy</string>
     <string name="nb_settings_dns_proxy_desc">Answers plain DNS on this address: NetBird names first, everything else through the network\'s resolvers. Point AdGuard or another app\'s DNS here.</string>
     <string name="nb_settings_dns_proxy_address">Address</string>
-    <string name="nb_settings_netbird">NetBird</string>
     <string name="nb_settings_netbird_off">Start BirdSocks to change these: they live in NetBird\'s profile.</string>
     <string name="nb_settings_lazy">Lazy connections</string>
     <string name="nb_settings_lazy_desc">Connect to a peer only when traffic goes to it. Saves battery with many peers; the first packet waits a moment.</string>
@@ -99,7 +92,6 @@
     <string name="nb_settings_client_routes_desc">Reach the networks and exit nodes other peers route for.</string>
     <string name="nb_settings_ipv6">IPv6 overlay</string>
     <string name="nb_settings_ipv6_desc">Take an IPv6 address in the network when the server hands one out.</string>
-    <string name="nb_settings_daemon">The daemon</string>
     <string name="nb_settings_force_relay">Always through a relay</string>
     <string name="nb_settings_force_relay_desc">Never connect peers directly. For networks that break peer-to-peer connections; slower.</string>
     <string name="nb_settings_log_level">Log detail</string>
@@ -117,7 +109,6 @@
     <string name="nb_accounts_add">Add account</string>
     <string name="nb_accounts_name">Name</string>
     <string name="nb_accounts_name_hint">Work, home…</string>
-    <string name="nb_accounts_active">Active</string>
     <string name="nb_accounts_rename">Rename</string>
     <string name="nb_accounts_remove">Remove account</string>
     <string name="nb_accounts_remove_confirm">%1$s: its keys and settings are deleted from this phone. The peer stays in the dashboard; remove it there.</string>
@@ -174,8 +165,6 @@
     <string name="nb_exit_node_off">Turn off</string>
     <string name="nb_events_channel">NetBird events</string>
     <string name="nb_events_title">Events</string>
-    <string name="nb_events_notify_on">Notifications on</string>
-    <string name="nb_events_notify_off">Notifications off</string>
     <string name="nb_events_clear">Clear</string>
     <string name="nb_events_all">All</string>
     <string name="nb_events_empty">Nothing reported yet. NetBird tells about network, DNS, sign-in and connection problems here.</string>
@@ -198,8 +187,6 @@
     <string name="nb_expose_channel">Published ports</string>
     <string name="nb_expose_title">Publish</string>
     <string name="nb_expose_desc">Gives a port of this phone a public address through your NetBird server\'s reverse proxy: a web server, a file share, anything listening on 127.0.0.1. It stays up while BirdSocks runs.</string>
-    <string name="nb_expose_needs_inbound">The proxy reaches the phone through NetBird, so peers must be allowed to reach its services. BirdSocks restarts NetBird to turn this on.</string>
-    <string name="nb_expose_enable_inbound">Turn on</string>
     <string name="nb_expose_starting">Publishing port %1$d…</string>
     <string name="nb_expose_live_title">Port %1$d is published</string>
     <string name="nb_expose_port">Local port</string>
@@ -237,12 +224,9 @@
     <string name="nb_dns_labels_remove">Remove</string>
     <string name="nb_off">Off</string>
     <string name="nb_details_title">Connection</string>
-    <string name="nb_details_not_running">NetBird is not running.</string>
     <string name="nb_details_servers">Servers</string>
     <string name="nb_details_relays">Relays</string>
-    <string name="nb_details_dns">NetBird DNS servers</string>
     <string name="nb_details_dns_all">All names</string>
-    <string name="nb_details_device">This device</string>
     <string name="nb_details_none">None</string>
     <string name="nb_details_wg_port">WireGuard port</string>
     <string name="nb_details_serves">Routes it serves</string>

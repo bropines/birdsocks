@@ -285,15 +285,22 @@ class NetbirdService : Service() {
         )
     }
 
+    /** Notification channels exist from Android 8; before that a notification needs none. */
+    private fun ensureChannel(id: String, name: String, importance: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(id, name, importance))
+        }
+    }
+
     /** Warnings and worse that just happened become notifications; old ones replayed after a restart do not. */
     private fun notifyEvents(fresh: List<NbEvent>) {
         if (fresh.isEmpty() || !GlobalSettings.isEventNotifications(this)) return
         val now = System.currentTimeMillis()
         val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(EVENTS_CHANNEL_ID, getString(R.string.nb_events_channel), NotificationManager.IMPORTANCE_DEFAULT))
+        ensureChannel(EVENTS_CHANNEL_ID, getString(R.string.nb_events_channel), NotificationManager.IMPORTANCE_DEFAULT)
         for (e in fresh) {
             if (e.severity !in setOf("WARNING", "ERROR", "CRITICAL")) continue
-            val at = e.timestamp?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: continue
+            val at = io.github.bropines.birdsocks.ui.parseRfc3339Millis(e.timestamp) ?: continue
             if (now - at > 2 * 60_000) continue
             val open = PendingIntent.getActivity(this, 4, DiagnosticsActivity.intent(this, DiagnosticsActivity.PAGE_EVENTS), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val n = NotificationCompat.Builder(this, EVENTS_CHANNEL_ID)
@@ -315,7 +322,7 @@ class NetbirdService : Service() {
             nm.cancel(EXPOSE_NOTIF_ID)
             return
         }
-        nm.createNotificationChannel(NotificationChannel(EXPOSE_CHANNEL_ID, getString(R.string.nb_expose_channel), NotificationManager.IMPORTANCE_LOW))
+        ensureChannel(EXPOSE_CHANNEL_ID, getString(R.string.nb_expose_channel), NotificationManager.IMPORTANCE_LOW)
         val open = PendingIntent.getActivity(this, 5, Intent(this, ExposeActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 6, Intent(this, NetbirdService::class.java).setAction(ACTION_EXPOSE_STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(this, EXPOSE_CHANNEL_ID)
@@ -459,7 +466,7 @@ class NetbirdService : Service() {
 
     private fun postSessionNotice(text: String, extend: Boolean) {
         val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(SESSION_CHANNEL_ID, getString(R.string.nb_session_channel), NotificationManager.IMPORTANCE_HIGH))
+        ensureChannel(SESSION_CHANNEL_ID, getString(R.string.nb_session_channel), NotificationManager.IMPORTANCE_HIGH)
         val open = PendingIntent.getActivity(
             this, 2,
             Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_EXTEND, extend),
@@ -507,7 +514,7 @@ class NetbirdService : Service() {
 
     private fun buildNotification(text: String): Notification {
         val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CHANNEL_ID, getString(R.string.notif_channel_status), NotificationManager.IMPORTANCE_LOW))
+        ensureChannel(CHANNEL_ID, getString(R.string.notif_channel_status), NotificationManager.IMPORTANCE_LOW)
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, NetbirdService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_ID)

@@ -4,6 +4,4 @@
     <string name="nb_menu_dns">DNS</string>
     <string name="nb_menu_diagnostics">Диагностика</string>
     <string name="state_stopped_title">BirdSocks остановлен</string>
-    <string name="action_retry">Повторить</string>
-    <string name="action_refresh">Обновить</string>
 </resources>

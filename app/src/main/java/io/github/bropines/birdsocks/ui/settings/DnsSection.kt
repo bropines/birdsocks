@@ -70,7 +70,7 @@ internal fun DnsSection(env: SettingsEnv) {
             } else env.startSetting { GlobalSettings.setDnsProxyAddress(context, v); address = GlobalSettings.getDnsProxyAddress(context) }
         }
         SettingsEditItem(stringResource(R.string.nb_settings_dns_upstream), upstream, Icons.AutoMirrored.Filled.CallSplit,
-            placeholder = stringResource(R.string.nb_settings_dns_upstream_hint), description = stringResource(R.string.nb_settings_dns_upstream_desc), enabled = enabled
+            placeholder = stringResource(R.string.nb_settings_dns_upstream_hint), description = stringResource(R.string.nb_settings_dns_upstream_desc)
         ) { v -> env.startSetting { GlobalSettings.setDnsUpstream(context, v); upstream = GlobalSettings.getDnsUpstream(context) } }
     }
 

@@ -113,7 +113,7 @@ object GlobalSettings {
 
     /** What the app keeps per profile follows a rename. */
     fun renameProfileKeys(context: Context, from: String, to: String) {
-        for (key in listOf("account_email_", "dns_labels_")) {
+        for (key in listOf("account_email_", "dns_labels_", "tun_overlay_")) {
             val v = getString(context, key + from, "")
             prefs(context).edit().remove(key + from).apply()
             if (v.isNotEmpty()) setString(context, key + to, v)
@@ -122,7 +122,7 @@ object GlobalSettings {
 
     /** ...and goes with the profile. */
     fun removeProfileKeys(context: Context, profile: String) {
-        prefs(context).edit().remove("account_email_$profile").remove("dns_labels_$profile").apply()
+        prefs(context).edit().remove("account_email_$profile").remove("dns_labels_$profile").remove("tun_overlay_$profile").apply()
     }
     /** NAME=value lines handed to the daemon as they are. */
     fun getExtraEnv(context: Context): String = getString(context, "extra_env", "")

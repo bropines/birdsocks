@@ -111,10 +111,20 @@ Inherited from TailSocks and still binding:
 * Every screen uses `AppTopBar`. Explanations fold through `HelpText` (two lines,
   ⓘ, unfold on tap or long press); long text belongs in dialogs. No ⋮ menus on
   cards.
-* Every new string goes in English to `values/` and in Russian to `values-ru/`;
-  BirdSocks' own are in `strings_birdsocks.xml`.
+* Every new string goes in English to `values/` and in Russian to `values-ru/`.
 * Never block the main thread on the bridge: `Netbird.*` calls are suspend
   functions on `Dispatchers.IO`.
+* The structure follows TailSocks': the main screen is the status card, banners
+  only when something needs the user, the exit-node row and six tiles (Peers,
+  Networks, DNS, Publish, Diagnostics, Settings). This device lives in Peers as
+  its first row. Settings is a hub of sections (`SettingsSections` ids, opened by
+  `EXTRA_OPEN_SECTION` and `birdsocks://settings?section=`); each setting lives in
+  one place. Accounts are managed only in the account sheet.
+* Chip selectors are `SlidingSegmentedChips` (draggable) or the scrollable
+  variant; when they switch content they drive a `HorizontalPager` through
+  `positionOffset`.
+* New strings of a screen group go in that group's own file (`strings_peers`,
+  `strings_settings`, `strings_diagnostics`, `strings_main`, `strings_tun`, …).
 
 ---
 

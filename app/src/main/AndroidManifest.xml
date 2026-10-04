@@ -49,8 +49,6 @@
         <activity android:name=".ui.NetworksActivity" android:exported="false" />
         <activity android:name=".ui.DnsActivity" android:exported="false" />
         <activity android:name=".ui.DiagnosticsActivity" android:exported="false" />
-        <activity android:name=".ui.StatusDetailsActivity" android:exported="false" />
-        <activity android:name=".ui.EventsActivity" android:exported="false" />
         <activity android:name=".ui.TraceActivity" android:exported="false" />
         <activity android:name=".ui.ExposeActivity" android:exported="false" />
         <activity android:name=".ui.ToggleActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" />
