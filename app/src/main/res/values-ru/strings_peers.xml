@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Список. -->
+    <string name="state_peers_alone">Других узлов в сети пока нет</string>
+    <string name="peer_state_connected">Подключён</string>
+    <string name="peer_state_connecting">Подключается</string>
+    <string name="peer_state_idle">Ожидает</string>
+    <string name="peer_state_down">Не подключено</string>
+    <string name="peer_role_routing">Маршрутизатор</string>
+    <string name="peer_self">Это устройство</string>
+
+    <!-- Шторка. -->
+    <string name="peer_details_prev">Предыдущий</string>
+    <string name="peer_details_next">Следующий</string>
+    <string name="peer_copied">Скопировано</string>
+    <string name="peer_cd_expanded">Развёрнуто</string>
+    <string name="peer_cd_collapsed">Свёрнуто</string>
+
+    <string name="peer_group_connection">Соединение</string>
+    <string name="peer_group_addresses">Адреса</string>
+    <string name="peer_group_path">Путь</string>
+    <string name="peer_group_traffic">Трафик</string>
+    <string name="peer_group_networks">Сети</string>
+    <string name="peer_group_security">Защита</string>
+    <string name="peer_group_dns">DNS</string>
+
+    <string name="peer_conn_not_measured">Ещё не измерена</string>
+    <string name="peer_conn_not_connected">Сейчас не соединён</string>
+    <string name="peer_conn_lazy">Подключится при обращении</string>
+
+    <string name="peer_local_endpoint">Адрес этого устройства</string>
+    <string name="peer_remote_endpoint">Адрес узла</string>
+    <string name="peer_status_changed">Статус изменился</string>
+
+    <string name="peer_traffic_total">Передано</string>
+    <string name="peer_traffic_rx">Получено</string>
+    <string name="peer_traffic_tx">Отправлено</string>
+
+    <string name="peer_networks_one">Сеть через этот узел</string>
+    <string name="peer_networks_many">Сети через этот узел</string>
+    <plurals name="peer_networks_count">
+        <item quantity="one">%d сеть</item>
+        <item quantity="few">%d сети</item>
+        <item quantity="many">%d сетей</item>
+        <item quantity="other">%d сети</item>
+    </plurals>
+
+    <string name="peer_rosenpass_caption">Постквантовые ключи (Rosenpass)</string>
+    <string name="peer_rosenpass_permissive">Вкл., мягкий режим</string>
+    <string name="peer_ssh_session">SSH-сессия</string>
+
+    <string name="peer_session_never">Не истекает</string>
+    <string name="peer_dns_labels">Дополнительные DNS-имена</string>
+    <string name="peer_dns_labels_edit">Изменить в настройках</string>
+</resources>

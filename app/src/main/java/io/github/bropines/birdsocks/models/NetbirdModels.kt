@@ -74,6 +74,15 @@ data class NbLocalPeer(
 ) {
     /** The overlay address without its prefix length: 100.92.1.2/16 → 100.92.1.2. */
     val address: String get() = ip.substringBefore('/')
+
+    /** The IPv6 overlay address without its prefix length, empty when there is none. */
+    val ipv6Address: String get() = ipv6.substringBefore('/')
+
+    /** The name before the first dot, as [NbPeer.shortName]. */
+    val shortName: String get() = fqdn.substringBefore('.').ifEmpty { address }
+
+    /** Routes the whole internet for the network: this device is an exit node. */
+    val isExitNode: Boolean get() = networks.any { it == "0.0.0.0/0" || it == "::/0" }
 }
 
 @Serializable
@@ -113,6 +122,9 @@ data class NbPeer(
 
     /** Routes the whole internet: an exit node. */
     val isExitNode: Boolean get() = networks.any { it == "0.0.0.0/0" || it == "::/0" }
+
+    /** The IPv6 overlay address without its prefix length, empty when there is none. */
+    val ipv6Address: String get() = ipv6.substringBefore('/')
 }
 
 @Serializable

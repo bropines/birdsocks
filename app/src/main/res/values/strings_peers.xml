@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Peers screen: the list, this device's own row and the details sheet that
+  pages through them. The rest of the peer words (filters, ICE, latency) are
+  older and live in strings_birdsocks.xml.
+-->
+<resources>
+
+    <!-- The list. -->
+    <string name="state_peers_alone">No other peers in this network yet</string>
+    <string name="peer_state_connected">Connected</string>
+    <string name="peer_state_connecting">Connecting</string>
+    <string name="peer_state_idle">Idle</string>
+    <!-- This device while the daemon is neither connected nor connecting. -->
+    <string name="peer_state_down">Not connected</string>
+    <string name="peer_role_routing">Routing peer</string>
+    <string name="peer_self">This device</string>
+
+    <!-- The sheet: turning pages, folding cards, copying rows. -->
+    <string name="peer_details_prev">Previous</string>
+    <string name="peer_details_next">Next</string>
+    <string name="peer_copied">Copied</string>
+    <string name="peer_cd_expanded">Expanded</string>
+    <string name="peer_cd_collapsed">Collapsed</string>
+
+    <!-- The card headings. -->
+    <string name="peer_group_connection">Connection</string>
+    <string name="peer_group_addresses">Addresses</string>
+    <string name="peer_group_path">Path</string>
+    <string name="peer_group_traffic">Traffic</string>
+    <string name="peer_group_networks">Networks</string>
+    <string name="peer_group_security">Security</string>
+    <string name="peer_group_dns">DNS</string>
+
+    <!-- The connection card's caption under the latency, or under the dash
+         where there is none. -->
+    <string name="peer_conn_not_measured">Not measured yet</string>
+    <string name="peer_conn_not_connected">No connection now</string>
+    <string name="peer_conn_lazy">Connects on first use</string>
+
+    <!-- Rows of the path card. -->
+    <string name="peer_local_endpoint">This device\'s endpoint</string>
+    <string name="peer_remote_endpoint">Peer\'s endpoint</string>
+    <string name="peer_status_changed">Status changed</string>
+
+    <string name="peer_traffic_total">Transferred</string>
+    <string name="peer_traffic_rx">Received</string>
+    <string name="peer_traffic_tx">Sent</string>
+
+    <!-- The networks card: one range is shown as it is, more are counted. -->
+    <string name="peer_networks_one">Network it routes</string>
+    <string name="peer_networks_many">Networks it routes</string>
+    <plurals name="peer_networks_count">
+        <item quantity="one">%d network</item>
+        <item quantity="other">%d networks</item>
+    </plurals>
+
+    <string name="peer_rosenpass_caption">Post-quantum keys (Rosenpass)</string>
+    <string name="peer_rosenpass_permissive">On, permissive</string>
+    <string name="peer_ssh_session">SSH session</string>
+
+    <!-- This device's session and DNS cards. -->
+    <string name="peer_session_never">Does not expire</string>
+    <string name="peer_dns_labels">Extra DNS names</string>
+    <string name="peer_dns_labels_edit">Change in Settings</string>
+</resources>
