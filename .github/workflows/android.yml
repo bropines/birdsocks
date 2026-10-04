@@ -1,5 +1,9 @@
 name: Android CI Chain
 
+# Dormant: GitHub Actions are disabled in bropines/birdsocks's settings until
+# the author decides to build there; releases are built locally
+# (docs/RELEASING.md). Kept in step with the build so it works when enabled.
+
 on:
   push:
     branches: [ "main" ]
@@ -44,7 +48,7 @@ jobs:
           submodules: "recursive"
 
       # One Go cache, keyed by what changes the bulk of it — modules, the
-      # Tailscale version, the patches — not by the commit. Saved per commit
+      # NetBird version, the patches — not by the commit. Saved per commit
       # (2.5 GB a time) and again by setup-go's own cache (3.8 GB), it filled
       # the repository's 10 GB and pushed Gradle's cache out before every run.
       # The Go toolchain the build switches to lives in the module cache too.
@@ -60,14 +64,14 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('appctr/go.sum', 'appctr/TAILSCALE_VERSION', 'appctr/patches/*.patch') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('appctr/go.sum', 'appctr/NETBIRD_VERSION', 'appctr/patches/*.patch') }}
           restore-keys: |
             ${{ runner.os }}-go-
 
       - name: Verify Go Code Formatting
         run: |
           cd appctr
-          UNFORMATTED=$(gofmt -l $(find . -name "*.go" -not -path "./tailscale_src/*" -not -path "./orig/*" -not -path "./tmp/*"))
+          UNFORMATTED=$(gofmt -l $(find . -name "*.go" -not -path "./netbird_src/*" -not -path "./netbird_orig/*" -not -path "./tmp/*"))
           if [ -n "$UNFORMATTED" ]; then
             echo "The following Go files need formatting:"
             echo "$UNFORMATTED"
@@ -264,11 +268,11 @@ jobs:
             # (its Binaries: pattern knows only %v); builds between releases
             # carry the commit, since several of them share a version.
             if [ "$type" == "dev" ]; then
-              cp "$apk_file" "$out_dir/TailSocks-v${BASE_VER}-${abi}-${GIT_HASH}-dev.apk"
+              cp "$apk_file" "$out_dir/BirdSocks-v${BASE_VER}-${abi}-${GIT_HASH}-dev.apk"
             elif [ "${{ github.ref_type }}" == "tag" ]; then
-              cp "$apk_file" "$out_dir/TailSocks-v${BASE_VER}-${abi}-release.apk"
+              cp "$apk_file" "$out_dir/BirdSocks-v${BASE_VER}-${abi}-release.apk"
             else
-              cp "$apk_file" "$out_dir/TailSocks-v${BASE_VER}-${abi}-${GIT_HASH}-release.apk"
+              cp "$apk_file" "$out_dir/BirdSocks-v${BASE_VER}-${abi}-${GIT_HASH}-release.apk"
             fi
           done
 
@@ -276,70 +280,70 @@ jobs:
         if: hashFiles('apks-separated/arm64-v8a-dev/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-arm64-v8a-dev
+          name: birdsocks-arm64-v8a-dev
           path: apks-separated/arm64-v8a-dev/*.apk
 
       - name: Upload arm64-v8a Release APK
         if: hashFiles('apks-separated/arm64-v8a-release/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-arm64-v8a-release
+          name: birdsocks-arm64-v8a-release
           path: apks-separated/arm64-v8a-release/*.apk
 
       - name: Upload armeabi-v7a Dev APK
         if: hashFiles('apks-separated/armeabi-v7a-dev/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-armeabi-v7a-dev
+          name: birdsocks-armeabi-v7a-dev
           path: apks-separated/armeabi-v7a-dev/*.apk
 
       - name: Upload armeabi-v7a Release APK
         if: hashFiles('apks-separated/armeabi-v7a-release/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-armeabi-v7a-release
+          name: birdsocks-armeabi-v7a-release
           path: apks-separated/armeabi-v7a-release/*.apk
 
       - name: Upload Universal Dev APK
         if: hashFiles('apks-separated/universal-dev/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-universal-dev
+          name: birdsocks-universal-dev
           path: apks-separated/universal-dev/*.apk
 
       - name: Upload Universal Release APK
         if: hashFiles('apks-separated/universal-release/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-universal-release
+          name: birdsocks-universal-release
           path: apks-separated/universal-release/*.apk
 
       - name: Upload x86 Dev APK
         if: hashFiles('apks-separated/x86-dev/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-x86-dev
+          name: birdsocks-x86-dev
           path: apks-separated/x86-dev/*.apk
 
       - name: Upload x86 Release APK
         if: hashFiles('apks-separated/x86-release/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-x86-release
+          name: birdsocks-x86-release
           path: apks-separated/x86-release/*.apk
 
       - name: Upload x86_64 Dev APK
         if: hashFiles('apks-separated/x86_64-dev/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-x86_64-dev
+          name: birdsocks-x86_64-dev
           path: apks-separated/x86_64-dev/*.apk
 
       - name: Upload x86_64 Release APK
         if: hashFiles('apks-separated/x86_64-release/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: tailsocks-x86_64-release
+          name: birdsocks-x86_64-release
           path: apks-separated/x86_64-release/*.apk
 
   release:
@@ -358,7 +362,7 @@ jobs:
       - name: Download All APKs
         uses: actions/download-artifact@v4
         with:
-          pattern: tailsocks-*
+          pattern: birdsocks-*
           path: release-artifacts
           merge-multiple: true
 
@@ -391,4 +395,4 @@ jobs:
           files: release-artifacts/**/*.apk
           body_path: release_notes.txt
           tag_name: ${{ github.ref_name }}
-          name: "TailSocks ${{ github.ref_name }}"
+          name: "BirdSocks ${{ github.ref_name }}"
