@@ -418,7 +418,7 @@ tasks.matching { it.name.startsWith("package") && it.name.endsWith("Release") }.
 
                 Set KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD, e.g.
 
-                  KEYSTORE_FILE="${'$'}PWD/tailsocks.jks" KEYSTORE_PASSWORD=... \
+                  KEYSTORE_FILE="${'$'}PWD/birdsocks.jks" KEYSTORE_PASSWORD=... \
                   KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
 
                 For a build you just want to install locally, use ./gradlew app:assembleDebug —
