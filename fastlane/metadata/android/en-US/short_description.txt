@@ -1,1 +1,1 @@
-Unofficial Tailscale client: local SOCKS5/HTTP proxy, optional VPN, root mode
+Unofficial NetBird client: your network as a SOCKS5 proxy, optional VPN mode
