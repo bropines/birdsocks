@@ -67,4 +67,6 @@ TailSocks' history is in its own repository.
 - A DNS answer lost on weak Wi-Fi no longer costs 5 s: the daemon asks all the network's resolvers at once.
 - A Signal stream left unanswered is redialed after 6 s, not 40; a stuck connection attempt after 10 s, not 20.
 - A site the proxy reaches directly falls back to its other addresses when the first does not answer in 0.75 s.
+- In VPN mode NetBird lost its servers: Android named BirdSocks' own VPN as the app's network, so the daemon was told the network had changed and was handed the VPN's resolver, which it cannot reach.
+- A folded description no longer takes a row's taps: the row acts, the ⓘ or a long press unfolds it.
 - The SOCKS5 and DNS proxies stay up while NetBird reconnects or is signed out: a request waits a moment for the engine, then goes straight to the internet.

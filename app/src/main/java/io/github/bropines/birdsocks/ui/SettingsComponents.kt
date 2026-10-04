@@ -13,6 +13,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -86,7 +87,7 @@ fun SettingsClickableItem(
         )
     ) {
         ListItem(
-            supportingContent = { HelpText(subtitle, color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline, expanded = help) },
+            supportingContent = { HelpText(subtitle, color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline, expanded = help, tapToExpand = false) },
             leadingContent = { Icon(icon, null, tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline) },
             trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline) },
             colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
@@ -112,22 +113,32 @@ fun HelpText(
     textAlign: TextAlign? = null,
     lineHeight: TextUnit = TextUnit.Unspecified,
     expanded: MutableState<Boolean> = remember(text) { mutableStateOf(false) },
+    /**
+     * False inside a row that is itself a button: the text then leaves taps
+     * to the row, and only the ⓘ (or the row's long press) unfolds it —
+     * a folded description takes most of a row, which left the row a sliver
+     * to tap.
+     */
+    tapToExpand: Boolean = true,
 ) {
     var cut by remember(text) { mutableStateOf(false) }
     val open = expanded.value
-    // The whole folded text is the tap target, not only the ⓘ: at 16dp the
-    // icon was a third of the minimum touch size, and "tap the explanation to
-    // read it" is what the fold promises. No ripple — it is text, not a button.
+    // On its own, the whole folded text is the tap target, not only the ⓘ:
+    // at 16dp the icon was a third of the minimum touch size, and "tap the
+    // explanation to read it" is what the fold promises. No ripple — it is
+    // text, not a button.
     val expandLabel = stringResource(if (open) R.string.help_collapse else R.string.help_expand)
     Row(
         modifier = modifier
             .animateContentSize()
-            .clickable(
-                enabled = cut || open,
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClickLabel = expandLabel
-            ) { expanded.value = !open },
+            .then(
+                if (tapToExpand) Modifier.clickable(
+                    enabled = cut || open,
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClickLabel = expandLabel
+                ) { expanded.value = !open } else Modifier
+            ),
         verticalAlignment = Alignment.Bottom
     ) {
         Text(
@@ -143,14 +154,28 @@ fun HelpText(
             modifier = Modifier.weight(1f)
         )
         if (cut || open) {
-            Icon(
-                if (open) Icons.Default.ExpandLess else Icons.Default.Info,
-                contentDescription = null,
-                tint = color.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .padding(start = 4.dp, bottom = 1.dp)
-                    .size(16.dp)
-            )
+            val icon = if (open) Icons.Default.ExpandLess else Icons.Default.Info
+            if (tapToExpand) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = color.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .padding(start = 4.dp, bottom = 1.dp)
+                        .size(16.dp)
+                )
+            } else {
+                // Its own target, two lines tall, so the row keeps the rest.
+                Box(
+                    Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(onClickLabel = expandLabel) { expanded.value = !open },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = expandLabel, tint = color.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+                }
+            }
         }
     }
 }
@@ -188,7 +213,7 @@ fun SettingsSwitchItem(
         )
     ) {
         ListItem(
-            supportingContent = { HelpText(subtitle, color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline, expanded = help) },
+            supportingContent = { HelpText(subtitle, color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline, expanded = help, tapToExpand = false) },
             leadingContent = { Icon(icon, null, tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline) },
             trailingContent = { Switch(checked = checked, onCheckedChange = if (enabled) onCheckedChange else null, enabled = enabled) },
             colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
@@ -243,7 +268,8 @@ fun SettingsEditItem(
                     supporting,
                     lines = if (showsDescription) 2 else 1,
                     color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    expanded = help
+                    expanded = help,
+                    tapToExpand = false
                 )
             },
             leadingContent = { Icon(icon, null, tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) },

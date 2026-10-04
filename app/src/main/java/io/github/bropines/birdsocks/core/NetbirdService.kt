@@ -107,24 +107,22 @@ class NetbirdService : Service() {
     private var lostJob: Job? = null
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) = writeDnsServers(lp)
+        override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) {
+            // Our VPN's resolver (198.18.0.2) answers inside the tunnel, which
+            // the daemon is kept out of: the network beneath has the ones it can use.
+            if (isOwnVpn(network)) networkUnder(network)?.let { connectivity.getLinkProperties(it) }?.let(::writeDnsServers)
+            else writeDnsServers(lp)
+        }
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            // Under our VPN a Wi-Fi ↔ mobile switch shows only as the VPN's
+            // underlying network changing.
+            if (isOwnVpn(network)) networkUnder(network)?.takeIf { it != defaultNetwork }?.let(::onDefaultNetwork)
+        }
         override fun onAvailable(network: Network) {
-            connectivity.getLinkProperties(network)?.let(::writeDnsServers)
-            lostJob?.cancel()
-            val previous = defaultNetwork
-            defaultNetwork = network
-            // NetBird's netstack mode watches no network: without this a
-            // Wi-Fi ↔ mobile switch is noticed only when the old sockets time
-            // out. The first network after registering is no switch.
-            NetbirdState.networkFlow.value = true
-            if (previous != null && previous != network) {
-                Appctr.logAndroid("INFO", "CORE", "Default network changed: telling the daemon")
-                Appctr.networkChanged()
-            } else if (previous == null && networkWasLost) {
-                networkWasLost = false
-                Appctr.logAndroid("INFO", "CORE", "A network is back: telling the daemon")
-                Appctr.networkChanged()
-            }
+            // Android may name this app's own VPN its default network (HyperOS
+            // does), though the app is excluded from it: the network beneath
+            // is the one the daemon runs on, and the VPN coming up is no switch.
+            onDefaultNetwork(if (isOwnVpn(network)) networkUnder(network) ?: return else network)
         }
         override fun onLost(network: Network) {
             if (network != defaultNetwork) return
@@ -145,6 +143,47 @@ class NetbirdService : Service() {
             }
         }
     }
+
+    private fun onDefaultNetwork(network: Network) {
+        connectivity.getLinkProperties(network)?.let(::writeDnsServers)
+        lostJob?.cancel()
+        val previous = defaultNetwork
+        defaultNetwork = network
+        // NetBird's netstack mode watches no network: without this a
+        // Wi-Fi ↔ mobile switch is noticed only when the old sockets time
+        // out. The first network after registering is no switch.
+        NetbirdState.networkFlow.value = true
+        if (previous != null && previous != network) {
+            Appctr.logAndroid("INFO", "CORE", "Default network changed: telling the daemon")
+            Appctr.networkChanged()
+        } else if (previous == null && networkWasLost) {
+            networkWasLost = false
+            Appctr.logAndroid("INFO", "CORE", "A network is back: telling the daemon")
+            Appctr.networkChanged()
+        }
+    }
+
+    /** Whether [network] is this app's own VPN (VPN mode), not another app's. */
+    private fun isOwnVpn(network: Network): Boolean {
+        val caps = connectivity.getNetworkCapabilities(network) ?: return false
+        if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return false
+        // The owner is told only to the owner itself (Android 11+); before
+        // that, one VPN runs at a time, and ours is the one when it is up.
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) caps.ownerUid == android.os.Process.myUid() else TunVpnService.running.value
+    }
+
+    /**
+     * The network under our VPN: the validated non-VPN network with internet,
+     * Wi-Fi first, as Android itself would pick (a VPN's underlying networks
+     * are system API).
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun networkUnder(vpn: Network): Network? {
+        @Suppress("DEPRECATION")
+        val candidates = connectivity.allNetworks.mapNotNull { n -> connectivity.getNetworkCapabilities(n)?.let { n to it } }
+            .filter { (_, c) -> !c.hasTransport(NetworkCapabilities.TRANSPORT_VPN) && c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && c.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) }
+        return (candidates.firstOrNull { it.second.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) } ?: candidates.firstOrNull())?.first
+    }
     @Volatile private var networkWasLost = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -152,10 +191,10 @@ class NetbirdService : Service() {
     override fun onCreate() {
         super.onCreate()
         connectivity = getSystemService(ConnectivityManager::class.java)
-        // The default network as this app sees it — never its own VPN, which
-        // it always keeps itself out of (TunVpnService), so files/dns-servers
-        // never names the VPN's resolver; but possibly another app's VPN: its
-        // DNS is what the device uses then, and so the daemon too.
+        // The default network as this app sees it: possibly another app's VPN,
+        // whose DNS is what the device uses then, and so the daemon too. Its
+        // own VPN the callback looks through (isOwnVpn): the app is kept out
+        // of it (TunVpnService), yet Android may still report it as the default.
         runCatching { connectivity.registerDefaultNetworkCallback(networkCallback) }
             .onFailure { Log.w(TAG, "no default network callback: ${it.message}") }
         Appctr.setDaemonListener(object : DaemonListener {
@@ -198,7 +237,7 @@ class NetbirdService : Service() {
         NetbirdState.daemonFlow.value = NetbirdState.Daemon.Starting
         startJob = scope.launch {
             try {
-                connectivity.activeNetwork?.let { connectivity.getLinkProperties(it) }?.let(::writeDnsServers)
+                connectivity.activeNetwork?.let { if (isOwnVpn(it)) networkUnder(it) else it }?.let { connectivity.getLinkProperties(it) }?.let(::writeDnsServers)
                 Appctr.start(startOptions())
                 Appctr.waitReady(15_000)
                 NetbirdState.daemonFlow.value = NetbirdState.Daemon.Running

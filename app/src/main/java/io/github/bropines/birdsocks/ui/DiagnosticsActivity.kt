@@ -222,7 +222,7 @@ private fun ForwardingRow(count: Int) {
     ) {
         ListItem(
             leadingContent = { Icon(Icons.AutoMirrored.Filled.AltRoute, null, tint = MaterialTheme.colorScheme.primary) },
-            supportingContent = { HelpText(stringResource(R.string.diag_forwarding_desc)) },
+            supportingContent = { HelpText(stringResource(R.string.diag_forwarding_desc), tapToExpand = false) },
             trailingContent = {
                 Text(
                     if (count > 0) count.toString() else stringResource(R.string.nb_details_none),

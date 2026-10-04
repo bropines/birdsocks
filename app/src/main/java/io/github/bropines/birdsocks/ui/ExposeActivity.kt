@@ -82,7 +82,7 @@ fun ExposeScreen(onBack: () -> Unit) {
                 ) {
                     ListItem(
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.CallReceived, null) },
-                        supportingContent = { HelpText(stringResource(R.string.nb_expose_inbound_in_settings)) },
+                        supportingContent = { HelpText(stringResource(R.string.nb_expose_inbound_in_settings), tapToExpand = false) },
                         trailingContent = { Icon(Icons.Default.ChevronRight, null) },
                         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
                     ) { Text(stringResource(R.string.nb_settings_inbound)) }

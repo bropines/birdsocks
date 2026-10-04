@@ -540,7 +540,7 @@ private fun DnsLabelsRefusedCard() {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
         ListItem(
             leadingContent = { Icon(Icons.AutoMirrored.Filled.Label, null) },
-            supportingContent = { HelpText(stringResource(R.string.nb_dns_labels_refused_desc)) },
+            supportingContent = { HelpText(stringResource(R.string.nb_dns_labels_refused_desc), tapToExpand = false) },
             trailingContent = {
                 TextButton(onClick = {
                     GlobalSettings.setDnsLabels(context, NetbirdState.profile.value ?: "default", "")

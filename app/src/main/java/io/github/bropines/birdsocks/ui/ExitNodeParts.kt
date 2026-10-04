@@ -116,7 +116,7 @@ fun ExitNodeRow(
             },
             overlineContent = { Text(stringResource(R.string.nb_exit_node)) },
             supportingContent = when {
-                dead -> { { HelpText(stringResource(R.string.nb_exit_node_dead), color = MaterialTheme.colorScheme.error) } }
+                dead -> { { HelpText(stringResource(R.string.nb_exit_node_dead), color = MaterialTheme.colorScheme.error, tapToExpand = false) } }
                 current != null && via != null -> { { Text(stringResource(R.string.nb_exit_node_via, via)) } }
                 else -> null
             },

@@ -50,8 +50,9 @@ import java.util.concurrent.TimeUnit
  * - **Routes** come from NetBird's state ([TunRoutes]); a change rebuilds the
  *   VPN, debounced: the new interface is established first, then hev moves
  *   to it, so the VPN network is not dropped in between.
- * - **This app is always outside it** — a loop guard, and it keeps the
- *   default-network callback (and so files/dns-servers) on the real network.
+ * - **This app is always outside it** — a loop guard: the daemon's own
+ *   sockets go over the real network. Android may still report this VPN as
+ *   the app's default network; NetbirdService then reads the network beneath.
  */
 class TunVpnService : VpnService() {
 

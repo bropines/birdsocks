@@ -179,7 +179,7 @@ private fun NetworksOffBanner(modifier: Modifier = Modifier) {
     ) {
         ListItem(
             leadingContent = { Icon(Icons.Default.LinkOff, null) },
-            supportingContent = { HelpText(stringResource(R.string.nb_networks_off_desc)) },
+            supportingContent = { HelpText(stringResource(R.string.nb_networks_off_desc), tapToExpand = false) },
             trailingContent = { Icon(Icons.Default.ChevronRight, null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
         ) { Text(stringResource(R.string.nb_networks_off_title)) }
