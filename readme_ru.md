@@ -15,8 +15,7 @@ BirdSocks запускает на телефоне настоящий клиен
 прокси-клиентом вроде Throne. Для приложений, которые не умеют работать
 через прокси, есть VPN-режим.
 
-Это родственник [TailSocks](https://github.com/bropines/tailsocks) для NetBird,
-собранный на его основе.
+Основа проекта взята из [TailSocks](https://github.com/bropines/tailsocks).
 
 > 0.1.0 ещё не выпущена. Что сделано — в [`CHANGELOG.md`](CHANGELOG.md),
 > что дальше — в [дорожной карте](docs/ROADMAP_RU.md).

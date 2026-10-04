@@ -7,10 +7,9 @@ this repository.
 
 ## Architecture
 
-BirdSocks is an Android client for [NetBird](https://netbird.io) that does what
-TailSocks does for Tailscale: it runs the client as a **userspace node** and
-hands its network to apps through a **SOCKS5 proxy**, without taking Android's
-VPN slot.
+BirdSocks is an Android client for [NetBird](https://netbird.io): it runs the
+client as a **userspace node** and hands its network to apps through a
+**SOCKS5 proxy**, without taking Android's VPN slot.
 
 1. **The daemon (`libnetbird.so`).** NetBird's own daemon server
    (`client/server`, the one `netbird service run` hosts on desktops), started by
@@ -115,7 +114,7 @@ the APK ships; regenerate it when a component changes.
 
 ## UI standards
 
-Inherited from TailSocks and still binding:
+Binding:
 
 * Material 3 through `BirdSocksTheme`; semantic colours, `MaterialTheme.shapes`.
 * Every screen uses `AppTopBar`. Explanations fold through `HelpText` (two lines,
@@ -124,7 +123,7 @@ Inherited from TailSocks and still binding:
 * Every new string goes in English to `values/` and in Russian to `values-ru/`.
 * Never block the main thread on the bridge: `Netbird.*` calls are suspend
   functions on `Dispatchers.IO`.
-* The structure follows TailSocks': the main screen is the status card, banners
+* The structure: the main screen is the status card, banners
   only when something needs the user, the exit-node row and six tiles (Peers,
   Networks, DNS, Publish, Diagnostics, Settings). This device lives in Peers as
   its first row. Settings is a hub of sections (`SettingsSections` ids, opened by

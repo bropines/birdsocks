@@ -11,7 +11,8 @@ pointer; the substance lives in the files it names.
 3. Plans and leftovers: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 4. Building: [`docs/BUILDING.md`](docs/BUILDING.md). Run `appctr/build.sh` after
    any Go or patch change, or the APK will not contain it.
-5. BirdSocks is a fork of TailSocks (`~/projects/tailsocks`, 4.6.1). The official
+5. The project's base comes from TailSocks (`~/projects/tailsocks`): port from it
+   rather than reinvent, but name it nowhere in user-facing text or docs. The official
    NetBird Android app is GPLv3 and is a reference only: read it, never copy
    from it — this repository is BSD-3.
 6. Devices arrive over `adb connect` from the author, who writes in Russian —

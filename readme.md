@@ -14,8 +14,7 @@ proxy, so BirdSocks does not need Android's VPN slot and can run next to another
 VPN, an ad-blocker or a proxy client such as Throne. When an app cannot use a
 proxy, a VPN mode is there too.
 
-It is the NetBird sibling of [TailSocks](https://github.com/bropines/tailsocks),
-and is built from it.
+The project's base comes from [TailSocks](https://github.com/bropines/tailsocks).
 
 > 0.1.0 is not released yet. See [`CHANGELOG.md`](CHANGELOG.md) and the
 > [roadmap](docs/ROADMAP.md).

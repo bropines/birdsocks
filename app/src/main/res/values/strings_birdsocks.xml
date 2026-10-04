@@ -118,7 +118,7 @@
     <string name="nb_peers_lazy">Lazy connections are on: an idle peer connects on the first packet sent to it and sleeps after 15 minutes of silence.</string>
     <string name="nb_settings_dns_upstream">Other names go to</string>
     <string name="nb_settings_dns_upstream_hint">The network\'s DNS</string>
-    <string name="nb_settings_dns_upstream_desc">Where names NetBird does not answer are sent, host:port, comma-separated. Empty: the network\'s resolvers. Put TailSocks\' DNS proxy here when both are fallbacks in AdGuard, so every mesh name gets the same answer whichever is asked first.</string>
+    <string name="nb_settings_dns_upstream_desc">Where names NetBird does not answer are sent, host:port, comma-separated. Empty: the network\'s resolvers. Put another DNS proxy on the phone here when both are fallbacks in AdGuard, so every mesh name gets the same answer whichever is asked first.</string>
     <string name="nb_settings_socks_address">Address</string>
     <string name="nb_settings_loopback_desc">host:port, any address from 127.0.0.0/8: 127.0.0.1 is where other apps look for a proxy first, a random 127.x.y.z (the dice) is not. Sharing on the local network listens on 0.0.0.0 with the same port.</string>
     <string name="nb_settings_bad_loopback">An address here is 127.x.y.z:port</string>

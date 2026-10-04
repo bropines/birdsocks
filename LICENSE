@@ -1,7 +1,7 @@
 Copyright (c) 2026, Bropines (BirdSocks Project)
 
-This project is licensed under the BSD 3-Clause License. It is a fork of
-TailSocks (BSD 3-Clause, the same author) and builds on the NetBird client
+This project is licensed under the BSD 3-Clause License. Its base comes
+from TailSocks (BSD 3-Clause, the same author), and it builds on the NetBird client
 (BSD 3-Clause); the third-party components it ships are listed at the end.
 
 --------------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 *Русская версия: [TRANSLATING_RU.md](TRANSLATING_RU.md)*
 
-BirdSocks is to be translated on [Hosted Weblate](https://hosted.weblate.org/), as TailSocks is. The project does not exist yet: Weblate's free Libre plan is for public projects, and this repository is still private. Until then English and Russian are maintained in the repository. Once it exists, translators work in the browser, with machine suggestions to start from, and Weblate sends the result back as pull requests.
+BirdSocks is to be translated on [Hosted Weblate](https://hosted.weblate.org/). The project does not exist yet: Weblate's free Libre plan is for public projects, and this repository is still private. Until then English and Russian are maintained in the repository. Once it exists, translators work in the browser, with machine suggestions to start from, and Weblate sends the result back as pull requests.
 
 ## For translators
 

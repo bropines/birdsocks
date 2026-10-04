@@ -6,8 +6,7 @@ Expected layout (fastlane supply / F-Droid / IzzyOnDroid):
   phoneScreenshots/1.png, 2.png, ...
   sevenInchScreenshots/, tenInchScreenshots/  (optional, tablets)
 
-BirdSocks has no screenshots yet: the ones inherited from TailSocks showed
-TailSocks and were removed. Add BirdSocks' own once the screens settle (see
+BirdSocks has no screenshots yet. Add them once the screens settle (see
 docs/ROADMAP.md, "An own logo and screenshots"); keep the aspect ratio at or
 below 2:1. The icon can be exported from docs/logo.svg.
 

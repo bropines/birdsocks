@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The VPN (TUN) mode: TunVpnService, its settings, its permission and its app list. -->
 <resources>
-    <!-- Restored from the TailSocks-era screens (305673c^) -->
     <string name="title_activity_tun_excluded_apps">Excluded apps</string>
     <string name="tun_apps_filter_all">All</string>
     <string name="tun_apps_filter_excluded">Bypassed</string>

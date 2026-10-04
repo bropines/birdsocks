@@ -16,7 +16,7 @@ roughly in order.
 
 ## Next
 - **HTTP proxy** next to SOCKS5, for apps that only speak HTTP.
-- Widgets, Tasker actions, backups — TailSocks had them; port what fits.
+- Home-screen widgets.
 
 ## Later
 - Root mode.

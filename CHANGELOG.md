@@ -1,15 +1,13 @@
 # Changelog
 
-BirdSocks is a fork of [TailSocks](https://github.com/bropines/tailsocks) 4.6.1;
-TailSocks' history is in its own repository.
 
 ## [0.1.0] - Unreleased
 
 ### Added
 - NetBird v0.80.0 as a userspace node with a local SOCKS5 proxy, without the VPN slot.
 - Sign-in to NetBird Cloud or an own server, with a setup key or through the browser.
-- A main screen like TailSocks': status, the exit node and six tiles — Peers, Networks, DNS, Publish, Diagnostics, Settings.
-- Peers like TailSocks': this device first with its addresses, key and session; peer details swipe from one peer to the next; filters swipe.
+- A main screen with the status, the exit node and six tiles — Peers, Networks, DNS, Publish, Diagnostics, Settings.
+- Peers: this device first with its addresses, key and session; peer details swipe from one peer to the next; filters swipe.
 - Settings as a hub of sections; accounts switched, renamed and removed in one sheet.
 - Diagnostics: connection and events on swiped pages, with logs, access check, packet capture and the debug bundle.
 - A DNS screen: the DNS proxy's test, lookups, NetBird's DNS and its servers.
@@ -25,7 +23,7 @@ TailSocks' history is in its own repository.
 - A network switch or loss reaches the daemon, so its connections redial at once.
 - Several accounts: switch from the title on the main screen, rename and remove in Settings.
 - UDP through the proxy (UDP ASSOCIATE), to peers and to the internet; the relay answers only the client that asked.
-- The DNS proxy can send what NetBird does not answer to another resolver, such as TailSocks' DNS proxy.
+- The DNS proxy can send what NetBird does not answer to another resolver, such as another DNS proxy on the phone.
 - The daemon restarts by itself after a crash, up to three times in five minutes.
 - Peer counts read as peers and active connections, with lazy connections explained.
 - The management server row in Settings opens its dashboard.

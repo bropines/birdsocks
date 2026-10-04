@@ -110,7 +110,7 @@
     <string name="nb_peers_lazy">Включены ленивые соединения: узел подключается на первом пакете к нему и засыпает после 15 минут тишины.</string>
     <string name="nb_settings_dns_upstream">Остальные имена отправлять в</string>
     <string name="nb_settings_dns_upstream_hint">DNS сети</string>
-    <string name="nb_settings_dns_upstream_desc">Куда отправлять имена, на которые не отвечает NetBird: host:port через запятую. Пусто — DNS сети. Укажите DNS-прокси TailSocks, если оба стоят fallback-серверами в AdGuard: тогда любое имя сети получит одинаковый ответ, кого бы AdGuard ни спросил первым.</string>
+    <string name="nb_settings_dns_upstream_desc">Куда отправлять имена, на которые не отвечает NetBird: host:port через запятую. Пусто — DNS сети. Укажите другой DNS-прокси на телефоне, если оба стоят fallback-серверами в AdGuard: тогда любое имя сети получит одинаковый ответ, кого бы AdGuard ни спросил первым.</string>
     <string name="nb_settings_socks_address">Адрес</string>
     <string name="nb_settings_loopback_desc">host:port, любой адрес из 127.0.0.0/8: на 127.0.0.1 прокси ищут первым делом, на случайном 127.x.y.z (кубик) — нет. Раздача в локальную сеть слушает 0.0.0.0 с тем же портом.</string>
     <string name="nb_settings_bad_loopback">Адрес здесь — 127.x.y.z:порт</string>

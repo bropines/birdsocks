@@ -28,7 +28,7 @@ Most apps have no proxy setting. A proxy client can carry their traffic to BirdS
 **Throne / NekoBox / sing-box clients**
 1. Add a SOCKS5 profile with BirdSocks' address, port, username and password. Name it, for example `netbird`.
 2. Add route rules that send your NetBird domains (`netbird.cloud` or your own) and NetBird's ranges (`100.64.0.0/10`, or your own range such as `10.90.0.0/16`) to that profile.
-3. Put these rules **above** `ip_is_private → direct` and above any Tailscale rule. Rules are first-match, and a private range such as 10.x would otherwise go direct.
+3. Put these rules **above** `ip_is_private → direct` and above rules for other mesh networks. Rules are first-match, and a private range such as 10.x would otherwise go direct.
 4. Throne resolves a name with its own DNS before it routes. For NetBird names, add `udp://127.0.0.1:48153` (the BirdSocks DNS proxy) as a DNS server for your NetBird domains, or turn off resolving before routing.
 
 **AdGuard (VPN mode)**
@@ -51,7 +51,7 @@ Most apps have no proxy setting. A proxy client can carry their traffic to BirdS
 - `127.0.0.1:48153`, UDP, in Settings → DNS.
 - **Answers:**
   - NetBird names come first;
-  - everything else goes to the network's resolvers, or to the fallbacks you set (for example TailSocks' DNS proxy), all asked at once;
+  - everything else goes to the network's resolvers, or to the fallbacks you set (for example another DNS proxy on the phone), all asked at once;
   - a NetBird name never goes to a public resolver.
 - **The DNS screen** tests the proxy, looks names up and shows NetBird's nameservers. Under **Records** it lists every name the server gave this device: the peers' zone and the zones an admin made. Tap a name to copy it.
 
