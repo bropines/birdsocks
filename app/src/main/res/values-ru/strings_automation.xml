@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Automation: Settings → Automation, action links, launcher shortcuts (core/Automation.kt, ui/ActionLinks.kt). -->
+<resources>
+    <string name="settings_cat_automation">Автоматизация</string>
+    <string name="settings_cat_automation_desc">Tasker и adb, ссылки-действия, токен</string>
+
+    <string name="automation_title">Автоматизация</string>
+    <string name="automation_enable">Разрешить автоматизацию</string>
+    <string name="automation_enable_desc">Tasker, MacroDroid, adb и ссылки с токеном смогут запускать, останавливать и переключать BirdSocks. Выключено — все запросы отклоняются.</string>
+    <string name="automation_token">Токен</string>
+    <string name="automation_token_clear">Очистить токен</string>
+    <string name="automation_token_desc">Каждая рассылка передаёт его в extra secret, а ссылка с &amp;secret= выполняется без вопроса. У кого токен, тот управляет BirdSocks.</string>
+    <string name="automation_token_missing">Нет токена хотя бы из %1$d символов — все запросы отклоняются. Сгенерируйте его.</string>
+    <string name="automation_status_to">Статус уходит в %1$s</string>
+    <string name="automation_status_stop">Отключить</string>
+    <string name="automation_docs">Действия и примеры</string>
+    <string name="automation_docs_desc">Рассылки, ссылки, команды adb</string>
+    <string name="automation_docs_url">https://github.com/bropines/birdsocks/blob/main/docs/AUTOMATION_RU.md</string>
+
+    <string name="automation_failed">Не выполнено: %1$s</string>
+    <string name="automation_start_refused">Android не дал автоматизации запустить BirdSocks в фоне. Отключите для него оптимизацию батареи: Настройки → Фоновая работа и разрешения.</string>
+</resources>

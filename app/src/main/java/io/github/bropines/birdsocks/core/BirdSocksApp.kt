@@ -31,6 +31,8 @@ class BirdSocksApp : Application() {
         registerReceiver(object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) = applyTimeZone()
         }, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED))
+        // STATUS_CHANGED for the app automation named, when it named one.
+        Automation.watch(this)
     }
 
     private fun applyTimeZone() {

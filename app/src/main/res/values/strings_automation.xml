@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Automation: Settings → Automation, action links, launcher shortcuts (core/Automation.kt, ui/ActionLinks.kt). -->
+<resources>
+    <string name="settings_cat_automation">Automation</string>
+    <string name="settings_cat_automation_desc">Tasker and adb, action links, the token</string>
+
+    <string name="automation_title">Automation</string>
+    <string name="automation_enable">Allow automation</string>
+    <string name="automation_enable_desc">Tasker, MacroDroid, adb and links that carry the token can start, stop and switch BirdSocks. Off: every request is refused.</string>
+    <string name="automation_token">Token</string>
+    <string name="automation_token_clear">Clear the token</string>
+    <string name="automation_token_desc">Every broadcast carries it in the secret extra, and a link with &amp;secret= runs without asking. Whoever has it controls BirdSocks.</string>
+    <string name="automation_token_missing">No token of at least %1$d characters: every request is refused. Generate one.</string>
+    <string name="automation_status_to">Status updates go to %1$s</string>
+    <string name="automation_status_stop">Stop</string>
+    <string name="automation_docs">Actions and examples</string>
+    <string name="automation_docs_desc">Broadcasts, links, adb commands</string>
+    <string name="automation_docs_url">https://github.com/bropines/birdsocks/blob/main/docs/AUTOMATION.md</string>
+
+    <string name="automation_failed">Not done: %1$s</string>
+    <string name="automation_start_refused">Android did not let automation start BirdSocks in the background. Exempt it from battery optimization in Settings → Background &amp; permissions.</string>
+</resources>

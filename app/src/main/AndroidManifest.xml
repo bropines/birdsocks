@@ -74,6 +74,22 @@
             </intent-filter>
         </service>
 
+        <!-- Tasker, MacroDroid, adb (core/AutomationReceiver.kt). Open to every app by design:
+             nothing is done without Settings → Automation on and its token in the intent. -->
+        <receiver android:name=".core.AutomationReceiver" android:exported="true" tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="io.github.bropines.birdsocks.action.CONNECT" />
+                <action android:name="io.github.bropines.birdsocks.action.DISCONNECT" />
+                <action android:name="io.github.bropines.birdsocks.action.TOGGLE" />
+                <action android:name="io.github.bropines.birdsocks.action.RESTART" />
+                <action android:name="io.github.bropines.birdsocks.action.GET_STATUS" />
+                <action android:name="io.github.bropines.birdsocks.action.SET_EXIT_NODE" />
+                <action android:name="io.github.bropines.birdsocks.action.SWITCH_ACCOUNT" />
+                <action android:name="io.github.bropines.birdsocks.action.SET_TUN" />
+                <action android:name="io.github.bropines.birdsocks.action.SET_SERVER_CONNECTION" />
+            </intent-filter>
+        </receiver>
+
         <receiver android:name=".core.BootReceiver" android:enabled="true" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
