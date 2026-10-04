@@ -193,7 +193,7 @@
  }
  
  func NewNSDialer(net *netstack.Net) *NSDialer {
-@@ -22,9 +27,26 @@
+@@ -22,9 +27,25 @@
  	}
  }
  
@@ -212,8 +212,7 @@
 +	}
 +	if !overlayDestination(addr) {
 +		log.Debugf("dialing %s %s directly", network, addr)
-+		var hd net.Dialer
-+		return hd.DialContext(ctx, network, addr)
++		return dialDirect(ctx, network, addr)
 +	}
  	log.Debugf("dialing %s %s", network, addr)
 -	conn, err := d.net.Dial(network, addr)
@@ -223,7 +222,7 @@
  	}
 --- netbird_orig/client/iface/netstack/route.go
 +++ netbird_src/client/iface/netstack/route.go
-@@ -0,0 +1,249 @@
+@@ -0,0 +1,265 @@
 +package netstack
 +
 +// route.go — BirdSocks: which destinations the SOCKS5 proxy sends through
@@ -432,6 +431,7 @@
 +		cancel()
 +		if err == nil {
 +			if ip := pickIP(addrs); ip != nil {
++				alternatives.put(ip, parseIPs(addrs))
 +				return ctx, ip, nil
 +			}
 +		}
@@ -441,6 +441,7 @@
 +	cancel()
 +	if err == nil {
 +		if ip := pickIP(addrs); ip != nil {
++			alternatives.put(ip, parseIPs(addrs))
 +			return ctx, ip, nil
 +		}
 +	}
@@ -448,12 +449,26 @@
 +	if err != nil {
 +		return ctx, nil, err
 +	}
++	chosen := ips[0]
 +	for _, ip := range ips {
 +		if ip.To4() != nil {
-+			return ctx, ip, nil
++			chosen = ip
++			break
 +		}
 +	}
-+	return ctx, ips[0], nil
++	// The other addresses are what the direct dial falls back to.
++	alternatives.put(chosen, ips)
++	return ctx, chosen, nil
++}
++
++func parseIPs(addrs []string) []net.IP {
++	out := make([]net.IP, 0, len(addrs))
++	for _, a := range addrs {
++		if ip := net.ParseIP(a); ip != nil {
++			out = append(out, ip)
++		}
++	}
++	return out
 +}
 +
 +// pickIP prefers an IPv4 address, as NetBird networks are IPv4 first.
@@ -1186,6 +1201,268 @@
 +	SetSearchDomains(nil)
 +	if got := expansions("sleeperpc"); got != nil {
 +		t.Errorf("no domains: %v", got)
++	}
++}
+--- netbird_orig/client/iface/netstack/fallback.go
++++ netbird_src/client/iface/netstack/fallback.go
+@@ -0,0 +1,150 @@
++package netstack
++
++import (
++	"context"
++	"net"
++	"sync"
++	"time"
++)
++
++// fallbackDelay is how long a direct dial waits on one address before it
++// tries the name's next one alongside: a CDN's addresses are blocked one by
++// one on some networks, and a browser moves on instead of hanging.
++const fallbackDelay = 750 * time.Millisecond
++
++// alternatives remembers, for a minute, every address of the names the
++// proxy resolved, keyed by the one it handed out, so the direct dial can
++// fall back to the others.
++var alternatives = &altCache{entries: map[string]altEntry{}}
++
++type altEntry struct {
++	addrs []net.IP
++	until time.Time
++}
++
++type altCache struct {
++	mu      sync.Mutex
++	entries map[string]altEntry
++}
++
++const altCacheMax = 1024
++
++// put records all of a name's addresses under chosen, chosen first.
++func (c *altCache) put(chosen net.IP, all []net.IP) {
++	if len(all) < 2 {
++		return
++	}
++	ordered := []net.IP{chosen}
++	for _, v4 := range []bool{chosen.To4() != nil, chosen.To4() == nil} {
++		for _, ip := range all {
++			if !ip.Equal(chosen) && (ip.To4() != nil) == v4 {
++				ordered = append(ordered, ip)
++			}
++		}
++	}
++	c.mu.Lock()
++	defer c.mu.Unlock()
++	if len(c.entries) >= altCacheMax {
++		c.entries = map[string]altEntry{}
++	}
++	c.entries[chosen.String()] = altEntry{addrs: ordered, until: time.Now().Add(time.Minute)}
++}
++
++// get returns the addresses to try for host, the given one first.
++func (c *altCache) get(host string) []net.IP {
++	c.mu.Lock()
++	defer c.mu.Unlock()
++	e, ok := c.entries[host]
++	if !ok || time.Now().After(e.until) {
++		return nil
++	}
++	return e.addrs
++}
++
++// dialFunc is the plain dial a fallback dial is made of; tests replace it.
++var dialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
++	var d net.Dialer
++	return d.DialContext(ctx, network, addr)
++}
++
++// dialDirect dials addr over the host's network; for TCP to an address the
++// proxy resolved from a name, the name's other addresses follow, staggered.
++func dialDirect(ctx context.Context, network, addr string) (net.Conn, error) {
++	host, port, err := net.SplitHostPort(addr)
++	if err != nil || (network != "tcp" && network != "tcp4" && network != "tcp6") {
++		return dialFunc(ctx, network, addr)
++	}
++	alts := alternatives.get(host)
++	if len(alts) < 2 {
++		return dialFunc(ctx, network, addr)
++	}
++	addrs := make([]string, 0, len(alts))
++	for _, ip := range alts {
++		addrs = append(addrs, net.JoinHostPort(ip.String(), port))
++	}
++	return dialStaggered(ctx, network, addrs)
++}
++
++// dialStaggered dials addrs[0], starts the next address when the last one
++// failed or has not connected within fallbackDelay, and returns the first
++// connection made; the losers are closed.
++func dialStaggered(ctx context.Context, network string, addrs []string) (net.Conn, error) {
++	ctx, cancel := context.WithCancel(ctx)
++	defer cancel()
++	type result struct {
++		conn net.Conn
++		err  error
++	}
++	results := make(chan result, len(addrs))
++	dial := dialFunc
++	pending, next := 0, 0
++	start := func() {
++		a := addrs[next]
++		next++
++		pending++
++		go func() {
++			c, err := dial(ctx, network, a)
++			results <- result{c, err}
++		}()
++	}
++	// The dials still running when one wins are drained and closed.
++	drain := func(n int) {
++		go func() {
++			for i := 0; i < n; i++ {
++				if r := <-results; r.conn != nil {
++					_ = r.conn.Close()
++				}
++			}
++		}()
++	}
++	start()
++	timer := time.NewTimer(fallbackDelay)
++	defer timer.Stop()
++	var firstErr error
++	for pending > 0 {
++		select {
++		case r := <-results:
++			pending--
++			if r.err == nil {
++				drain(pending)
++				return r.conn, nil
++			}
++			if firstErr == nil {
++				firstErr = r.err
++			}
++			if next < len(addrs) {
++				start()
++				timer.Reset(fallbackDelay)
++			}
++		case <-timer.C:
++			if next < len(addrs) {
++				start()
++				timer.Reset(fallbackDelay)
++			}
++		case <-ctx.Done():
++			drain(pending)
++			return nil, ctx.Err()
++		}
++	}
++	return nil, firstErr
++}
+--- netbird_orig/client/iface/netstack/fallback_test.go
++++ netbird_src/client/iface/netstack/fallback_test.go
+@@ -0,0 +1,106 @@
++package netstack
++
++import (
++	"context"
++	"errors"
++	"net"
++	"sync/atomic"
++	"testing"
++	"time"
++)
++
++// fakeDial: "hang" never connects until ctx ends, "fail" fails at once,
++// anything else connects over a pipe.
++func fakeDial(t *testing.T, closed *atomic.Int32) func(ctx context.Context, network, addr string) (net.Conn, error) {
++	return func(ctx context.Context, network, addr string) (net.Conn, error) {
++		host, _, _ := net.SplitHostPort(addr)
++		switch host {
++		case "192.0.2.1": // hangs
++			<-ctx.Done()
++			return nil, ctx.Err()
++		case "192.0.2.2": // refused
++			return nil, errors.New("refused")
++		}
++		a, b := net.Pipe()
++		go func() { <-ctx.Done(); _ = b.Close() }()
++		return &countingConn{Conn: a, closed: closed}, nil
++	}
++}
++
++type countingConn struct {
++	net.Conn
++	closed *atomic.Int32
++}
++
++func (c *countingConn) Close() error { c.closed.Add(1); return c.Conn.Close() }
++
++func withFake(t *testing.T) *atomic.Int32 {
++	var closed atomic.Int32
++	old := dialFunc
++	dialFunc = fakeDial(t, &closed)
++	t.Cleanup(func() { dialFunc = old })
++	return &closed
++}
++
++func TestHangingFirstAddressFallsBack(t *testing.T) {
++	withFake(t)
++	start := time.Now()
++	c, err := dialStaggered(context.Background(), "tcp", []string{"192.0.2.1:443", "192.0.2.3:443"})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer c.Close()
++	if took := time.Since(start); took < fallbackDelay || took > fallbackDelay+time.Second {
++		t.Fatalf("connected after %v, want about %v", took, fallbackDelay)
++	}
++}
++
++func TestRefusedFirstAddressFallsBackAtOnce(t *testing.T) {
++	withFake(t)
++	start := time.Now()
++	c, err := dialStaggered(context.Background(), "tcp", []string{"192.0.2.2:443", "192.0.2.3:443"})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer c.Close()
++	if took := time.Since(start); took > 500*time.Millisecond {
++		t.Fatalf("connected after %v; a refusal should move on at once", took)
++	}
++}
++
++func TestAllFail(t *testing.T) {
++	withFake(t)
++	_, err := dialStaggered(context.Background(), "tcp", []string{"192.0.2.2:443", "192.0.2.2:80"})
++	if err == nil {
++		t.Fatal("connected to nothing")
++	}
++}
++
++func TestDirectDialUsesRememberedAddresses(t *testing.T) {
++	withFake(t)
++	alternatives.put(net.ParseIP("192.0.2.1"), []net.IP{net.ParseIP("192.0.2.1"), net.ParseIP("192.0.2.3")})
++	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
++	defer cancel()
++	c, err := dialDirect(ctx, "tcp", "192.0.2.1:443")
++	if err != nil {
++		t.Fatal(err)
++	}
++	c.Close()
++	// Unknown addresses dial once, as before.
++	ctx2, cancel2 := context.WithTimeout(context.Background(), 300*time.Millisecond)
++	defer cancel2()
++	if _, err := dialDirect(ctx2, "tcp", "192.0.2.9:443"); err != nil {
++		t.Fatalf("plain dial: %v", err)
++	}
++}
++
++func TestAltOrderPrefersChosenFamily(t *testing.T) {
++	c := &altCache{entries: map[string]altEntry{}}
++	v6 := net.ParseIP("2001:db8::1")
++	a, b := net.ParseIP("198.51.100.1"), net.ParseIP("198.51.100.2")
++	c.put(b, []net.IP{v6, a, b})
++	got := c.get("198.51.100.2")
++	if len(got) != 3 || !got[0].Equal(b) || !got[1].Equal(a) || !got[2].Equal(v6) {
++		t.Fatalf("order %v", got)
 +	}
 +}
 --- netbird_orig/client/iface/device/device_netstack.go
