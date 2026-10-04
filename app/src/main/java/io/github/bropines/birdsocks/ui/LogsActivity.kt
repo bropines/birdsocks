@@ -345,6 +345,8 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
 
     var showBundle by remember { mutableStateOf(false) }
     if (showBundle) DebugBundleDialog(onDismiss = { showBundle = false })
+    var showCapture by remember { mutableStateOf(false) }
+    if (showCapture) CaptureDialog(onDismiss = { showCapture = false })
 
     val saveFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         uri?.let {
@@ -473,6 +475,7 @@ fun LogsScreen(onBack: () -> Unit, initialCategory: String = "ALL") {
                             }) { Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.action_copy)) }
                             
                             IconButton(onClick = { saveFileLauncher.launch("birdsocks_logs_${System.currentTimeMillis()}.txt") }) { Icon(Icons.Default.Save, contentDescription = stringResource(R.string.action_save)) }
+                            IconButton(onClick = { showCapture = true }) { Icon(Icons.Default.Sensors, contentDescription = stringResource(R.string.nb_capture_title)) }
                             IconButton(onClick = { showBundle = true }) { Icon(Icons.Default.Inventory2, contentDescription = stringResource(R.string.nb_bundle_title)) }
 
                             IconButton(onClick = {
@@ -725,5 +728,84 @@ private fun DebugBundleDialog(onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(enabled = !busy, onClick = { build(upload = true) }) { Text(stringResource(R.string.nb_bundle_upload)) } },
         dismissButton = { TextButton(enabled = !busy, onClick = { build(upload = false) }) { Text(stringResource(R.string.nb_bundle_save)) } }
+    )
+}
+
+/**
+ * Records the tunnel's packets for a while as a .pcap file — what Wireshark
+ * opens — and saves it where the user picks.
+ */
+@Composable
+private fun CaptureDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var seconds by remember { mutableStateOf(30) }
+    var filter by remember { mutableStateOf("") }
+    var running by remember { mutableStateOf(false) }
+    var bytes by remember { mutableStateOf(0L) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val file = remember { java.io.File(context.cacheDir, "capture.pcap") }
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.tcpdump.pcap")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
+            }.onFailure { message = it.message }
+            file.delete()
+            launch(Dispatchers.Main) { if (message == null) onDismiss() }
+        }
+    }
+    var sub by remember { mutableStateOf<appctr.Subscription?>(null) }
+    DisposableEffect(Unit) { onDispose { sub?.cancel() } }
+
+    fun start() {
+        running = true; bytes = 0; message = null
+        val out = java.io.FileOutputStream(file)
+        sub = Netbird.capture(seconds, filter,
+            onData = { chunk -> synchronized(out) { out.write(chunk); bytes += chunk.size } },
+            onEnd = { err ->
+                synchronized(out) { runCatching { out.close() } }
+                scope.launch(Dispatchers.Main) {
+                    running = false
+                    sub = null
+                    // Whatever was recorded is worth saving, however the capture ended.
+                    when {
+                        file.length() > 24 -> save.launch("birdsocks-${System.currentTimeMillis()}.pcap")
+                        err.isEmpty() || err == Netbird.STREAM_DONE -> message = context.getString(R.string.nb_capture_empty)
+                        else -> message = err.substringAfter("desc = ")
+                    }
+                }
+            })
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!running) onDismiss() },
+        icon = { Icon(Icons.Default.Sensors, null) },
+        title = { Text(stringResource(R.string.nb_capture_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.nb_capture_desc), style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(10, 30, 60, 120).forEach { s ->
+                        FilterChip(selected = seconds == s, enabled = !running, onClick = { seconds = s }, label = { Text(stringResource(R.string.nb_capture_seconds, s)) })
+                    }
+                }
+                OutlinedTextField(
+                    value = filter, onValueChange = { filter = it }, enabled = !running, singleLine = true,
+                    label = { Text(stringResource(R.string.nb_capture_filter)) },
+                    supportingText = { Text(stringResource(R.string.nb_capture_filter_desc)) }
+                )
+                if (running) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(stringResource(R.string.nb_capture_progress, bytes / 1024), style = MaterialTheme.typography.bodySmall)
+                }
+                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = {
+            if (running) TextButton(onClick = { sub?.cancel() }) { Text(stringResource(R.string.nb_capture_stop)) }
+            else TextButton(onClick = ::start) { Text(stringResource(R.string.nb_capture_start)) }
+        },
+        dismissButton = { TextButton(enabled = !running, onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdState
 import io.github.bropines.birdsocks.models.NbProfile
@@ -82,7 +83,11 @@ fun AccountSheet(onDismiss: () -> Unit) {
                     },
                     leadingContent = { Icon(if (isActive) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked, null, tint = MaterialTheme.colorScheme.primary) },
                     headlineContent = { Text(a.label) },
-                    supportingContent = { if (!a.profile.isDefault && a.server.isNotEmpty()) Text(a.server) },
+                    supportingContent = {
+                        val email = GlobalSettings.getAccountEmail(context, a.profile.name)
+                        val line = listOfNotNull(email.ifEmpty { null }, a.server.takeIf { !a.profile.isDefault && it.isNotEmpty() }).joinToString(" · ")
+                        if (line.isNotEmpty()) Text(line)
+                    },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                 )
             }

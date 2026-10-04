@@ -90,6 +90,26 @@ object GlobalSettings {
     /** Lazy connections: "" follows the server, "on" or "off" overrides it. */
     fun getLazyConn(context: Context): String = getString(context, "lazy_conn", "")
     fun setLazyConn(context: Context, value: String) = setString(context, "lazy_conn", value)
+
+    /** Peers may reach this device's own services through its NetBird address (adb, sshd, a web server). */
+    fun isInboundAccess(context: Context): Boolean = getBoolean(context, "inbound_access", false)
+    fun setInboundAccess(context: Context, on: Boolean) = setBoolean(context, "inbound_access", on)
+
+    /** Warnings and errors NetBird reports become notifications. */
+    fun isEventNotifications(context: Context): Boolean = getBoolean(context, "event_notifications", true)
+    fun setEventNotifications(context: Context, on: Boolean) = setBoolean(context, "event_notifications", on)
+
+    /**
+     * Extra DNS names asked for this device, comma-separated. The daemon
+     * takes them but cannot say them back (GetConfig has no field), so the
+     * app keeps the copy it shows.
+     */
+    /** Who signed in to [profile] through the browser, as the server said. */
+    fun getAccountEmail(context: Context, profile: String): String = getString(context, "account_email_$profile", "")
+    fun setAccountEmail(context: Context, profile: String, email: String) = setString(context, "account_email_$profile", email)
+
+    fun getDnsLabels(context: Context): String = getString(context, "dns_labels", "")
+    fun setDnsLabels(context: Context, value: String) = setString(context, "dns_labels", value)
     /** NAME=value lines handed to the daemon as they are. */
     fun getExtraEnv(context: Context): String = getString(context, "extra_env", "")
     fun setExtraEnv(context: Context, env: String) = setString(context, "extra_env", env)

@@ -53,6 +53,7 @@ private enum class PeerFilter { All, Connected, Connecting, Idle }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeersScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
     val status by NetbirdState.status.collectAsState()
     val daemon by NetbirdState.daemon.collectAsState()
     // The stream speaks when a peer's state moves; byte counters and latency
@@ -81,7 +82,13 @@ fun PeersScreen(onBack: () -> Unit) {
         .filter { query.isBlank() || it.fqdn.contains(query, true) || it.ip.contains(query) || it.ipv6.contains(query, true) }
         .sortedWith(compareByDescending<NbPeer> { it.connected }.thenBy { it.fqdn })
 
-    Scaffold(topBar = { AppTopBar(title = stringResource(R.string.nb_menu_peers), onBack = onBack) }) { padding ->
+    Scaffold(topBar = {
+        AppTopBar(title = stringResource(R.string.nb_menu_peers), onBack = onBack, actions = {
+            IconButton(onClick = { context.startActivity(TraceActivity.intent(context)) }) {
+                Icon(Icons.Default.Policy, stringResource(R.string.nb_trace_title))
+            }
+        })
+    }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).readableWidth()) {
             if (daemon != NetbirdState.Daemon.Running) {
                 EmptyState(Icons.Default.PowerSettingsNew, stringResource(R.string.nb_peers_daemon_off))
@@ -203,6 +210,14 @@ private fun PeerDetails(peer: NbPeer) {
         if (peer.networks.isNotEmpty()) DetailRow(stringResource(R.string.nb_menu_networks), peer.networks.joinToString(", "))
         if (peer.rosenpassEnabled) DetailRow("Rosenpass", stringResource(R.string.nb_on))
         DetailRow(stringResource(R.string.nb_peer_pubkey), peer.pubKey)
+        OutlinedButton(
+            onClick = { context.startActivity(TraceActivity.intent(context, peer.address)) },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        ) {
+            Icon(Icons.Default.Policy, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.nb_trace_peer_action))
+        }
     }
 }
 

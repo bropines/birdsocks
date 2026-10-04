@@ -45,6 +45,10 @@
         <activity android:name=".ui.LogsActivity" android:exported="false" />
         <activity android:name=".ui.PeersActivity" android:exported="false" />
         <activity android:name=".ui.NetworksActivity" android:exported="false" />
+        <activity android:name=".ui.StatusDetailsActivity" android:exported="false" />
+        <activity android:name=".ui.EventsActivity" android:exported="false" />
+        <activity android:name=".ui.TraceActivity" android:exported="false" />
+        <activity android:name=".ui.ExposeActivity" android:exported="false" />
         <activity android:name=".ui.ToggleActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" />
 
         <!-- The NetBird daemon's keeper (core/NetbirdService.kt). -->

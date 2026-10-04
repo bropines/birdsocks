@@ -16,6 +16,10 @@ import io.github.bropines.birdsocks.models.NbProfile
 import io.github.bropines.birdsocks.models.NbProfiles
 import io.github.bropines.birdsocks.models.NbStatus
 import io.github.bropines.birdsocks.models.NbWaitSsoResponse
+import io.github.bropines.birdsocks.models.NbCapturePacket
+import io.github.bropines.birdsocks.models.NbExposeEvent
+import io.github.bropines.birdsocks.models.NbExposeReady
+import io.github.bropines.birdsocks.models.NbTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -196,6 +200,55 @@ object Netbird {
         up()
     }
 
+    // --- Diagnostics and exposure ---
+
+    /**
+     * Asks the firewall what it would do with one packet: [direction] "in"
+     * for a peer reaching this device, "out" for this device reaching a peer.
+     */
+    suspend fun trace(sourceIp: String, destinationIp: String, protocol: String, sourcePort: Int, destinationPort: Int, direction: String): NbTrace =
+        callAs("TracePacket", buildJsonObject {
+            put("sourceIp", sourceIp)
+            put("destinationIp", destinationIp)
+            put("protocol", protocol)
+            put("sourcePort", sourcePort)
+            put("destinationPort", destinationPort)
+            put("direction", direction)
+        }.toString())
+
+    /**
+     * Publishes local [port] through the account's NetBird reverse proxy; the
+     * service stays up while the stream does. [protocol] is one of
+     * EXPOSE_HTTP, EXPOSE_HTTPS, EXPOSE_TCP, EXPOSE_UDP, EXPOSE_TLS.
+     */
+    fun expose(
+        port: Int, protocol: String, namePrefix: String, pin: String, password: String, groups: List<String>,
+        onReady: (NbExposeReady) -> Unit, onEnd: (String) -> Unit
+    ): Subscription = subscribe("ExposeService", buildJsonObject {
+        put("port", port)
+        put("protocol", protocol)
+        if (namePrefix.isNotEmpty()) put("namePrefix", namePrefix)
+        if (pin.isNotEmpty()) put("pin", pin)
+        if (password.isNotEmpty()) put("password", password)
+        if (groups.isNotEmpty()) putJsonArray("userGroups") { groups.forEach { add(it) } }
+    }.toString(), onMessage = { json ->
+        runCatching { AppJson.decodeFromString<NbExposeEvent>(json) }.getOrNull()?.ready?.let(onReady)
+    }, onEnd = onEnd)
+
+    /** Records the tunnel's packets for [seconds] as pcap, handed over slice by slice. */
+    fun capture(seconds: Int, filter: String, onData: (ByteArray) -> Unit, onEnd: (String) -> Unit): Subscription =
+        subscribe("StartCapture", buildJsonObject {
+            put("duration", "${seconds}s")
+            put("snapLen", 0)
+            if (filter.isNotBlank()) put("filterExpr", filter.trim())
+        }.toString(), onMessage = { json ->
+            val data = runCatching { AppJson.decodeFromString<NbCapturePacket>(json).data }.getOrDefault("")
+            if (data.isNotEmpty()) onData(android.util.Base64.decode(data, android.util.Base64.DEFAULT))
+        }, onEnd = onEnd)
+
+    /** What a stream's end says when the daemon finished it itself (appctr/rpc.go); "" when the app cancelled it. */
+    const val STREAM_DONE = "the daemon closed the stream"
+
     /** Opens a server stream; [onMessage] and [onEnd] run on the bridge's goroutine thread. */
     fun subscribe(method: String, request: String, onMessage: (String) -> Unit, onEnd: (String) -> Unit): Subscription =
         Appctr.subscribe(method, request, object : StreamHandler {
@@ -271,7 +324,11 @@ object LoginFlow {
                 val answer = Netbird.login(setupKey, managementUrl, hostname)
                 if (answer.needsSSOLogin) {
                     stateFlow.value = State.Browser(answer.verificationURIComplete.ifEmpty { answer.verificationURI }, answer.userCode)
-                    Netbird.waitSso(answer.userCode, hostname)
+                    val signedIn = Netbird.waitSso(answer.userCode, hostname)
+                    // The daemon does not keep who signed in; the app does, per profile.
+                    if (signedIn.email.isNotEmpty()) {
+                        runCatching { Netbird.activeProfile() }.onSuccess { GlobalSettings.setAccountEmail(app, it, signedIn.email) }
+                    }
                     bringToFront(app)
                 }
                 Netbird.up()

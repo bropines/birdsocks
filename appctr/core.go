@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,6 +69,11 @@ type StartOptions struct {
 	// LazyConn overrides the server's lazy connections: "on", "off", or ""
 	// to follow the server.
 	LazyConn string
+	// InboundAccess lets peers reach this device's own services: a
+	// connection to its NetBird address goes on to 127.0.0.1 at the same
+	// port (adb over Wi-Fi, Termux's sshd, a local web server), as the ACLs
+	// allow. The app's own proxies stay out of reach.
+	InboundAccess bool
 	// LogLevel is NetBird's: panic, fatal, error, warn, info, debug, trace.
 	LogLevel string
 	// Env is extra NAME=value lines, one per line, for the daemon (NB_*
@@ -249,6 +255,9 @@ func daemonEnv(opt *StartOptions, state string) []string {
 	if opt.LazyConn != "" {
 		env = append(env, "NB_LAZY_CONN="+opt.LazyConn)
 	}
+	if opt.InboundAccess {
+		env = append(env, "NB_ENABLE_NETSTACK_LOCAL_FORWARDING=true", "NB_BIRDSOCKS_NO_FORWARD_PORTS="+ownPorts(opt))
+	}
 	if opt.DNSProxy != "" {
 		env = append(env, "NB_DNS_PROXY_ADDRESS="+opt.DNSProxy)
 		if opt.DNSUpstream != "" {
@@ -352,4 +361,13 @@ func pipeDaemonLog(r io.Reader) {
 		}
 		slog.Log(context.Background(), level, line, "src", "daemon")
 	}
+}
+
+// ownPorts are the app's listeners inbound forwarding must not reach.
+func ownPorts(opt *StartOptions) string {
+	ports := []string{strconv.Itoa(opt.SocksPort)}
+	if _, p, err := net.SplitHostPort(opt.DNSProxy); err == nil {
+		ports = append(ports, p)
+	}
+	return strings.Join(ports, ",")
 }

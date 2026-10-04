@@ -45,6 +45,8 @@ import io.github.bropines.birdsocks.ui.theme.findActivity
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.add
 
 class SettingsActivity : ComponentActivity() {
     companion object {
@@ -157,7 +159,7 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                         title = stringResource(R.string.nb_settings_server),
                         subtitle = cfg.managementUrl,
                         icon = Icons.Default.Dns
-                    ) { openUrl(context, cfg.adminURL.ifEmpty { cfg.managementUrl.substringBeforeLast(':') }) }
+                    ) { openUrl(context, cfg.dashboardUrl) }
                 }
                 SettingsClickableItem(
                     title = stringResource(R.string.nb_settings_logout),
@@ -236,6 +238,18 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                     SettingsSwitchItem(stringResource(R.string.nb_settings_block_inbound), stringResource(R.string.nb_settings_block_inbound_desc), Icons.Default.Block, cfg.blockInbound) {
                         setConfig { put("blockInbound", it) }
                     }
+                    var labels by remember { mutableStateOf(GlobalSettings.getDnsLabels(context)) }
+                    SettingsEditItem(stringResource(R.string.nb_settings_dns_labels), labels, Icons.Default.Label,
+                        placeholder = "phone, poco", description = stringResource(R.string.nb_settings_dns_labels_desc)
+                    ) { v ->
+                        val list = v.split(',', ' ').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                        GlobalSettings.setDnsLabels(context, list.joinToString(", "))
+                        labels = GlobalSettings.getDnsLabels(context)
+                        setConfig {
+                            putJsonArray("dnsLabels") { list.forEach { add(it) } }
+                            put("cleanDNSLabels", list.isEmpty())
+                        }
+                    }
                     SettingsSwitchItem(stringResource(R.string.nb_settings_dns), stringResource(R.string.nb_settings_dns_desc), Icons.Default.Dns, !cfg.disableDns) {
                         setConfig { put("disableDns", !it) }
                     }
@@ -274,6 +288,10 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
                 SettingsSwitchItem(stringResource(R.string.nb_settings_quic), stringResource(R.string.nb_settings_quic_desc), Icons.Default.Speed, quic) {
                     startSetting { GlobalSettings.setRelayQuic(context, it); quic = it }
                 }
+                var inbound by remember { mutableStateOf(GlobalSettings.isInboundAccess(context)) }
+                SettingsSwitchItem(stringResource(R.string.nb_settings_inbound), stringResource(R.string.nb_settings_inbound_desc), Icons.Default.CallReceived, inbound) {
+                    startSetting { GlobalSettings.setInboundAccess(context, it); inbound = it }
+                }
                 var forceRelay by remember { mutableStateOf(GlobalSettings.isForceRelay(context)) }
                 SettingsSwitchItem(stringResource(R.string.nb_settings_force_relay), stringResource(R.string.nb_settings_force_relay_desc), Icons.Default.CallSplit, forceRelay) {
                     startSetting { GlobalSettings.setForceRelay(context, it); forceRelay = it }
@@ -292,6 +310,10 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance) {
 
             // --- Background ---
             SettingsCard(stringResource(R.string.nb_settings_background)) {
+                var eventNotes by remember { mutableStateOf(GlobalSettings.isEventNotifications(context)) }
+                SettingsSwitchItem(stringResource(R.string.nb_settings_event_notifications), stringResource(R.string.nb_settings_event_notifications_desc), Icons.Default.NotificationsActive, eventNotes) {
+                    GlobalSettings.setEventNotifications(context, it); eventNotes = it
+                }
                 var autoStart by remember { mutableStateOf(GlobalSettings.isAutoStartEnabled(context)) }
                 SettingsSwitchItem(stringResource(R.string.nb_settings_boot), stringResource(R.string.nb_settings_boot_desc), Icons.Default.RestartAlt, autoStart) {
                     GlobalSettings.setAutoStartEnabled(context, it); autoStart = it

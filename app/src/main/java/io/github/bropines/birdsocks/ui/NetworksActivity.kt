@@ -97,7 +97,7 @@ fun NetworksScreen(onBack: () -> Unit) {
                         io.github.bropines.birdsocks.core.CompactSearchBar(query, { query = it }, stringResource(R.string.nb_networks_search), Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     }
                     items(list, key = { it.id }) { net ->
-                        val peer = status?.fullStatus?.peers?.firstOrNull { p -> p.networks.any { it in net.range.split(',').map(String::trim) } }
+                        val peer = status?.fullStatus?.peers?.firstOrNull { net.routedBy(it) }
                         ListItem(
                             leadingContent = { Icon(if (net.domains.isNotEmpty()) Icons.Default.Language else Icons.Default.Hub, null, tint = MaterialTheme.colorScheme.primary) },
                             headlineContent = { Text(net.id) },

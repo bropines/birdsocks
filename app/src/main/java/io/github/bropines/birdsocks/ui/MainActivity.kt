@@ -68,6 +68,7 @@ import io.github.bropines.birdsocks.models.NbStatus
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.put
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -205,6 +206,11 @@ fun MainScreen() {
             error?.let { message ->
                 item { ErrorCard(message) { NetbirdState.dismissError() } }
             }
+            // The server refuses extra DNS names to a device not added with a key that allows them.
+            val mgmtError = status?.fullStatus?.managementState?.error.orEmpty()
+            if ("extra DNS labels" in mgmtError) {
+                item { DnsLabelsRefusedCard() }
+            }
             if (card == CardState.NeedsLogin || login !is LoginFlow.State.Idle) {
                 item { LoginCard(login, status?.fullStatus?.managementState?.error.orEmpty()) }
             }
@@ -243,6 +249,18 @@ fun MainScreen() {
                         ) { context.startActivity(Intent(context, PeersActivity::class.java)) },
                         MenuEntry(stringResource(R.string.nb_menu_networks), Icons.Default.Hub) {
                             context.startActivity(Intent(context, NetworksActivity::class.java))
+                        },
+                        MenuEntry(stringResource(R.string.nb_expose_title), Icons.Default.Public) {
+                            context.startActivity(Intent(context, ExposeActivity::class.java))
+                        },
+                        MenuEntry(stringResource(R.string.nb_events_title), Icons.Default.EventNote) {
+                            context.startActivity(Intent(context, EventsActivity::class.java))
+                        },
+                        MenuEntry(stringResource(R.string.nb_details_title), Icons.Default.MonitorHeart) {
+                            context.startActivity(Intent(context, StatusDetailsActivity::class.java))
+                        },
+                        MenuEntry(stringResource(R.string.nb_trace_title), Icons.Default.Policy) {
+                            context.startActivity(TraceActivity.intent(context))
                         },
                         MenuEntry(stringResource(R.string.menu_logs), Icons.AutoMirrored.Filled.Article) {
                             context.startActivity(Intent(context, LogsActivity::class.java))
@@ -283,8 +301,7 @@ fun MainScreen() {
 
 /** The peer that routes [network], by its name, as far as the status shows it. */
 private fun routingPeerOf(network: NbNetwork, status: NbStatus?): String? {
-    val ranges = network.range.split(',').map { it.trim() }.toSet()
-    return status?.fullStatus?.peers?.firstOrNull { p -> p.networks.any { it in ranges } }?.fqdn
+    return status?.fullStatus?.peers?.firstOrNull { network.routedBy(it) }?.fqdn
 }
 
 private fun toast(context: Context, e: Throwable) {
@@ -612,6 +629,34 @@ private fun CopyRow(icon: ImageVector, label: String, value: String, shown: Stri
         },
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
     )
+}
+
+/** Sign-in refused because of the extra DNS names asked for: the way out is to drop them. */
+@Composable
+private fun DnsLabelsRefusedCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+        ListItem(
+            leadingContent = { Icon(Icons.Default.Label, null) },
+            headlineContent = { Text(stringResource(R.string.nb_dns_labels_refused)) },
+            supportingContent = { HelpText(stringResource(R.string.nb_dns_labels_refused_desc)) },
+            trailingContent = {
+                TextButton(onClick = {
+                    GlobalSettings.setDnsLabels(context, "")
+                    scope.launch {
+                        runCatching {
+                            Netbird.setConfig {
+                                put("cleanDNSLabels", true)
+                            }
+                            Netbird.reconnect()
+                        }.onFailure { toast(context, it) }
+                    }
+                }) { Text(stringResource(R.string.nb_dns_labels_remove)) }
+            },
+            colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+        )
+    }
 }
 
 /** The exit node in use; [works] false when the internet does not answer through it. */

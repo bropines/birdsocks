@@ -1,0 +1,108 @@
+--- netbird_orig/client/firewall/uspfilter/forwarder/birdsocks.go
++++ netbird_src/client/firewall/uspfilter/forwarder/birdsocks.go
+@@ -0,0 +1,39 @@
++package forwarder
++
++// birdsocks.go — BirdSocks: ports inbound forwarding never reaches. With
++// NB_ENABLE_NETSTACK_LOCAL_FORWARDING a peer's connection to this device's
++// NetBird address lands on 127.0.0.1 at the same port; the app's own SOCKS5
++// and DNS proxies listen there too, and must not turn the phone into a free
++// exit for every peer the ACLs let in.
++
++import (
++	"os"
++	"strconv"
++	"strings"
++	"sync"
++
++	"gvisor.dev/gvisor/pkg/tcpip/stack"
++)
++
++// EnvNoForwardPorts lists them, comma-separated.
++const EnvNoForwardPorts = "NB_BIRDSOCKS_NO_FORWARD_PORTS"
++
++var noForward = sync.OnceValue(func() map[uint16]bool {
++	ports := map[uint16]bool{}
++	for _, s := range strings.Split(os.Getenv(EnvNoForwardPorts), ",") {
++		if p, err := strconv.ParseUint(strings.TrimSpace(s), 10, 16); err == nil && p != 0 {
++			ports[uint16(p)] = true
++		}
++	}
++	return ports
++})
++
++// refusedLocal reports whether a connection to this device itself, at one
++// of those ports, stays off it. Traffic routed through the device is not
++// affected.
++func (f *Forwarder) refusedLocal(id stack.TransportEndpointID) bool {
++	if !f.netstack || !noForward()[id.LocalPort] {
++		return false
++	}
++	return f.ip.Equal(id.LocalAddress) || f.ipv6.Equal(id.LocalAddress)
++}
+--- netbird_orig/client/firewall/uspfilter/forwarder/birdsocks_test.go
++++ netbird_src/client/firewall/uspfilter/forwarder/birdsocks_test.go
+@@ -0,0 +1,34 @@
++package forwarder
++
++import (
++	"testing"
++
++	"gvisor.dev/gvisor/pkg/tcpip"
++	"gvisor.dev/gvisor/pkg/tcpip/stack"
++)
++
++func TestOwnProxiesStayOffTheDevice(t *testing.T) {
++	t.Setenv(EnvNoForwardPorts, "48125, 48153")
++	self := tcpip.AddrFrom4([4]byte{10, 90, 15, 46})
++	lan := tcpip.AddrFrom4([4]byte{192, 168, 1, 10})
++	f := &Forwarder{netstack: true, ip: self}
++	cases := []struct {
++		to   tcpip.Address
++		port uint16
++		want bool
++	}{
++		{self, 48125, true}, // the SOCKS5 proxy
++		{self, 48153, true}, // the DNS proxy
++		{self, 5555, false}, // adb, say
++		{lan, 48125, false}, // routed through the device, not to it
++	}
++	for _, c := range cases {
++		if got := f.refusedLocal(stack.TransportEndpointID{LocalAddress: c.to, LocalPort: c.port}); got != c.want {
++			t.Errorf("%v:%d refused=%v, want %v", c.to, c.port, got, c.want)
++		}
++	}
++	f.netstack = false
++	if f.refusedLocal(stack.TransportEndpointID{LocalAddress: self, LocalPort: 48125}) {
++		t.Error("refused outside netstack mode")
++	}
++}
+--- netbird_orig/client/firewall/uspfilter/forwarder/tcp.go
++++ netbird_src/client/firewall/uspfilter/forwarder/tcp.go
+@@ -31,6 +31,12 @@
+ 		}
+ 	}()
+ 
++	// BirdSocks: the app's own proxies are not for peers.
++	if f.refusedLocal(id) {
++		r.Complete(true)
++		return
++	}
++
+ 	dialAddr := net.JoinHostPort(f.determineDialAddr(id.LocalAddress).String(), strconv.Itoa(int(id.LocalPort)))
+ 
+ 	outConn, err := (&net.Dialer{}).DialContext(f.ctx, "tcp", dialAddr)
+--- netbird_orig/client/firewall/uspfilter/forwarder/udp.go
++++ netbird_src/client/firewall/uspfilter/forwarder/udp.go
+@@ -142,6 +142,11 @@
+ 
+ 	id := r.ID()
+ 
++	// BirdSocks: the app's own DNS proxy is not for peers.
++	if f.refusedLocal(id) {
++		return false
++	}
++
+ 	f.udpForwarder.RLock()
+ 	_, exists := f.udpForwarder.conns[id]
+ 	f.udpForwarder.RUnlock()

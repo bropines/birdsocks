@@ -1,14 +1,17 @@
 --- netbird_orig/client/internal/connect.go
 +++ netbird_src/client/internal/connect.go
-@@ -367,7 +367,11 @@
+@@ -364,10 +364,14 @@
+ 			c.clientMetrics.UpdatePushFromMgm(c.ctx, metricsConfig.GetEnabled())
+ 		}
+ 
++		// netstack first: the kernel probe is a netlink LinkAdd, and on
++		// Android its denied bind leaks an *os.File (vishvananda/netlink
++		// v1.3.1) whose finalizer later closes a reused descriptor —
++		// Signal's or the relay's socket, silently.
  		localPeerState := peer.LocalPeerState{
  			IP:              loginResp.GetPeerConfig().GetAddress(),
  			PubKey:          myPrivateKey.PublicKey().String(),
 -			KernelInterface: device.WireGuardModuleIsLoaded() && !netstack.IsEnabled(),
-+			// netstack first: the kernel probe is a netlink LinkAdd, and on
-+			// Android its denied bind leaks an *os.File (vishvananda/netlink
-+			// v1.3.1) whose finalizer later closes a reused descriptor —
-+			// Signal's or the relay's socket, silently.
 +			KernelInterface: !netstack.IsEnabled() && device.WireGuardModuleIsLoaded(),
  			FQDN:            loginResp.GetPeerConfig().GetFqdn(),
  		}

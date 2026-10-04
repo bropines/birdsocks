@@ -46,7 +46,10 @@ data class NbFullStatus(
     val events: List<NbEvent> = emptyList(),
     val lazyConnectionEnabled: Boolean = false,
     /** Moves whenever the set of networks changes; ListNetworks is worth re-reading then. */
-    val networksRevision: Long = 0
+    val networksRevision: Long = 0,
+    /** Ports the network forwards to this device, when it is a routing peer. */
+    @SerialName("NumberOfForwardingRules") val forwardingRules: Int = 0,
+    val sshServerState: NbSshServer = NbSshServer()
 )
 
 /** ManagementState and SignalState. */
@@ -66,7 +69,8 @@ data class NbLocalPeer(
     val rosenpassEnabled: Boolean = false,
     val rosenpassPermissive: Boolean = false,
     val networks: List<String> = emptyList(),
-    val wgPort: Int = 0
+    val wgPort: Int = 0,
+    val kernelInterface: Boolean = false
 ) {
     /** The overlay address without its prefix length: 100.92.1.2/16 → 100.92.1.2. */
     val address: String get() = ip.substringBefore('/')
@@ -151,6 +155,15 @@ data class NbNetwork(
 ) {
     val isExitNode: Boolean
         get() = range.split(',').map { it.trim() }.any { it == "0.0.0.0/0" || it == "::/0" }
+
+    /**
+     * Whether [peer] routes this network. A peer lists its networks by range,
+     * and by domain for a domain route, whose range is only a placeholder.
+     */
+    fun routedBy(peer: NbPeer): Boolean {
+        val keys = (range.split(',').map { it.trim() } + domains).filter { it.isNotEmpty() }.toSet()
+        return peer.networks.any { it in keys }
+    }
 }
 
 @Serializable
@@ -191,7 +204,19 @@ data class NbConfig(
     val blockLanAccess: Boolean = false,
     val disableIpv6: Boolean = false,
     val remoteJobsAllowed: Boolean = false
-)
+) {
+    /**
+     * The server's dashboard. The daemon fills adminURL with NetBird Cloud's
+     * whenever none was set, which is wrong for a self-hosted server: its
+     * dashboard then lives at the management server's own address.
+     */
+    val dashboardUrl: String
+        get() {
+            val mgmt = managementUrl.removeSuffix("/").replace(Regex(":443$"), "")
+            val cloudAdmin = adminURL.isEmpty() || "app.netbird.io" in adminURL
+            return if (cloudAdmin && "netbird.io" !in managementUrl) mgmt else adminURL.replace(Regex(":443/?$"), "")
+        }
+}
 
 /** One NetBird profile: an account on a server, with its own keys and settings. */
 @Serializable
@@ -228,4 +253,46 @@ data class NbDebugBundle(
     val path: String = "",
     val uploadedKey: String = "",
     val uploadFailureReason: String = ""
+)
+
+/** TracePacket: one step of the firewall's decision, and whether it let the packet on. */
+@Serializable
+data class NbTraceStage(
+    val name: String = "",
+    val message: String = "",
+    val allowed: Boolean = false,
+    val forwardingDetails: String? = null
+)
+
+/** TracePacket: the steps, and whether the packet got through in the end. */
+@Serializable
+data class NbTrace(val stages: List<NbTraceStage> = emptyList(), val finalDisposition: Boolean = false)
+
+/** ExposeService: the public address the NetBird reverse proxy gave a local port. */
+@Serializable
+data class NbExposeReady(
+    val serviceName: String = "",
+    val serviceUrl: String = "",
+    val domain: String = "",
+    val portAutoAssigned: Boolean = false
+)
+
+@Serializable
+data class NbExposeEvent(val ready: NbExposeReady? = null)
+
+/** StartCapture: a slice of the pcap stream, base64 in protojson. */
+@Serializable
+data class NbCapturePacket(val data: String = "")
+
+/** NetBird's own SSH server on this device, and who is in it. */
+@Serializable
+data class NbSshServer(val enabled: Boolean = false, val sessions: List<NbSshSession> = emptyList())
+
+@Serializable
+data class NbSshSession(
+    val username: String = "",
+    val remoteAddress: String = "",
+    val command: String = "",
+    val jwtUsername: String = "",
+    val portForwards: List<String> = emptyList()
 )

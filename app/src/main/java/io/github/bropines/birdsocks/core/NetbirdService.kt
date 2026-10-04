@@ -23,7 +23,10 @@ import appctr.StartOptions
 import appctr.Subscription
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.models.NbConnState
+import io.github.bropines.birdsocks.models.NbEvent
 import io.github.bropines.birdsocks.models.NbStatus
+import io.github.bropines.birdsocks.ui.EventsActivity
+import io.github.bropines.birdsocks.ui.ExposeActivity
 import io.github.bropines.birdsocks.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +50,10 @@ class NetbirdService : Service() {
         const val ACTION_START = "START_ACTION"
         const val ACTION_STOP = "STOP_ACTION"
         const val ACTION_RESTART = "RESTART_ACTION"
+        const val ACTION_EXPOSE_STOP = "EXPOSE_STOP_ACTION"
+        private const val EVENTS_CHANNEL_ID = "events"
+        private const val EXPOSE_CHANNEL_ID = "expose"
+        private const val EXPOSE_NOTIF_ID = 3
         private const val NOTIF_ID = 1
         private const val CHANNEL_ID = "status"
         private const val SESSION_CHANNEL_ID = "session"
@@ -90,6 +97,7 @@ class NetbirdService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var startJob: Job? = null
     private var statusSub: Subscription? = null
+    private var eventsSub: Subscription? = null
     private lateinit var connectivity: ConnectivityManager
     @Volatile private var stopping = false
     private var shownText: String? = null
@@ -152,6 +160,7 @@ class NetbirdService : Service() {
         Appctr.setDaemonListener(object : DaemonListener {
             override fun onExit(err: String) = onDaemonExit(err)
         })
+        scope.launch { ExposeFlow.state.collect(::showExpose) }
     }
 
     /** The newest start; stopping for an older one must not end a service asked to run since. */
@@ -165,6 +174,7 @@ class NetbirdService : Service() {
         when (intent?.action) {
             ACTION_STOP -> stopDaemon()
             ACTION_RESTART -> restartDaemon()
+            ACTION_EXPOSE_STOP -> ExposeFlow.stop()
             // A null intent is the system restarting a killed service: bring the
             // daemon back only if the user had it on.
             null -> if (GlobalSettings.wasRunning(this)) startDaemon() else stopDaemon()
@@ -185,6 +195,7 @@ class NetbirdService : Service() {
                 NetbirdState.daemonFlow.value = NetbirdState.Daemon.Running
                 NetbirdState.profileFlow.value = runCatching { Netbird.activeProfile() }.getOrNull()
                 followStatus()
+                followEvents()
             } catch (e: Exception) {
                 Log.e(TAG, "start failed", e)
                 Appctr.logAndroid("ERROR", "CORE", "NetBird did not start: ${e.message}")
@@ -207,6 +218,7 @@ class NetbirdService : Service() {
         dnsUpstream = GlobalSettings.getDnsUpstream(this@NetbirdService)
         relayQUIC = GlobalSettings.isRelayQuic(this@NetbirdService)
         lazyConn = GlobalSettings.getLazyConn(this@NetbirdService)
+        inboundAccess = GlobalSettings.isInboundAccess(this@NetbirdService)
         hostname = GlobalSettings.getDeviceName(this@NetbirdService)
         androidVersion = Build.VERSION.RELEASE
         model = Build.MODEL
@@ -232,6 +244,7 @@ class NetbirdService : Service() {
                 }
                 val previous = NetbirdState.statusFlow.value
                 NetbirdState.statusFlow.value = status
+                notifyEvents(EventLog.add(status.fullStatus.events))
                 updateNotification(status)
                 watchSession(previous, status)
             },
@@ -244,6 +257,67 @@ class NetbirdService : Service() {
         )
     }
 
+    /** NetBird's events as they happen; the status only carries the recent ones. */
+    private fun followEvents() {
+        eventsSub?.cancel()
+        eventsSub = Netbird.subscribe(
+            "SubscribeEvents", "{}",
+            onMessage = { json ->
+                runCatching { AppJson.decodeFromString<NbEvent>(json) }.getOrNull()?.let { notifyEvents(EventLog.add(listOf(it))) }
+            },
+            onEnd = { err ->
+                if (err.isNotEmpty() && !stopping && Appctr.isRunning()) {
+                    scope.launch { kotlinx.coroutines.delay(1000); if (!stopping) followEvents() }
+                }
+            }
+        )
+    }
+
+    /** Warnings and worse that just happened become notifications; old ones replayed after a restart do not. */
+    private fun notifyEvents(fresh: List<NbEvent>) {
+        if (fresh.isEmpty() || !GlobalSettings.isEventNotifications(this)) return
+        val now = System.currentTimeMillis()
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(EVENTS_CHANNEL_ID, getString(R.string.nb_events_channel), NotificationManager.IMPORTANCE_DEFAULT))
+        for (e in fresh) {
+            if (e.severity !in setOf("WARNING", "ERROR", "CRITICAL")) continue
+            val at = e.timestamp?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: continue
+            if (now - at > 2 * 60_000) continue
+            val open = PendingIntent.getActivity(this, 4, Intent(this, EventsActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val n = NotificationCompat.Builder(this, EVENTS_CHANNEL_ID)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(e.userMessage.ifEmpty { e.message })
+                .setStyle(NotificationCompat.BigTextStyle().bigText(e.userMessage.ifEmpty { e.message }))
+                .setSmallIcon(R.drawable.ic_qs_tile)
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .build()
+            nm.notify(1000 + (e.id.hashCode() and 0xfff), n)
+        }
+    }
+
+    /** The published port's own notification: its address, and a way to take it down. */
+    private fun showExpose(state: ExposeFlow.State) {
+        val nm = getSystemService(NotificationManager::class.java)
+        if (state !is ExposeFlow.State.Live) {
+            nm.cancel(EXPOSE_NOTIF_ID)
+            return
+        }
+        nm.createNotificationChannel(NotificationChannel(EXPOSE_CHANNEL_ID, getString(R.string.nb_expose_channel), NotificationManager.IMPORTANCE_LOW))
+        val open = PendingIntent.getActivity(this, 5, Intent(this, ExposeActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val stop = PendingIntent.getService(this, 6, Intent(this, NetbirdService::class.java).setAction(ACTION_EXPOSE_STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val n = NotificationCompat.Builder(this, EXPOSE_CHANNEL_ID)
+            .setContentTitle(getString(R.string.nb_expose_live_title, state.port))
+            .setContentText(state.ready.serviceUrl)
+            .setSmallIcon(R.drawable.ic_qs_tile)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(open)
+            .addAction(0, getString(R.string.nb_expose_stop), stop)
+            .build()
+        nm.notify(EXPOSE_NOTIF_ID, n)
+    }
+
     private fun restartDaemon() {
         stopping = true
         NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopping
@@ -251,6 +325,9 @@ class NetbirdService : Service() {
             startJob?.cancel()
             statusSub?.cancel()
             statusSub = null
+            eventsSub?.cancel()
+            eventsSub = null
+            ExposeFlow.stop()
             runCatching { Appctr.stop() }
             NetbirdState.statusFlow.value = null
             NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopped
@@ -264,6 +341,8 @@ class NetbirdService : Service() {
         scope.launch {
             startJob?.cancel()
             statusSub?.cancel()
+            eventsSub?.cancel()
+            ExposeFlow.stop()
             // SIGTERM: the daemon takes the tunnel down itself before it exits.
             runCatching { Appctr.stop() }
             finish()
