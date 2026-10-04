@@ -11,7 +11,8 @@
   talks to its gRPC API.
 * **`libhev-socks5-tunnel.so`** — the VPN mode's tunnel, from the
   `app/src/main/jni/hev-socks5-tunnel` submodule, built by Gradle's ndkBuild.
-* **The APK** — Kotlin and Compose, with the three above.
+* **`libbyedpi.so`** — ByeDPI (`app/src/main/jni/byedpi`), also built by ndkBuild.
+* **The APK** — Kotlin and Compose, with all of the above.
 
 ## Steps
 
@@ -32,6 +33,9 @@ A release build needs a keystore:
 KEYSTORE_FILE="$PWD/birdsocks.jks" KEYSTORE_PASSWORD=... \
 KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
 ```
+
+It makes one APK per ABI and a universal one; `-PtargetAbi=arm64-v8a` builds
+only that ABI. The whole release procedure: [`RELEASING.md`](RELEASING.md).
 
 ## Changing the daemon
 

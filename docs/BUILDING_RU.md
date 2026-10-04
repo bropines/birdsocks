@@ -11,7 +11,8 @@
   его gRPC API.
 * **`libhev-socks5-tunnel.so`** — туннель режима VPN, из подмодуля
   `app/src/main/jni/hev-socks5-tunnel`; его собирает ndkBuild в Gradle.
-* **APK** — Kotlin и Compose вместе с тремя предыдущими.
+* **`libbyedpi.so`** — ByeDPI (`app/src/main/jni/byedpi`), его тоже собирает ndkBuild.
+* **APK** — Kotlin и Compose вместе со всем перечисленным.
 
 ## Шаги
 
@@ -32,6 +33,9 @@ cd appctr && bash build.sh && cd ..      # TS_ABIS=arm64-v8a — один ABI
 KEYSTORE_FILE="$PWD/birdsocks.jks" KEYSTORE_PASSWORD=... \
 KEY_ALIAS=... KEY_PASSWORD=... ./gradlew app:assembleRelease
 ```
+
+Получается по APK на каждый ABI и универсальный; `-PtargetAbi=arm64-v8a`
+собирает только этот ABI. Весь порядок выпуска — [`RELEASING_RU.md`](RELEASING_RU.md).
 
 ## Изменения в демоне
 
