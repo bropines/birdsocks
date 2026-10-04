@@ -100,7 +100,7 @@
  }
 --- netbird_orig/client/iface/netstack/tun.go
 +++ netbird_src/client/iface/netstack/tun.go
-@@ -18,8 +18,9 @@
+@@ -18,8 +18,11 @@
  	mtu           int
  	listenAddress string
  
@@ -109,27 +109,37 @@
 +	proxy    *Proxy
 +	tundev   tun.Device
 +	dnsProxy *dnsProxy
++	// backend is what this engine lends the daemon's proxies (front.go).
++	backend *backend
  }
  
  func NewNetStackTun(listenAddress string, addresses []netip.Addr, dnsAddress netip.Addr, mtu int) *NetStackTun {
-@@ -53,7 +54,8 @@
+@@ -52,8 +55,15 @@
+ 		return nsTunDev, tunNet, nil
  	}
  
- 	dialer := NewNSDialer(tunNet)
+-	dialer := NewNSDialer(tunNet)
 -	t.proxy, err = NewSocks5(dialer)
-+	dialer.resolver = newNSResolver(tunNet)
-+	t.proxy, err = NewSocks5(dialer, dialer.resolver)
++	b := newBackend(tunNet, t.dnsAddress)
++	if frontRunning() {
++		// BirdSocks: the daemon's proxies stay up; they use this engine now.
++		t.backend = b
++		setBackend(b)
++		return t.tundev, tunNet, nil
++	}
++
++	t.proxy, err = NewSocks5(b.dialer, b.resolver)
  	if err != nil {
  		_ = t.tundev.Close()
  		return nil, nil, err
-@@ -66,17 +68,43 @@
+@@ -66,17 +76,48 @@
  		}
  	}()
  
 +	// BirdSocks: the DNS proxy, when the app asks for one, lives and dies
 +	// with the SOCKS5 proxy.
 +	if addr := os.Getenv(EnvDNSProxyAddress); addr != "" {
-+		if dp, err := startDNSProxy(addr, tunNet, t.dnsAddress); err != nil {
++		if dp, err := startDNSProxy(addr, b); err != nil {
 +			log.Errorf("DNS proxy on %s: %v", addr, err)
 +		} else {
 +			t.dnsProxy = dp
@@ -146,6 +156,11 @@
 +// answering from a dead netstack with "network is unreachable". Close
 +// cannot be used there: it would close the tun device a second time.
 +func (t *NetStackTun) CloseProxy() error {
++	if t.backend != nil {
++		// The daemon's proxies go on without this engine.
++		clearBackend(t.backend)
++		t.backend = nil
++	}
 +	if t.dnsProxy != nil {
 +		_ = t.dnsProxy.Close()
 +		t.dnsProxy = nil
@@ -580,7 +595,7 @@
 +}
 --- netbird_orig/client/iface/netstack/dnsproxy.go
 +++ netbird_src/client/iface/netstack/dnsproxy.go
-@@ -0,0 +1,264 @@
+@@ -0,0 +1,273 @@
 +package netstack
 +
 +// dnsproxy.go — BirdSocks: a plain DNS server on the host side of the
@@ -591,6 +606,7 @@
 +// to the network's resolvers.
 +
 +import (
++	"context"
 +	"net"
 +	"net/netip"
 +	"os"
@@ -601,7 +617,6 @@
 +
 +	log "github.com/sirupsen/logrus"
 +	"golang.org/x/net/dns/dnsmessage"
-+	"golang.zx2c4.com/wireguard/tun/netstack"
 +)
 +
 +// EnvDNSProxyAddress is where the DNS proxy listens, host:port; unset, there
@@ -653,13 +668,14 @@
 +}
 +
 +type dnsProxy struct {
-+	pc     net.PacketConn
-+	tunNet *netstack.Net
-+	nbDNS  netip.AddrPort
++	pc net.PacketConn
++	// fixed is the one engine an engine-owned proxy serves; nil for the
++	// daemon's proxy (front.go), which asks whichever engine runs.
++	fixed  *backend
 +	closed atomic.Bool
 +}
 +
-+func startDNSProxy(addr string, tunNet *netstack.Net, dnsAddr netip.Addr) (*dnsProxy, error) {
++func startDNSProxy(addr string, fixed *backend) (*dnsProxy, error) {
 +	network := "udp"
 +	if ap, err := netip.ParseAddrPort(addr); err == nil && ap.Addr().Is4() {
 +		network = "udp4"
@@ -668,8 +684,8 @@
 +	if err != nil {
 +		return nil, err
 +	}
-+	p := &dnsProxy{pc: pc, tunNet: tunNet, nbDNS: netip.AddrPortFrom(dnsAddr, 53)}
-+	log.Infof("DNS proxy listening on %s, NetBird's resolver %s first", addr, p.nbDNS)
++	p := &dnsProxy{pc: pc, fixed: fixed}
++	log.Infof("DNS proxy listening on %s, NetBird's resolver first", addr)
 +	go p.serve()
 +	return p, nil
 +}
@@ -705,12 +721,20 @@
 +// resolve answers one query: NetBird's resolver, then the network's. A
 +// single-label name is first tried under NetBird's search domains.
 +func (p *dnsProxy) resolve(q []byte) []byte {
-+	if resp := p.resolveShort(q); resp != nil {
-+		return resp
++	b := p.fixed
++	if b == nil {
++		b = waitBackend(context.Background(), backendWaitDNS)
 +	}
-+	nb, err := p.askNetBird(q)
-+	if err == nil && !retryable(nb) {
-+		return nb
++	var nb []byte
++	if b != nil {
++		if resp := p.resolveShort(b, q); resp != nil {
++			return resp
++		}
++		var err error
++		nb, err = askNetBird(b, q)
++		if err == nil && !retryable(nb) {
++			return nb
++		}
 +	}
 +	for _, s := range fallbackServers() {
 +		if resp, err := askUDP(q, s); err == nil {
@@ -731,8 +755,8 @@
 +	return rcode == 2 || rcode == 5
 +}
 +
-+func (p *dnsProxy) askNetBird(q []byte) ([]byte, error) {
-+	conn, err := p.tunNet.DialUDPAddrPort(netip.AddrPort{}, p.nbDNS)
++func askNetBird(b *backend, q []byte) ([]byte, error) {
++	conn, err := b.tunNet.DialUDPAddrPort(netip.AddrPort{}, b.nbDNS)
 +	if err != nil {
 +		return nil, err
 +	}
@@ -772,7 +796,7 @@
 +// short name or no domain has it. The domains are asked at once — some are
 +// forwarded upstream and take seconds to say no — and the earliest domain in
 +// the list that answers wins, as a system resolver's search order would.
-+func (p *dnsProxy) resolveShort(q []byte) []byte {
++func (p *dnsProxy) resolveShort(b *backend, q []byte) []byte {
 +	var msg dnsmessage.Message
 +	if err := msg.Unpack(q); err != nil || len(msg.Questions) != 1 {
 +		return nil
@@ -789,7 +813,7 @@
 +	results := make(chan result, len(names))
 +	for i, full := range names {
 +		go func(i int, full string) {
-+			results <- result{i, p.askExpanded(msg, full, asked)}
++			results <- result{i, askExpanded(b, msg, full, asked)}
 +		}(i, full)
 +	}
 +	got := make([][]byte, len(names))
@@ -813,7 +837,7 @@
 +
 +// askExpanded asks NetBird for full in place of the short name, and returns
 +// a positive answer renamed back to asked; nil otherwise.
-+func (p *dnsProxy) askExpanded(msg dnsmessage.Message, full string, asked dnsmessage.Name) []byte {
++func askExpanded(b *backend, msg dnsmessage.Message, full string, asked dnsmessage.Name) []byte {
 +	name, err := dnsmessage.NewName(full + ".")
 +	if err != nil {
 +		return nil
@@ -823,7 +847,7 @@
 +	if err != nil {
 +		return nil
 +	}
-+	resp, err := p.askNetBird(expanded)
++	resp, err := askNetBird(b, expanded)
 +	if err != nil {
 +		return nil
 +	}
@@ -1464,6 +1488,301 @@
 +	if len(got) != 3 || !got[0].Equal(b) || !got[1].Equal(a) || !got[2].Equal(v6) {
 +		t.Fatalf("order %v", got)
 +	}
++}
+--- netbird_orig/client/iface/netstack/front.go
++++ netbird_src/client/iface/netstack/front.go
+@@ -0,0 +1,198 @@
++package netstack
++
++// front.go — BirdSocks: the SOCKS5 proxy and the DNS proxy belong to the
++// daemon, not to one engine. An engine lends them its netstack while it runs;
++// between engines — a reconnect, a profile switch, an expired session, no
++// login yet — they keep serving, straight to the internet, so the apps behind
++// them are not cut off. A connection that comes while an engine is on its way
++// back waits for it a moment.
++
++import (
++	"context"
++	"errors"
++	"net"
++	"net/netip"
++	"os"
++	"strconv"
++	"sync"
++	"time"
++
++	log "github.com/sirupsen/logrus"
++	"golang.zx2c4.com/wireguard/tun/netstack"
++)
++
++const (
++	// backendGrace: after the daemon starts or an engine stops, another
++	// engine is expected this long, and connections wait for it.
++	backendGrace = 15 * time.Second
++	// How long a connection or a DNS query waits for an expected engine.
++	backendWaitDial = 3 * time.Second
++	backendWaitDNS  = 1500 * time.Millisecond
++)
++
++// backend is what a running engine lends the proxies.
++type backend struct {
++	tunNet   *netstack.Net
++	dialer   *NSDialer
++	resolver *nsResolver
++	nbDNS    netip.AddrPort
++}
++
++func newBackend(tunNet *netstack.Net, dnsAddr netip.Addr) *backend {
++	dialer := NewNSDialer(tunNet)
++	dialer.resolver = newNSResolver(tunNet)
++	return &backend{tunNet: tunNet, dialer: dialer, resolver: dialer.resolver, nbDNS: netip.AddrPortFrom(dnsAddr, 53)}
++}
++
++var front = struct {
++	sync.Mutex
++	running bool
++	current *backend
++	since   time.Time     // daemon start or the last engine's stop
++	changed chan struct{} // closed when a backend arrives
++	proxy   *Proxy
++	dns     *dnsProxy
++}{changed: make(chan struct{})}
++
++// StartFront opens the SOCKS5 proxy (and the DNS proxy, when one is asked
++// for) for the life of the process; engines then only lend them a netstack.
++// Without it each engine opens and closes its own, as upstream does.
++func StartFront() error {
++	if v, _ := strconv.ParseBool(os.Getenv(EnvSkipProxy)); v {
++		return nil
++	}
++	front.Lock()
++	if front.running {
++		front.Unlock()
++		return nil
++	}
++	front.since = time.Now()
++	proxy, err := NewSocks5(frontDialer{}, frontResolver{})
++	if err != nil {
++		front.Unlock()
++		return err
++	}
++	front.proxy = proxy
++	front.running = true
++	front.Unlock()
++
++	addr := ListenAddr()
++	go func() {
++		if err := proxy.ListenAndServe(addr); err != nil {
++			log.Errorf("SOCKS5 proxy on %s: %v", addr, err)
++		}
++	}()
++	log.Infof("SOCKS5 proxy on %s for the daemon's life", addr)
++	if dnsAddr := os.Getenv(EnvDNSProxyAddress); dnsAddr != "" {
++		dp, err := startDNSProxy(dnsAddr, nil)
++		if err != nil {
++			log.Errorf("DNS proxy on %s: %v", dnsAddr, err)
++		} else {
++			front.Lock()
++			front.dns = dp
++			front.Unlock()
++		}
++	}
++	return nil
++}
++
++func frontRunning() bool {
++	front.Lock()
++	defer front.Unlock()
++	return front.running
++}
++
++// setBackend makes b the engine the proxies use, and wakes what waits for one.
++func setBackend(b *backend) {
++	front.Lock()
++	front.current = b
++	close(front.changed)
++	front.changed = make(chan struct{})
++	front.Unlock()
++}
++
++// clearBackend withdraws b when it is still the one in use.
++func clearBackend(b *backend) {
++	front.Lock()
++	if front.current == b {
++		front.current = nil
++		front.since = time.Now()
++	}
++	front.Unlock()
++}
++
++// waitBackend is the running engine's backend; while none runs but one is
++// expected (the daemon just started, or an engine just stopped), it waits
++// up to max for it. nil means: no engine, use the host's network.
++func waitBackend(ctx context.Context, max time.Duration) *backend {
++	front.Lock()
++	b, ch := front.current, front.changed
++	expected := time.Since(front.since) < backendGrace
++	front.Unlock()
++	if b != nil || !expected {
++		return b
++	}
++	t := time.NewTimer(max)
++	defer t.Stop()
++	for {
++		select {
++		case <-ch:
++			front.Lock()
++			b, ch = front.current, front.changed
++			front.Unlock()
++			if b != nil {
++				return b
++			}
++		case <-t.C:
++			return nil
++		case <-ctx.Done():
++			return nil
++		}
++	}
++}
++
++// frontDialer dials through the engine when one runs, directly otherwise.
++type frontDialer struct{}
++
++func (frontDialer) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
++	if b := waitBackend(ctx, backendWaitDial); b != nil {
++		return b.dialer.Dial(ctx, network, addr)
++	}
++	// No engine: the internet alone. A UDP datagram may name its host.
++	if host, port, err := net.SplitHostPort(addr); err == nil {
++		if _, perr := netip.ParseAddr(host); perr != nil {
++			_, ip, rerr := frontResolver{}.Resolve(ctx, host)
++			if rerr != nil {
++				return nil, rerr
++			}
++			addr = net.JoinHostPort(ip.String(), port)
++		}
++	}
++	return dialDirect(ctx, network, addr)
++}
++
++// frontResolver resolves through the engine's DNS when one runs, through the
++// network's resolvers otherwise.
++type frontResolver struct{}
++
++func (frontResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
++	if b := waitBackend(ctx, backendWaitDial); b != nil {
++		return b.resolver.Resolve(ctx, name)
++	}
++	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", name)
++	if err != nil {
++		return ctx, nil, err
++	}
++	if len(ips) == 0 {
++		return ctx, nil, errors.New("no address for " + name)
++	}
++	chosen := ips[0]
++	for _, ip := range ips {
++		if ip.To4() != nil {
++			chosen = ip
++			break
++		}
++	}
++	alternatives.put(chosen, ips)
++	return ctx, chosen, nil
++}
+--- netbird_orig/client/iface/netstack/front_test.go
++++ netbird_src/client/iface/netstack/front_test.go
+@@ -0,0 +1,91 @@
++package netstack
++
++import (
++	"context"
++	"testing"
++	"time"
++)
++
++// resetFront puts the daemon's proxy state back as it was, after setting
++// when the last engine stopped (or the daemon started).
++func resetFront(t *testing.T, since time.Time) {
++	t.Helper()
++	front.Lock()
++	saved := front.current
++	savedSince := front.since
++	front.current = nil
++	front.since = since
++	front.Unlock()
++	t.Cleanup(func() {
++		front.Lock()
++		front.current = saved
++		front.since = savedSince
++		front.Unlock()
++	})
++}
++
++func TestWaitBackendGetsTheArrivingEngine(t *testing.T) {
++	resetFront(t, time.Now())
++	b := &backend{}
++	go func() {
++		time.Sleep(200 * time.Millisecond)
++		setBackend(b)
++	}()
++	start := time.Now()
++	got := waitBackend(context.Background(), 3*time.Second)
++	if got != b {
++		t.Fatalf("got %v, want the new engine", got)
++	}
++	if took := time.Since(start); took > time.Second {
++		t.Fatalf("waited %v", took)
++	}
++}
++
++func TestNoEngineExpectedGoesDirectAtOnce(t *testing.T) {
++	resetFront(t, time.Now().Add(-time.Hour))
++	start := time.Now()
++	if got := waitBackend(context.Background(), 3*time.Second); got != nil {
++		t.Fatalf("got %v", got)
++	}
++	if took := time.Since(start); took > 50*time.Millisecond {
++		t.Fatalf("waited %v with no engine expected", took)
++	}
++}
++
++func TestExpectedEngineThatNeverComes(t *testing.T) {
++	resetFront(t, time.Now())
++	start := time.Now()
++	if got := waitBackend(context.Background(), 300*time.Millisecond); got != nil {
++		t.Fatalf("got %v", got)
++	}
++	if took := time.Since(start); took < 300*time.Millisecond || took > time.Second {
++		t.Fatalf("waited %v, want 300ms", took)
++	}
++}
++
++func TestClearBackendLeavesAnother(t *testing.T) {
++	resetFront(t, time.Now())
++	a, b := &backend{}, &backend{}
++	setBackend(a)
++	clearBackend(b) // an old engine stopping after a new one started
++	if got := waitBackend(context.Background(), 0); got != a {
++		t.Fatal("an old engine's stop withdrew the new one")
++	}
++	clearBackend(a)
++	front.Lock()
++	cur := front.current
++	front.Unlock()
++	if cur != nil {
++		t.Fatal("still in use after its stop")
++	}
++}
++
++func TestFrontDialsDirectWithoutEngine(t *testing.T) {
++	resetFront(t, time.Now().Add(-time.Hour))
++	withFake(t)
++	c, err := frontDialer{}.Dial(context.Background(), "tcp", "192.0.2.3:443")
++	if err != nil {
++		t.Fatal(err)
++	}
++	c.Close()
 +}
 --- netbird_orig/client/iface/device/device_netstack.go
 +++ netbird_src/client/iface/device/device_netstack.go

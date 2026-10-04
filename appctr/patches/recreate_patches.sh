@@ -27,7 +27,8 @@ make_patch() {
 # The SOCKS5 proxy of netstack mode, made fit for an Android app: a password,
 # NetBird names resolvable through it, the internet reached directly when no
 # peer carries the destination (falling back over a name's other addresses),
-# a DNS proxy beside it, and both closed with the engine.
+# a DNS proxy beside it, both kept for the daemon's life and lent to
+# whichever engine runs (front.go).
 make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/env.go \
     client/iface/netstack/proxy.go \
@@ -42,6 +43,8 @@ make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/searchdomains_test.go \
     client/iface/netstack/fallback.go \
     client/iface/netstack/fallback_test.go \
+    client/iface/netstack/front.go \
+    client/iface/netstack/front_test.go \
     client/iface/device/device_netstack.go
 
 # The device as the dashboard shows it: Android, its version and model, which

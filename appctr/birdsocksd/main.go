@@ -30,6 +30,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
+	"github.com/netbirdio/netbird/client/iface/netstack"
 	"github.com/netbirdio/netbird/client/internal"
 	"github.com/netbirdio/netbird/client/internal/ipcauth"
 	"github.com/netbirdio/netbird/client/proto"
@@ -60,6 +61,14 @@ func main() {
 
 	if *dnsServers != "" {
 		installResolver(*dnsServers)
+	}
+	// The proxies live as long as the daemon, not one engine: with no
+	// engine (no login, an expired session, a reconnect) they reach the
+	// internet directly instead of refusing every app behind them.
+	if netstack.IsEnabled() {
+		if err := netstack.StartFront(); err != nil {
+			log.Errorf("proxies: %v", err)
+		}
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
