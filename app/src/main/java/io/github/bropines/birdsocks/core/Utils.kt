@@ -15,6 +15,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import java.io.File
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -631,13 +633,18 @@ fun SlidingSegmentedChips(
     positionOffset: Float? = null,
     height: Dp = 40.dp
 ) {
+    val count = items.size.coerceAtLeast(1)
+    // The pill follows a finger dragged along the row; letting go picks the
+    // nearest option, so every row swipes, with a pager behind it or not.
+    var dragPos by remember { mutableStateOf<Float?>(null) }
+    val restingPos by rememberUpdatedState(positionOffset ?: selectedIndex.toFloat())
+    val onSelected by rememberUpdatedState(onOptionSelected)
     val animPosition by animateFloatAsState(
-        targetValue = positionOffset ?: selectedIndex.toFloat(),
-        animationSpec = tween(durationMillis = 60),
+        targetValue = dragPos ?: positionOffset ?: selectedIndex.toFloat(),
+        animationSpec = tween(durationMillis = if (dragPos != null) 0 else 60),
         label = "slidingPosition"
     )
 
-    val count = items.size.coerceAtLeast(1)
     val activeIndex = animPosition.roundToInt().coerceIn(0, count - 1)
     val selectedItem = items.getOrNull(activeIndex)
     val defaultContainer = MaterialTheme.colorScheme.primaryContainer
@@ -654,6 +661,22 @@ fun SlidingSegmentedChips(
             .height(height)
             .clip(MaterialTheme.shapes.large)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .pointerInput(count) {
+                val step = size.width.toFloat() / count
+                detectHorizontalDragGestures(
+                    onDragStart = { dragPos = restingPos },
+                    onHorizontalDrag = { change, dx ->
+                        change.consume()
+                        dragPos = ((dragPos ?: restingPos) + dx / step).coerceIn(0f, (count - 1).toFloat())
+                    },
+                    onDragEnd = {
+                        val picked = dragPos?.roundToInt()
+                        dragPos = null
+                        if (picked != null) onSelected(picked)
+                    },
+                    onDragCancel = { dragPos = null }
+                )
+            }
     ) {
         val totalWidth = maxWidth
         val itemWidth = totalWidth / count
