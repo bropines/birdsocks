@@ -1,7 +1,8 @@
-Copyright (c) 2026, Bropines (TailSocks Project)
+Copyright (c) 2026, Bropines (BirdSocks Project)
 
-This project is licensed under the BSD 3-Clause License. It includes code from 
-the Tailscale project (BSD 3-Clause) and community patches.
+This project is licensed under the BSD 3-Clause License. It is a fork of
+TailSocks (BSD 3-Clause, the same author) and builds on the NetBird client
+(BSD 3-Clause); the third-party components it ships are listed at the end.
 
 --------------------------------------------------------------------------------
 
@@ -31,7 +32,27 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
-ACKNOWLEDGMENTS:
-- Tailscale Core: https://github.com/tailscale/tailscale (Copyright 2020 Tailscale Inc.)
-- tailcat: https://github.com/tailscale/tailcat (BSD 3-Clause, Copyright Tailscale Inc. & contributors), built into the bridge for the Tailcat screen.
-- Community Patches: Inspired by the work of Asutorufa and other contributors.
+THIRD-PARTY COMPONENTS (each under its own license):
+- NetBird client (client/, shared/, util/ and the other BSD-licensed parts),
+  https://github.com/netbirdio/netbird — BSD 3-Clause, Copyright (c) 2022
+  NetBird GmbH & AUTHORS. Built from the release in appctr/NETBIRD_VERSION
+  with the patches in appctr/patches/. NetBird's AGPLv3 directories
+  (management/, signal/, relay/, combined/, proxy/) are not built into the app.
+- anet, https://github.com/wlynxg/anet — BSD 3-Clause, Copyright (c) 2023
+  wlynxg; vendored by patch 03 as client/internal/anet.
+- wireguard-go (NetBird's fork) — MIT, Copyright (C) 2017-2023 WireGuard LLC.
+- gVisor netstack — Apache License 2.0, Copyright The gVisor Authors.
+- Pion ICE, STUN, TURN, DTLS — MIT, Copyright The Pion community.
+- gRPC-Go — Apache License 2.0; Go protobuf — BSD 3-Clause, Copyright The Go
+  Authors. The daemon links about 110 Go modules in all (NetBird's go.mod):
+  Apache-2.0, MIT, BSD, ISC and CC0, plus three unmodified MPL-2.0 HashiCorp
+  modules; none is GPL or AGPL.
+- hev-socks5-tunnel, https://github.com/heiher/hev-socks5-tunnel — MIT,
+  Copyright (c) 2022 hev; with lwIP (BSD 3-Clause, Copyright (c) 2001, 2002
+  Swedish Institute of Computer Science) and hev-task-system (MIT).
+- ByeDPI, https://github.com/hufrea/byedpi — MIT, Copyright (c) 2024 hufrea;
+  app/src/main/jni/byedpi/LICENSE.
+- AndroidX, Jetpack Compose, Material Components, Kotlin, kotlinx, OkHttp —
+  Apache License 2.0.
+
+"NetBird" is a trademark of NetBird GmbH; BirdSocks is not affiliated with it.
