@@ -175,4 +175,7 @@
     <string name="nb_about_licenses">Licenses</string>
     <string name="nb_about_licenses_desc">BirdSocks and the code it is built on</string>
     <string name="nb_about_licenses_text">BirdSocks — BSD 3-Clause License.\n\nNetBird client — BSD 3-Clause License, Copyright (c) 2022 NetBird GmbH &amp; AUTHORS.\n\nwireguard-go — MIT License, Copyright (C) 2017-2023 WireGuard LLC.\n\ngVisor — Apache License 2.0.\n\ngRPC-Go, protobuf — Apache License 2.0.\n\nanet — BSD 3-Clause License, Copyright (c) 2023 wlynxg.\n\ngo-socks5 — MIT License.\n\nAndroidX, Jetpack Compose, Material Components — Apache License 2.0.\n\nNetBird is a trademark of NetBird GmbH; BirdSocks is not affiliated with it.</string>
+    <string name="nb_exit_node_via">Through %1$s</string>
+    <string name="nb_exit_node_dead">The internet does not answer through this exit node, so apps behind the proxy hang; peers still work. Turn it off, pick another or tell the network admin.</string>
+    <string name="nb_exit_node_off">Turn off</string>
 </resources>

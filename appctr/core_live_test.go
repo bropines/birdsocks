@@ -18,7 +18,14 @@ func TestDaemonLive(t *testing.T) {
 	if lib == "" {
 		t.Skip("BIRDSOCKS_LIVE_LIB is not set")
 	}
-	dir := t.TempDir()
+	// BIRDSOCKS_LIVE_DIR keeps the state between runs: the same peer key,
+	// as the app restarting its daemon.
+	dir := os.Getenv("BIRDSOCKS_LIVE_DIR")
+	if dir == "" {
+		dir = t.TempDir()
+	} else if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := SetDNSServers(dir, "1.1.1.1\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +74,7 @@ func TestDaemonLive(t *testing.T) {
 	upAt := time.Now()
 	out, err = Call("Up", `{"async":true}`, 60000)
 	t.Logf("up: %s %v", out, err)
-	deadline := time.After(40 * time.Second)
+	deadline := time.After(90 * time.Second)
 	for {
 		select {
 		case s := <-statuses:

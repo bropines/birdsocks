@@ -167,4 +167,7 @@
     <string name="nb_about_licenses">Лицензии</string>
     <string name="nb_about_licenses_desc">BirdSocks и код, на котором он построен</string>
     <string name="nb_about_licenses_text">BirdSocks — лицензия BSD 3-Clause.\n\nКлиент NetBird — BSD 3-Clause, Copyright (c) 2022 NetBird GmbH &amp; AUTHORS.\n\nwireguard-go — MIT, Copyright (C) 2017-2023 WireGuard LLC.\n\ngVisor — Apache License 2.0.\n\ngRPC-Go, protobuf — Apache License 2.0.\n\nanet — BSD 3-Clause, Copyright (c) 2023 wlynxg.\n\ngo-socks5 — MIT.\n\nAndroidX, Jetpack Compose, Material Components — Apache License 2.0.\n\nNetBird — товарный знак NetBird GmbH; BirdSocks с ней не связан.</string>
+    <string name="nb_exit_node_via">Через %1$s</string>
+    <string name="nb_exit_node_dead">Интернет через этот узел не отвечает, и приложения за прокси зависают; узлы сети работают. Выключите его, выберите другой или сообщите администратору сети.</string>
+    <string name="nb_exit_node_off">Выключить</string>
 </resources>

@@ -35,6 +35,7 @@ TailSocks' history is in its own repository.
 - Peers filter for connecting peers; search in Networks; a no-network state on the main screen.
 - Accounts can be switched while BirdSocks is stopped.
 - About: NetBird docs, source code and licenses.
+- The exit node row checks the internet through the proxy and offers to turn off a node that forwards nothing.
 
 ### Fixed
 - An exit node no longer takes the local network's own addresses.

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.core.EgressProbe
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.LoginFlow
 import io.github.bropines.birdsocks.core.Netbird
@@ -64,6 +66,7 @@ import io.github.bropines.birdsocks.models.NbConnState
 import io.github.bropines.birdsocks.models.NbNetwork
 import io.github.bropines.birdsocks.models.NbStatus
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -151,6 +154,18 @@ fun MainScreen() {
         networks = if (card == CardState.Connected) runCatching { Netbird.networks() }.getOrDefault(emptyList()) else emptyList()
     }
     var showExitPicker by remember { mutableStateOf(false) }
+    // An exit node can be up as a peer and forward nothing: check the internet
+    // through the proxy while one is selected, sooner again after a failure.
+    val selectedExit = networks.firstOrNull { it.isExitNode && it.selected }
+    var exitWorks by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(selectedExit?.id, card == CardState.Connected) {
+        exitWorks = null
+        if (selectedExit == null || card != CardState.Connected) return@LaunchedEffect
+        while (true) {
+            exitWorks = EgressProbe.internetThroughProxy(context)
+            delay(if (exitWorks == true) 120_000L else 20_000L)
+        }
+    }
     var showAccounts by remember { mutableStateOf(false) }
     val profile by NetbirdState.profile.collectAsState()
     val accounts by rememberAccounts(profile)
@@ -199,7 +214,22 @@ fun MainScreen() {
                 item { SocksCard() }
                 val exitNodes = networks.filter { it.isExitNode }
                 if (exitNodes.isNotEmpty()) {
-                    item { ExitNodeRow(exitNodes.firstOrNull { it.selected }) { showExitPicker = true } }
+                    item {
+                        ExitNodeRow(
+                            current = selectedExit,
+                            via = selectedExit?.let { routingPeerOf(it, status) }?.substringBefore('.'),
+                            works = exitWorks,
+                            onTurnOff = {
+                                scope.launch {
+                                    runCatching {
+                                        selectedExit?.let { Netbird.deselectNetworks(listOf(it.id)) }
+                                        networks = Netbird.networks()
+                                    }.onFailure { toast(context, it) }
+                                }
+                            },
+                            onClick = { showExitPicker = true }
+                        )
+                    }
                 }
             }
             item {
@@ -584,14 +614,29 @@ private fun CopyRow(icon: ImageVector, label: String, value: String, shown: Stri
     )
 }
 
+/** The exit node in use; [works] false when the internet does not answer through it. */
 @Composable
-private fun ExitNodeRow(current: NbNetwork?, onClick: () -> Unit) {
+private fun ExitNodeRow(current: NbNetwork?, via: String?, works: Boolean?, onTurnOff: () -> Unit, onClick: () -> Unit) {
+    val dead = current != null && works == false
     Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         ListItem(
-            leadingContent = { Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.primary) },
+            leadingContent = {
+                Icon(
+                    if (dead) Icons.Default.PublicOff else Icons.Default.Public, null,
+                    tint = if (dead) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                )
+            },
             overlineContent = { Text(stringResource(R.string.nb_exit_node)) },
             headlineContent = { Text(current?.id ?: stringResource(R.string.nb_exit_node_none)) },
-            trailingContent = { Icon(Icons.Default.ChevronRight, null) },
+            supportingContent = when {
+                dead -> { { HelpText(stringResource(R.string.nb_exit_node_dead), color = MaterialTheme.colorScheme.error) } }
+                current != null && via != null -> { { Text(stringResource(R.string.nb_exit_node_via, via)) } }
+                else -> null
+            },
+            trailingContent = {
+                if (dead) TextButton(onClick = onTurnOff) { Text(stringResource(R.string.nb_exit_node_off)) }
+                else Icon(Icons.Default.ChevronRight, null)
+            },
             colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
         )
     }
