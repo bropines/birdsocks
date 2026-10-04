@@ -560,11 +560,9 @@ private fun DnsLabelsRefusedCard() {
 /** A destination on the main screen; [icon2], when set, stands beside [icon]. */
 data class MenuEntry(val title: String, val icon: ImageVector, val icon2: ImageVector? = null, val onClick: () -> Unit)
 
-/** How many menu columns [width] holds, dividing [entries] evenly. */
-fun menuColumnsFor(width: Dp, entries: Int = 4): Int {
-    val fit = ((width + 16.dp) / 116.dp).toInt().coerceIn(2, 4)
-    return (fit downTo 2).firstOrNull { entries % it == 0 } ?: 2
-}
+/** Menu tiles go two to a row, whatever the width (the author's call: never three). */
+@Suppress("UNUSED_PARAMETER")
+fun menuColumnsFor(width: Dp, entries: Int = 4): Int = 2
 
 @Composable
 fun MenuGrid(columns: Int, entries: List<MenuEntry>, cardHeight: Dp = 96.dp, modifier: Modifier = Modifier) {
