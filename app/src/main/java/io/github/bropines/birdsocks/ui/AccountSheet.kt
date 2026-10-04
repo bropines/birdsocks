@@ -1,5 +1,6 @@
 package io.github.bropines.birdsocks.ui
 
+import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -56,6 +57,24 @@ fun rememberAccounts(key: Any?): State<List<Account>> {
 }
 
 /**
+ * Makes [name] the active account, in the app's scope: the status card shows
+ * the reconnect, and a profile not signed in yet its sign-in card. [add]
+ * creates it first; a new account with its [server] signs in right after the
+ * switch instead of connecting. The account sheet and invite links use it.
+ */
+fun switchAccount(context: Context, name: String, add: Boolean = false, server: String? = null, setupKey: String? = null) {
+    val app = context.applicationContext
+    BirdSocksApp.scope.launch {
+        runCatching {
+            if (!NetbirdService.awaitRunning(app)) error(app.getString(R.string.nb_error_not_running))
+            if (add) Netbird.addProfile(name)
+            Netbird.switchProfile(name, connect = server == null)
+            if (server != null) LoginFlow.start(app, server, setupKey)
+        }.onFailure { Toast.makeText(app, it.message, Toast.LENGTH_LONG).show() }
+    }
+}
+
+/**
  * Accounts, in one place: tap one to make it active, add another, and Edit
  * to rename or remove. The default profile keeps its name and stays, and
  * the daemon removes no active profile.
@@ -92,19 +111,9 @@ fun AccountSheet(onDismiss: () -> Unit) {
         }
     }
 
-    // A switch outlives the sheet, which closes at once: the status card
-    // shows the reconnect, and a profile not signed in yet its sign-in card.
-    // A new account with its server signs in right after the switch instead of connecting.
+    // The switch outlives the sheet, which closes at once.
     fun switchTo(name: String, add: Boolean = false, server: String? = null, setupKey: String? = null) {
-        val app = context.applicationContext
-        BirdSocksApp.scope.launch {
-            runCatching {
-                if (!NetbirdService.awaitRunning(app)) error(app.getString(R.string.nb_error_not_running))
-                if (add) Netbird.addProfile(name)
-                Netbird.switchProfile(name, connect = server == null)
-                if (server != null) LoginFlow.start(app, server, setupKey)
-            }.onFailure { Toast.makeText(app, it.message, Toast.LENGTH_LONG).show() }
-        }
+        switchAccount(context, name, add, server, setupKey)
         onDismiss()
     }
 

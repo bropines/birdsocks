@@ -94,7 +94,12 @@ class MainActivity : ComponentActivity() {
             NetbirdService.start(this)
         }
         handleIntent(intent)
-        setContent { BirdSocksTheme { MainScreen() } }
+        setContent {
+            BirdSocksTheme {
+                MainScreen()
+                ActionLinkDialogs()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -107,11 +112,14 @@ class MainActivity : ComponentActivity() {
             intent.removeExtra(EXTRA_EXTEND)
             io.github.bropines.birdsocks.core.ExtendFlow.start(this)
         }
-        // birdsocks:// links (DeepLinks): the screen opens on top of this one.
+        // birdsocks:// links (DeepLinks): a screen opens on top of this one,
+        // an action asks here first (ActionLinks).
         if (intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == DeepLinks.SCHEME) {
-            val target = DeepLinks.intentFor(this, intent.data!!)
+            val uri = intent.data!!
             intent.data = null
+            val target = DeepLinks.intentFor(this, uri)
             if (target != null) startActivity(target)
+            else DeepLinks.requestFor(uri)?.let { ActionLinks.receive(this, it, runCatching { uri.getQueryParameter("secret") }.getOrNull()) }
         }
     }
 }

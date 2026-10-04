@@ -25,17 +25,30 @@ import kotlinx.coroutines.launch
  * A new account with its server at once: NetBird Cloud or an own server
  * (a pasted dashboard link is cut to its origin), a name that defaults to
  * the server's, and a setup key or the browser. [onDone] gets the name, the
- * management URL and the key; signing in starts from there.
+ * management URL and the key; signing in starts from there. An invite link
+ * fills it in with the initial values ("" server: NetBird Cloud).
  */
 @Composable
-fun AddAccountDialog(existing: Collection<String>, onDismiss: () -> Unit, onDone: (name: String, server: String, setupKey: String?) -> Unit) {
+fun AddAccountDialog(
+    existing: Collection<String>,
+    onDismiss: () -> Unit,
+    initialServer: String = "",
+    initialName: String = "",
+    initialSetupKey: String = "",
+    onDone: (name: String, server: String, setupKey: String?) -> Unit
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var own by rememberSaveable { mutableStateOf(true) }
-    var server by rememberSaveable { mutableStateOf("") }
-    var name by rememberSaveable { mutableStateOf("") }
-    var useKey by rememberSaveable { mutableStateOf(false) }
-    var setupKey by rememberSaveable { mutableStateOf("") }
+    // A link to NetBird Cloud (its API or its dashboard) is the Cloud choice.
+    val cloudInvite = initialServer.isNotEmpty() &&
+        runCatching { java.net.URI(initialServer).host }.getOrNull().orEmpty().lowercase().endsWith("netbird.io")
+    val invite = initialServer.isNotEmpty() || initialName.isNotEmpty() || initialSetupKey.isNotEmpty()
+    // Own server is the usual choice; an invite without a server of its own is for the Cloud.
+    var own by rememberSaveable { mutableStateOf(if (invite) initialServer.isNotEmpty() && !cloudInvite else true) }
+    var server by rememberSaveable { mutableStateOf(if (cloudInvite) "" else initialServer) }
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var useKey by rememberSaveable { mutableStateOf(initialSetupKey.isNotEmpty()) }
+    var setupKey by rememberSaveable { mutableStateOf(initialSetupKey) }
     var probing by remember { mutableStateOf(false) }
     // A server that did not answer: the next tap adds it anyway.
     var unreachable by remember { mutableStateOf<String?>(null) }

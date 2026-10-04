@@ -19,4 +19,15 @@
 
     <string name="automation_failed">Не выполнено: %1$s</string>
     <string name="automation_start_refused">Android не дал автоматизации запустить BirdSocks в фоне. Отключите для него оптимизацию батареи: Настройки → Фоновая работа и разрешения.</string>
+
+    <string name="automation_link_connect">Запустить BirdSocks и подключиться?</string>
+    <string name="automation_link_disconnect">Отключиться и остановить BirdSocks?</string>
+    <string name="automation_link_exit_node">Пустить интернет-трафик через выходной узел %1$s?</string>
+    <string name="automation_link_exit_none">Перестать использовать выходной узел?</string>
+    <string name="automation_link_account">Переключиться на аккаунт %1$s?</string>
+    <string name="automation_link_tun_on">Включить режим VPN?</string>
+    <string name="automation_link_tun_off">Выключить режим VPN?</string>
+    <string name="automation_link_body">Об этом просит ссылка из другого приложения или с веб-страницы. Разрешайте, только если открыли её сами.</string>
+    <string name="automation_link_allow">Разрешить</string>
+    <string name="automation_link_invalid">Эта ссылка BirdSocks неполная или неверная</string>
 </resources>

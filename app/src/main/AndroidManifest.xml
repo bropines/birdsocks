@@ -33,7 +33,8 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
-            <!-- birdsocks:// links open a screen and nothing more (ui/DeepLinks.kt). -->
+            <!-- birdsocks:// links (ui/DeepLinks.kt): a screen opens; an action asks the user
+                 first unless the link carries the automation token. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

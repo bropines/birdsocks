@@ -19,4 +19,15 @@
 
     <string name="automation_failed">Not done: %1$s</string>
     <string name="automation_start_refused">Android did not let automation start BirdSocks in the background. Exempt it from battery optimization in Settings → Background &amp; permissions.</string>
+
+    <string name="automation_link_connect">Start BirdSocks and connect?</string>
+    <string name="automation_link_disconnect">Disconnect and stop BirdSocks?</string>
+    <string name="automation_link_exit_node">Send internet traffic through the exit node %1$s?</string>
+    <string name="automation_link_exit_none">Stop using an exit node?</string>
+    <string name="automation_link_account">Switch to the account %1$s?</string>
+    <string name="automation_link_tun_on">Turn on VPN mode?</string>
+    <string name="automation_link_tun_off">Turn off VPN mode?</string>
+    <string name="automation_link_body">A link from another app or a web page asks for this. Allow it only if you opened it yourself.</string>
+    <string name="automation_link_allow">Allow</string>
+    <string name="automation_link_invalid">This BirdSocks link is incomplete or not valid</string>
 </resources>
