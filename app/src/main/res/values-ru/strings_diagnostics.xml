@@ -29,6 +29,20 @@
     <string name="dns_domain">Домен сети</string>
     <string name="dns_settings_link">Настройки DNS</string>
     <string name="dns_settings_link_desc">DNS NetBird, дополнительные имена, DNS-прокси и куда идут остальные имена.</string>
+    <string name="dns_records_title">Записи</string>
+    <string name="dns_records_desc">Имена, которые сервер выдал этому устройству: зона узлов и зоны, созданные админом для его групп. Нажмите на имя, чтобы скопировать. Вся таблица есть в панели управления.</string>
+    <string name="dns_records_none">Сервер не выдал этому устройству записей.</string>
+    <string name="dns_records_not_connected">Записи появятся, когда NetBird подключится.</string>
+    <string name="dns_records_filter">Фильтр по имени или адресу</string>
+    <string name="dns_zone_peers">Узлы</string>
+    <string name="dns_zone_custom">Своя зона</string>
+    <string name="dns_zone_no_search">без коротких имён</string>
+    <plurals name="dns_zone_names">
+        <item quantity="one">%d имя</item>
+        <item quantity="few">%d имени</item>
+        <item quantity="many">%d имён</item>
+        <item quantity="other">%d имени</item>
+    </plurals>
     <string name="dns_servers_title">DNS-серверы сети</string>
     <string name="dns_servers_desc">Куда NetBird отправляет имена, по доменам, как задано в настройках сети. Проверка спрашивает сервер через SOCKS5-прокси, как это сделало бы приложение: через mesh, если адрес маршрутизирует узел.</string>
     <string name="dns_servers_none">Сеть не выдала этому устройству DNS-серверов.</string>

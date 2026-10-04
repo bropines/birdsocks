@@ -2731,6 +2731,198 @@
 +	}
 +	c.Close()
 +}
+--- netbird_orig/client/iface/netstack/dnstable.go
++++ netbird_src/client/iface/netstack/dnstable.go
+@@ -0,0 +1,122 @@
++package netstack
++
++// dnstable.go — BirdSocks: the DNS records and nameservers the management
++// server gave this peer, for the app to show. A desktop user reads them on
++// the dashboard; a phone has no admin rights there, but its engine holds the
++// part of the table that reaches it: the peers' zone, the custom zones of
++// its groups, the nameserver groups. The engine publishes it with every
++// network map and clears it when it stops; birdsocksd writes it to a file.
++
++import (
++	"bytes"
++	"encoding/json"
++	"strconv"
++	"strings"
++	"sync"
++
++	"github.com/miekg/dns"
++
++	nbdns "github.com/netbirdio/netbird/dns"
++)
++
++// DNSTable is what the app reads: zones with their records, and where
++// everything else goes.
++type DNSTable struct {
++	Zones       []DNSZone       `json:"zones"`
++	Nameservers []DNSNameserver `json:"nameservers"`
++}
++
++type DNSZone struct {
++	Domain string `json:"domain"`
++	// Custom: a zone an admin made (DNS → Zones), not the peers' own.
++	Custom bool `json:"custom"`
++	// Search: short names are tried under it.
++	Search  bool        `json:"search"`
++	Records []DNSRecord `json:"records"`
++}
++
++type DNSRecord struct {
++	Name  string `json:"name"`
++	Type  string `json:"type"`
++	TTL   int    `json:"ttl"`
++	Value string `json:"value"`
++}
++
++type DNSNameserver struct {
++	Servers []string `json:"servers"`
++	// Domains it answers for; none and Primary: every other name.
++	Domains []string `json:"domains"`
++	Primary bool     `json:"primary"`
++	Search  bool     `json:"search"`
++}
++
++var dnsTable struct {
++	sync.Mutex
++	sink func([]byte)
++	last []byte
++}
++
++// SetDNSTableSink names who gets the table: JSON, or nil when there is none.
++func SetDNSTableSink(sink func([]byte)) {
++	dnsTable.Lock()
++	dnsTable.sink, dnsTable.last = sink, nil
++	dnsTable.Unlock()
++}
++
++// PublishDNSTable hands the sink the table of cfg, nil for none (the engine
++// stopped). An unchanged table is not handed again.
++func PublishDNSTable(cfg *nbdns.Config) {
++	var data []byte
++	if cfg != nil {
++		var err error
++		if data, err = json.Marshal(tableOf(cfg)); err != nil {
++			return
++		}
++	}
++	dnsTable.Lock()
++	defer dnsTable.Unlock()
++	if dnsTable.sink == nil || bytes.Equal(data, dnsTable.last) {
++		return
++	}
++	dnsTable.last = data
++	dnsTable.sink(data)
++}
++
++func tableOf(cfg *nbdns.Config) DNSTable {
++	t := DNSTable{Zones: []DNSZone{}, Nameservers: []DNSNameserver{}}
++	for _, z := range cfg.CustomZones {
++		zone := DNSZone{
++			Domain:  strings.TrimSuffix(z.Domain, "."),
++			Custom:  z.NonAuthoritative,
++			Search:  !z.SearchDomainDisabled,
++			Records: make([]DNSRecord, 0, len(z.Records)),
++		}
++		for _, r := range z.Records {
++			typ := dns.TypeToString[uint16(r.Type)]
++			if typ == "" {
++				typ = "TYPE" + strconv.Itoa(r.Type)
++			}
++			zone.Records = append(zone.Records, DNSRecord{
++				Name:  strings.TrimSuffix(r.Name, "."),
++				Type:  typ,
++				TTL:   r.TTL,
++				Value: strings.TrimSuffix(r.RData, "."),
++			})
++		}
++		t.Zones = append(t.Zones, zone)
++	}
++	for _, g := range cfg.NameServerGroups {
++		if g == nil {
++			continue
++		}
++		ns := DNSNameserver{Servers: []string{}, Domains: []string{}, Primary: g.Primary, Search: g.SearchDomainsEnabled}
++		for _, s := range g.NameServers {
++			ns.Servers = append(ns.Servers, s.AddrPort().String())
++		}
++		for _, d := range g.Domains {
++			ns.Domains = append(ns.Domains, strings.TrimSuffix(d, "."))
++		}
++		t.Nameservers = append(t.Nameservers, ns)
++	}
++	return t
++}
+--- netbird_orig/client/iface/netstack/dnstable_test.go
++++ netbird_src/client/iface/netstack/dnstable_test.go
+@@ -0,0 +1,64 @@
++package netstack
++
++import (
++	"encoding/json"
++	"net/netip"
++	"testing"
++
++	nbdns "github.com/netbirdio/netbird/dns"
++)
++
++func TestPublishDNSTable(t *testing.T) {
++	var got [][]byte
++	SetDNSTableSink(func(b []byte) { got = append(got, b) })
++	t.Cleanup(func() { SetDNSTableSink(nil) })
++
++	cfg := &nbdns.Config{
++		CustomZones: []nbdns.CustomZone{
++			{Domain: "corp.example.", Records: []nbdns.SimpleRecord{
++				{Name: "pixel-8a.corp.example", Type: 1, Class: "IN", TTL: 300, RData: "100.92.14.7"},
++				{Name: "pixel-8a.corp.example", Type: 28, Class: "IN", TTL: 300, RData: "fd6c::1"},
++			}},
++			{Domain: "dev.internal.corp.example.", NonAuthoritative: true, SearchDomainDisabled: true, Records: []nbdns.SimpleRecord{
++				{Name: "*.dev.internal.corp.example.", Type: 1, Class: "IN", TTL: 300, RData: "100.92.21.5"},
++				{Name: "www.dev.internal.corp.example.", Type: 5, Class: "IN", TTL: 60, RData: "grafana.dev.internal.corp.example."},
++			}},
++		},
++		NameServerGroups: []*nbdns.NameServerGroup{
++			{Primary: true, NameServers: []nbdns.NameServer{{IP: netip.MustParseAddr("8.8.8.8"), NSType: nbdns.UDPNameServerType, Port: 53}}},
++			{Domains: []string{"corp.example."}, SearchDomainsEnabled: true, NameServers: []nbdns.NameServer{{IP: netip.MustParseAddr("10.0.0.53"), NSType: nbdns.UDPNameServerType, Port: 5353}}},
++		},
++	}
++	PublishDNSTable(cfg)
++	PublishDNSTable(cfg) // unchanged: not handed again
++	if len(got) != 1 {
++		t.Fatalf("sink called %d times, want 1", len(got))
++	}
++	var table DNSTable
++	if err := json.Unmarshal(got[0], &table); err != nil {
++		t.Fatal(err)
++	}
++	if len(table.Zones) != 2 || table.Zones[0].Domain != "corp.example" || table.Zones[0].Custom || !table.Zones[0].Search {
++		t.Fatalf("peers' zone: %+v", table.Zones)
++	}
++	if r := table.Zones[0].Records[1]; r.Type != "AAAA" || r.Value != "fd6c::1" {
++		t.Fatalf("AAAA record: %+v", r)
++	}
++	z := table.Zones[1]
++	if !z.Custom || z.Search || z.Records[0].Name != "*.dev.internal.corp.example" || z.Records[1].Type != "CNAME" || z.Records[1].Value != "grafana.dev.internal.corp.example" {
++		t.Fatalf("custom zone: %+v", z)
++	}
++	if ns := table.Nameservers; len(ns) != 2 || !ns[0].Primary || ns[0].Servers[0] != "8.8.8.8:53" || len(ns[0].Domains) != 0 ||
++		ns[1].Domains[0] != "corp.example" || ns[1].Servers[0] != "10.0.0.53:5353" || !ns[1].Search {
++		t.Fatalf("nameservers: %+v", ns)
++	}
++
++	PublishDNSTable(nil)
++	if len(got) != 2 || got[1] != nil {
++		t.Fatalf("stop did not clear the table: %d calls", len(got))
++	}
++	PublishDNSTable(nil)
++	if len(got) != 2 {
++		t.Fatal("a second clear was handed again")
++	}
++}
 --- netbird_orig/client/iface/device/device_netstack.go
 +++ netbird_src/client/iface/device/device_netstack.go
 @@ -84,6 +84,10 @@

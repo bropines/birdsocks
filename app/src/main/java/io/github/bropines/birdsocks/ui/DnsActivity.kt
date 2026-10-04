@@ -6,12 +6,16 @@ import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
@@ -26,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +47,9 @@ import io.github.bropines.birdsocks.core.NetbirdState
 import io.github.bropines.birdsocks.core.PredictiveBackContainer
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.models.NbConfig
+import io.github.bropines.birdsocks.models.NbDnsRecord
+import io.github.bropines.birdsocks.models.NbDnsTable
+import io.github.bropines.birdsocks.models.NbDnsZone
 import io.github.bropines.birdsocks.models.NbNsGroup
 import io.github.bropines.birdsocks.models.NbStatus
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
@@ -338,6 +346,9 @@ fun DnsScreen(onBack: () -> Unit) {
     var looking by remember { mutableStateOf(false) }
     var serverTests by remember { mutableStateOf<Map<String, DnsResult>>(emptyMap()) }
     var serversTesting by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var table by remember { mutableStateOf<NbDnsTable?>(null) }
+    var tableRead by remember { mutableStateOf(false) }
+    var recordFilter by rememberSaveable { mutableStateOf("") }
 
     fun refresh(manual: Boolean = false) {
         proxyOn = GlobalSettings.isDnsProxyEnabled(context)
@@ -347,6 +358,8 @@ fun DnsScreen(onBack: () -> Unit) {
             if (manual) refreshing = true
             runCatching { Netbird.status() }.onSuccess { polled = it }
             runCatching { Netbird.config() }.onSuccess { config = it }
+            table = Netbird.dnsTable(context)
+            tableRead = true
             if (NetbirdState.profile.value == null) runCatching { Netbird.activeProfile() }.onSuccess { readProfile = it }
             refreshing = false
         }
@@ -354,6 +367,12 @@ fun DnsScreen(onBack: () -> Unit) {
     LifecycleResumeEffect(running) {
         refresh()
         onPauseOrDispose { }
+    }
+
+    // The table comes and goes with the engine: read again when the connection changes.
+    val connState = streamed?.state
+    LaunchedEffect(connState) {
+        if (NetbirdState.isRunning) { table = Netbird.dnsTable(context); tableRead = true }
     }
 
     // The stream is live; the read is there until it has spoken.
@@ -501,6 +520,46 @@ fun DnsScreen(onBack: () -> Unit) {
                     }
 
                     item {
+                        SettingsCard(stringResource(R.string.dns_records_title)) {
+                            HelpText(stringResource(R.string.dns_records_desc))
+                            // Reverse zones are the client's own, made from the peers': nothing new to read.
+                            val zones = table?.zones.orEmpty().filterNot { it.domain.endsWith(".arpa") }
+                            when {
+                                !tableRead -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
+                                zones.all { it.records.isEmpty() } -> {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        stringResource(if (table == null) R.string.dns_records_not_connected else R.string.dns_records_none),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                else -> {
+                                    // A long table gets a filter: by name or by address.
+                                    if (zones.sumOf { it.records.size } > 12) {
+                                        Spacer(Modifier.height(10.dp))
+                                        CompactSearchBar(
+                                            value = recordFilter,
+                                            onValueChange = { recordFilter = it },
+                                            placeholderText = stringResource(R.string.dns_records_filter),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    val filter = recordFilter.trim()
+                                    zones.filter { it.records.isNotEmpty() }.forEach { zone ->
+                                        val shown = if (filter.isEmpty()) zone.records
+                                            else zone.records.filter { it.name.contains(filter, true) || it.value.contains(filter, true) }
+                                        if (shown.isNotEmpty()) {
+                                            Spacer(Modifier.height(10.dp))
+                                            DnsZone(zone, shown, filtering = filter.isNotEmpty(), onCopy = { clipboard.copyText(scope, it) })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
                         SettingsCard(stringResource(R.string.dns_servers_title)) {
                             HelpText(stringResource(R.string.dns_servers_desc))
                             val groups = fs?.dnsServers.orEmpty()
@@ -631,6 +690,90 @@ private fun LookupResult(result: DnsResult) {
             }
         }
     }
+}
+
+/**
+ * One zone of the DNS table: its domain, whose it is and how many names, and
+ * when open, every name with its records; a tap on a name copies it. The
+ * peers' zone starts closed (Peers lists them), an admin's short zone open.
+ */
+@Composable
+private fun DnsZone(zone: NbDnsZone, records: List<NbDnsRecord>, filtering: Boolean, onCopy: (String) -> Unit) {
+    var open by rememberSaveable(zone.domain) { mutableStateOf(zone.custom && zone.records.size <= 8) }
+    val names = remember(records) { records.groupBy { it.name } }
+    val total = remember(zone.records) { zone.records.distinctBy { it.name }.size }
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().clickable(enabled = !filtering) { open = !open }.padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Icon(
+                    if (zone.custom) Icons.Default.Dns else Icons.Default.Devices,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(zone.domain, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        listOfNotNull(
+                            stringResource(if (zone.custom) R.string.dns_zone_custom else R.string.dns_zone_peers),
+                            pluralStringResource(R.plurals.dns_zone_names, total, total),
+                            if (zone.search) null else stringResource(R.string.dns_zone_no_search)
+                        ).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (!filtering) Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (open || filtering) {
+                names.forEach { (name, recs) ->
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        modifier = Modifier.fillMaxWidth().clickable { onCopy(name) }.padding(start = 42.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
+                    ) {
+                        Text(
+                            zoneLabel(name, zone.domain),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(0.45f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(0.55f)) {
+                            recs.forEach { r ->
+                                Text(
+                                    if (r.type == "A" || r.type == "AAAA") r.value else "${r.type} ${r.value}",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+        }
+    }
+}
+
+/** A record's name inside its zone: "grafana" for grafana.example.com, "@" for the zone itself. */
+private fun zoneLabel(name: String, zone: String): String = when {
+    name.equals(zone, true) -> "@"
+    name.endsWith(".$zone", true) -> name.dropLast(zone.length + 1)
+    else -> name
 }
 
 /** A nameserver group: the names it answers, whether NetBird uses it, and its servers. */

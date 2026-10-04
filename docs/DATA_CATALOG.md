@@ -241,6 +241,14 @@ These are ingress port-forward rules that management pushes to **this** peer, wh
 - The app passes the level at daemon start and changes the running daemon's at once with `SetLogLevel` (`Netbird.setLogLevel`, from Settings); `GetLogLevel` is not called.
 - The level does reach the Events screen through `SubscribeEvents`' "Log level changed" event (metadata `level`).
 
+### DNS table (`files/dns-table.json`, written by birdsocksd, not a daemon RPC)
+- The daemon API has no call for the DNS records a peer got. The engine has them in every network map (`DNSConfig.CustomZones` and `NameServerGroups`), and patch 05 hands them to `netstack.PublishDNSTable` (patch 01, `dnstable.go`). birdsocksd writes them as JSON next to its socket, and removes the file when the engine stops.
+- `zones[]{domain, custom, search, records[]{name, type, ttl, value}}`. `custom` means an admin-made zone (NonAuthoritative); the peers' own zone and the client's reverse zones (`*.arpa`, PTR) have it false. `search` means short names are tried under the zone.
+- `nameservers[]{servers["ip:port"], domains[], primary, search}`.
+- This is the part of the server's table that reaches this peer, without admin rights. The full table is only on the dashboard or the admin API (`/api/dns/zones`, `/api/dns/nameservers`, with a PAT).
+- Read by `Netbird.dnsTable`. The DNS screen's Records card (`ui/DnsActivity.kt`) shows the zones without the `.arpa` ones, with a filter by name or address; tapping a name copies it. Nameservers stay on the status-based card, which has health and tests.
+- The daemon's `persistSyncResponse` defaults to on, but on Linux the store is in memory, so the only other way out is `DebugBundle` → `network_map.json`.
+
 ### Other responses
 | message | fields | app |
 |---|---|---|

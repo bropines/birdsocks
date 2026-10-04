@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -69,6 +70,8 @@ func main() {
 		if err := netstack.StartFront(); err != nil {
 			log.Errorf("proxies: %v", err)
 		}
+		// The DNS records this peer got, beside the socket, for the app's DNS screen.
+		netstack.SetDNSTableSink(dnsTableWriter(filepath.Join(filepath.Dir(*socket), "dns-table.json")))
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -161,5 +164,25 @@ func main() {
 	log.Infof("birdsocksd serving the daemon API on %s", *socket)
 	if err := srv.Serve(lis); err != nil {
 		log.Errorf("serve: %v", err)
+	}
+}
+
+// dnsTableWriter keeps the file at path holding the engine's DNS table, and
+// gone while there is none. A rename, so the app never reads half of it.
+func dnsTableWriter(path string) func([]byte) {
+	_ = os.Remove(path)
+	return func(data []byte) {
+		if data == nil {
+			_ = os.Remove(path)
+			return
+		}
+		tmp := path + ".tmp"
+		if err := os.WriteFile(tmp, data, 0o600); err != nil {
+			log.Warnf("dns table: %v", err)
+			return
+		}
+		if err := os.Rename(tmp, path); err != nil {
+			log.Warnf("dns table: %v", err)
+		}
 	}
 }

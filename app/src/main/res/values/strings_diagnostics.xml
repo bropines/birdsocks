@@ -29,6 +29,18 @@
     <string name="dns_domain">Network domain</string>
     <string name="dns_settings_link">DNS settings</string>
     <string name="dns_settings_link_desc">NetBird DNS, extra names, the DNS proxy and where other names go.</string>
+    <string name="dns_records_title">Records</string>
+    <string name="dns_records_desc">The names the server gave this device: its peers\' zone and the zones an admin made for its groups. Tap a name to copy it. The whole table is on the dashboard.</string>
+    <string name="dns_records_none">The server gave this device no records.</string>
+    <string name="dns_records_not_connected">Records arrive once NetBird is connected.</string>
+    <string name="dns_records_filter">Filter by name or address</string>
+    <string name="dns_zone_peers">Peers</string>
+    <string name="dns_zone_custom">Custom zone</string>
+    <string name="dns_zone_no_search">no short names</string>
+    <plurals name="dns_zone_names">
+        <item quantity="one">%d name</item>
+        <item quantity="other">%d names</item>
+    </plurals>
     <string name="dns_servers_title">Nameservers</string>
     <string name="dns_servers_desc">Where NetBird sends names, by domain, as the network\'s settings say. Test asks a server through the SOCKS5 proxy, the way an app reaches it: over the mesh when a peer routes its address.</string>
     <string name="dns_servers_none">The network gives this device no nameservers.</string>

@@ -28,8 +28,9 @@ make_patch() {
 # NetBird names resolvable through it, the internet reached directly when no
 # peer carries the destination (falling back over a name's other addresses),
 # a DNS proxy beside it, both kept for the daemon's life and lent to
-# whichever engine runs (front.go), and the resolver of the app's VPN mode
-# answered inside the proxy (tundns.go).
+# whichever engine runs (front.go), the resolver of the app's VPN mode
+# answered inside the proxy (tundns.go), and the DNS table the peer got,
+# for the app to show (dnstable.go).
 make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/env.go \
     client/iface/netstack/proxy.go \
@@ -49,6 +50,8 @@ make_patch 01-socks5-birdsocks.patch \
     client/iface/netstack/fallback_test.go \
     client/iface/netstack/front.go \
     client/iface/netstack/front_test.go \
+    client/iface/netstack/dnstable.go \
+    client/iface/netstack/dnstable_test.go \
     client/iface/device/device_netstack.go
 
 # The device as the dashboard shows it: Android, its version and model, which

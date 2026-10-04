@@ -8,7 +8,18 @@
  	"math/rand"
  	"net"
  	"net/netip"
-@@ -609,6 +610,15 @@
+@@ -432,6 +433,10 @@
+ // step is nil-guarded. It does not wait on shutdownWg — the caller does that
+ // after releasing the lock, since the goroutines also take syncMsgMux.
+ func (e *Engine) stopLocked() {
++	// BirdSocks: a stopped engine has no DNS table to show.
++	if nbnetstack.IsEnabled() {
++		nbnetstack.PublishDNSTable(nil)
++	}
+ 	if e.connMgr != nil {
+ 		e.connMgr.Close()
+ 	}
+@@ -609,6 +614,15 @@
  		return fmt.Errorf("create dns server: %w", err)
  	}
  	e.dnsServer = dnsServer
@@ -24,7 +35,18 @@
  
  	// Populate DNS cache with NetbirdConfig and management URL for early resolution
  	if err := e.PopulateNetbirdConfig(netbirdConfig, mgmtURL); err != nil {
-@@ -2860,7 +2870,7 @@
+@@ -1609,6 +1623,10 @@
+ 	}
+ 
+ 	dnsConfig := toDNSConfig(protoDNSConfig, e.wgInterface.Address())
++	// BirdSocks: the app shows the records and nameservers this peer got.
++	if nbnetstack.IsEnabled() {
++		nbnetstack.PublishDNSTable(&dnsConfig)
++	}
+ 
+ 	done := e.phase("dns_server")
+ 	if err := e.dnsServer.UpdateDNSServer(serial, dnsConfig); err != nil {
+@@ -2860,7 +2878,7 @@
  }
  
  func getInterfacePrefixes() ([]netip.Prefix, error) {
@@ -33,7 +55,7 @@
  	if err != nil {
  		return nil, fmt.Errorf("get interfaces: %w", err)
  	}
-@@ -2869,7 +2879,7 @@
+@@ -2869,7 +2887,7 @@
  	var merr *multierror.Error
  
  	for _, iface := range ifaces {

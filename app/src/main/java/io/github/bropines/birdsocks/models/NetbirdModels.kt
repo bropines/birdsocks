@@ -143,6 +143,43 @@ data class NbNsGroup(
     val error: String = ""
 )
 
+/**
+ * The DNS table the management server gave this peer: not a daemon answer
+ * but a file birdsocksd keeps beside its socket while an engine runs
+ * (netstack/dnstable.go). [NbDnsZone.custom]: a zone an admin made, not the
+ * peers' own; [NbDnsZone.search]: short names are tried under it.
+ */
+@Serializable
+data class NbDnsTable(
+    val zones: List<NbDnsZone> = emptyList(),
+    val nameservers: List<NbDnsNameserver> = emptyList()
+)
+
+@Serializable
+data class NbDnsZone(
+    val domain: String = "",
+    val custom: Boolean = false,
+    val search: Boolean = false,
+    val records: List<NbDnsRecord> = emptyList()
+)
+
+@Serializable
+data class NbDnsRecord(
+    val name: String = "",
+    val type: String = "",
+    val ttl: Int = 0,
+    val value: String = ""
+)
+
+/** A nameserver group as configured: [primary] with no [domains] answers every other name. */
+@Serializable
+data class NbDnsNameserver(
+    val servers: List<String> = emptyList(),
+    val domains: List<String> = emptyList(),
+    val primary: Boolean = false,
+    val search: Boolean = false
+)
+
 @Serializable
 data class NbEvent(
     val id: String = "",

@@ -6,6 +6,7 @@ import appctr.StreamHandler
 import appctr.Subscription
 import io.github.bropines.birdsocks.models.NbConfig
 import io.github.bropines.birdsocks.models.NbDebugBundle
+import io.github.bropines.birdsocks.models.NbDnsTable
 import io.github.bropines.birdsocks.models.NbExtendRequest
 import io.github.bropines.birdsocks.models.NbExtendResult
 import io.github.bropines.birdsocks.models.NbLoginResponse
@@ -55,6 +56,14 @@ object Netbird {
         AppJson.decodeFromString(call(method, request, timeoutMs))
 
     suspend fun status(): NbStatus = callAs("Status", """{"getFullPeerStatus":true}""", 5_000)
+
+    /**
+     * The DNS records and nameservers the server gave this peer, or null with
+     * no engine running: birdsocksd keeps them in a file beside its socket.
+     */
+    suspend fun dnsTable(context: Context): NbDnsTable? = withContext(Dispatchers.IO) {
+        runCatching { AppJson.decodeFromString<NbDnsTable>(java.io.File(context.filesDir, "dns-table.json").readText()) }.getOrNull()
+    }
 
     /**
      * Registers this device: with [setupKey] it is done when this returns;

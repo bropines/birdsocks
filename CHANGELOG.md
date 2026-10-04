@@ -43,6 +43,7 @@ TailSocks' history is in its own repository.
 - Publish: a local port gets a public address through the server's NetBird reverse proxy, with a PIN, a password or SSO groups.
 - Events: NetBird's network, DNS, sign-in and connection events in a list; warnings arrive as notifications.
 - The DNS proxy asks its fallbacks at once, skips a NetBird resolver that stalls for 30 s, and never sends a NetBird name to a public server.
+- The DNS screen lists the records the server gave this device, the peers' zone and admins' zones, with a filter.
 - VPN mode (TUN): every app through BirdSocks over Android's VPN, NetBird's ranges by default, all traffic with an exit node or a domain route; DNS from a resolver inside the proxy; excluded apps; the tile asks for the permission.
 - Access check: what NetBird's firewall does with a packet to or from a peer, and which rule decides.
 - Packet capture from Logs into a .pcap file.
