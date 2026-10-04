@@ -1,8 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Diagnostics: the connection, the events, the tools. -->
+<!-- Diagnostics (connection, events, tools) and the DNS screen. -->
 <resources>
     <string name="diag_tools">Инструменты</string>
     <string name="diag_tool_logs_desc">Лог приложения и NetBird: поиск, копирование, сохранение.</string>
     <string name="diag_tool_trace_desc">Что firewall NetBird сделает с пакетом между телефоном и узлом.</string>
     <string name="diag_forwarding_desc">Порты, которые сеть пробрасывает на это устройство как на маршрутизирующий узел. Сами правила задаются на сервере.</string>
+
+    <string name="dns_test">Проверить</string>
+    <string name="dns_proxy_test_desc">Спрашивает у прокси имя этого устройства: ответ значит, что за ним стоит резолвер NetBird.</string>
+    <string name="dns_proxy_off_title">DNS-прокси выключен</string>
+    <string name="dns_proxy_off_desc">Включите его в Настройках → DNS, чтобы направить DNS AdGuard или другого приложения в NetBird.</string>
+    <string name="dns_lookup_title">Запрос</string>
+    <string name="dns_lookup_desc">Спрашивает DNS-прокси, как спросило бы приложение, настроенное на него.</string>
+    <string name="dns_lookup_placeholder">peer.netbird.cloud или example.com</string>
+    <string name="dns_cd_query">Найти</string>
+    <string name="dns_answered">Ответ за %1$d мс</string>
+    <string name="dns_answered_with">Ответ за %1$d мс: %2$s</string>
+    <string name="dns_no_answer">Нет ответа: %1$s</string>
+    <string name="dns_timeout">время вышло</string>
+    <string name="dns_rcode_nxdomain">такого имени нет</string>
+    <string name="dns_rcode_nodata">записей нет</string>
+    <string name="dns_rcode_servfail">сбой сервера</string>
+    <string name="dns_rcode_refused">отказано</string>
+    <string name="dns_rcode_other">ошибка %1$d</string>
+    <string name="dns_state">Состояние</string>
+    <string name="dns_netbird_off_desc">Имена узлов и зоны сети на этом устройстве не разрешаются. Включите DNS NetBird в Настройках → DNS.</string>
+    <string name="dns_device_name">Это устройство</string>
+    <string name="dns_domain">Домен сети</string>
+    <string name="dns_settings_link">Настройки DNS</string>
+    <string name="dns_settings_link_desc">DNS NetBird, дополнительные имена, DNS-прокси и куда идут остальные имена.</string>
+    <string name="dns_servers_title">DNS-серверы сети</string>
+    <string name="dns_servers_desc">Куда NetBird отправляет имена, по доменам, как задано в настройках сети. Проверка спрашивает сервер через SOCKS5-прокси, как это сделало бы приложение: через mesh, если адрес маршрутизирует узел.</string>
+    <string name="dns_servers_none">Сеть не выдала этому устройству DNS-серверов.</string>
+    <string name="dns_group_off">Не используется</string>
+    <string name="dns_cd_test_server">Проверить сервер</string>
 </resources>
