@@ -6,8 +6,9 @@ Expected layout (fastlane supply / F-Droid / IzzyOnDroid):
   phoneScreenshots/1.png, 2.png, ...
   sevenInchScreenshots/, tenInchScreenshots/  (optional, tablets)
 
-BirdSocks has no screenshots yet. Add them once the screens settle (see
-docs/ROADMAP.md, "An own logo and screenshots"); keep the aspect ratio at or
-below 2:1. The icon can be exported from docs/logo.svg.
+phoneScreenshots/ and tenInchScreenshots/ are rendered without a device, from
+an invented network: ./gradlew :app:updateDebugScreenshotTest, then
+python3 scripts/readme_shots.py, which writes both locales and keeps the aspect
+ratio at or below 2:1. The icon can be exported from docs/logo.svg.
 
 Stores ignore any file here that is not a known graphic, this README included.
