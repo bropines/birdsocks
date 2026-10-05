@@ -221,8 +221,14 @@ object GlobalSettings {
     fun isTunIpv6Enabled(context: Context): Boolean = getBoolean(context, "tun_ipv6_enabled", false)
     fun setTunIpv6Enabled(context: Context, on: Boolean) = setBoolean(context, "tun_ipv6_enabled", on)
 
-    /** Apps that bypass the VPN unless the user changed the list: banks and stores that refuse a VPN. */
+    /**
+     * Apps that bypass the VPN unless the user changed the list: banks and
+     * stores that refuse a VPN, and TailSocks, a mesh client of its own whose
+     * traffic must not loop through another tunnel.
+     */
     val DEFAULT_TUN_EXCLUDED_APPS = setOf(
+        "io.github.bropines.tailscaled",
+        "io.github.bropines.tailscaled.dev",
         "ru.oneme.app",
         "com.vkontakte.android",
         "ru.vk.store.tv",
