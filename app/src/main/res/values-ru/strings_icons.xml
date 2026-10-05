@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="icon_title">Значок приложения</string>
+    <string name="icon_note">Лаунчер может показать новый значок через несколько секунд. Значок старого на рабочем столе и закреплённые ярлыки могут пропасть — добавьте их заново.</string>
+
+    <string name="icon_group_birdsocks">BirdSocks</string>
+    <string name="icon_group_netbird_orange">NetBird: на оранжевом</string>
+    <string name="icon_group_netbird_bird">NetBird: оранжевая птица</string>
+
+    <string name="icon_style_bs">цвета BirdSocks</string>
+    <string name="icon_style_r4orange">на оранжевом</string>
+    <string name="icon_style_r4dark">на оранжевом, тёмный вариант</string>
+    <string name="icon_style_r5light">оранжевая птица, светлый</string>
+    <string name="icon_style_r5dark">оранжевая птица, тёмный</string>
+</resources>

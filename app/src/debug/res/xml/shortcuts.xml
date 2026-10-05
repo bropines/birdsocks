@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Launcher shortcuts (long press on the icon). The debug build's copy of src/main's, for its .dev package: keep the two alike.
+     Every launcher icon's alias in the manifest names this file; only the enabled one counts.
      On / Off goes to ToggleActivity, which is not exported: only this app's own
      shortcut reaches it, so it asks nothing, unlike a birdsocks://toggle link.
      The screens open over the main screen, so back leads there. -->

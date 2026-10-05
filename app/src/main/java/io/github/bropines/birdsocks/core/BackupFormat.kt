@@ -167,7 +167,7 @@ object BackupFormat {
     private val KEYS: Map<String, KeySpec> = buildMap {
         fun add(scope: Scope, type: Type, vararg keys: String) = keys.forEach { put(it, KeySpec(type, scope)) }
         // Appearance and language
-        add(Scope.SETTING, Type.STRING, "app_theme", "theme_preset", "app_locale")
+        add(Scope.SETTING, Type.STRING, "app_theme", "theme_preset", "app_locale", "app_icon")
         add(Scope.SETTING, Type.BOOLEAN, "dynamic_color", "amoled_mode")
         // The SOCKS5 proxy; before addresses there was only a port
         add(Scope.SETTING, Type.STRING, "socks_address")

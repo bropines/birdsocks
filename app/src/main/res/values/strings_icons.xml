@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon: its row and picker in Settings → Appearance, and the icons' names (core/AppIcons.kt). -->
+<resources>
+    <string name="icon_title">App icon</string>
+    <string name="icon_note">The launcher may take a few seconds to show the new icon. A home-screen icon or pinned shortcut of the old one can disappear: add it again.</string>
+
+    <!-- The picker's sections. -->
+    <string name="icon_group_birdsocks">BirdSocks</string>
+    <string name="icon_group_netbird_orange">NetBird: on orange</string>
+    <string name="icon_group_netbird_bird">NetBird: orange bird</string>
+
+    <!-- After an icon's name, for TalkBack: which colour set it is. -->
+    <string name="icon_style_bs">BirdSocks colours</string>
+    <string name="icon_style_r4orange">on orange</string>
+    <string name="icon_style_r4dark">on orange, dark version</string>
+    <string name="icon_style_r5light">orange bird, light</string>
+    <string name="icon_style_r5dark">orange bird, dark</string>
+
+    <!-- The icons' names, the same in every language. -->
+    <string name="icon_concept_wren" translatable="false">Wren Sock</string>
+    <string name="icon_concept_wire" translatable="false">Bird on a Wire</string>
+    <string name="icon_concept_courier" translatable="false">Courier</string>
+    <string name="icon_concept_knee" translatable="false">Knee Socks</string>
+    <string name="icon_concept_hop" translatable="false">Hop</string>
+    <string name="icon_concept_sit" translatable="false">Sit</string>
+    <string name="icon_concept_windsock" translatable="false">Windsock</string>
+    <string name="icon_concept_snug" translatable="false">Snug</string>
+</resources>
