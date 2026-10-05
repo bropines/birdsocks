@@ -51,6 +51,15 @@ bash appctr/patches/recreate_patches.sh
 
 ## Проверка демона без телефона
 
+Тестам Go нужно только пропатченное дерево, без NDK; CI гоняет пакеты,
+перечисленные в `.github/workflows/ci.yml`:
+
+```bash
+bash appctr/build.sh --prepare
+cd appctr/netbird_src && go test -ldflags=-checklinkname=0 \
+    ./client/iface/netstack/... ./client/net/ ./client/birdsocksd/
+```
+
 Сборка для хоста выполняет тот же код (это Linux-бинарник):
 
 ```bash

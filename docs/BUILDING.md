@@ -51,6 +51,15 @@ files; add a `make_patch` line for a new one. Patches must apply with
 
 ## Testing the daemon without a phone
 
+The Go tests need only the patched tree, not the NDK; CI runs the packages
+listed in `.github/workflows/ci.yml`:
+
+```bash
+bash appctr/build.sh --prepare
+cd appctr/netbird_src && go test -ldflags=-checklinkname=0 \
+    ./client/iface/netstack/... ./client/net/ ./client/birdsocksd/
+```
+
 A host build runs the same code (it is a Linux binary):
 
 ```bash
