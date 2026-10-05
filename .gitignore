@@ -66,6 +66,8 @@ appctr/tailscale_src/tmp/
 .gemini/
 
 *.txt
+# The licence texts the APK ships (About → Licenses → Full texts).
+!app/src/main/assets/*.txt
 *.Zone.Identifier
 status.json
 .kotlin/
