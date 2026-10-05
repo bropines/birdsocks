@@ -4,10 +4,26 @@
 #     pinned and patched NetBird tree), one per ABI, run by the app as its
 #     own process — app/src/main/jniLibs/<abi>/libnetbird.so;
 #   - appctr.aar: the gomobile bridge the app calls (appctr/*.go).
+#
+#   --clean    download and patch NetBird again even when the tree is current
+#   --prepare  only unpack, patch and assemble netbird_src, then stop: what
+#              `go test` in the tree needs, without the NDK
+# NETBIRD_DIST_DIR, when set, keeps the downloaded release archive there and
+# reuses it (CI caches the directory); it is checked against NETBIRD_SHA256
+# every time all the same.
 set -e
 cd "$(dirname "$0")"
 
-if [ -z "$ANDROID_NDK_HOME" ]; then
+CLEAN= PREPARE=
+for arg in "$@"; do
+    case $arg in
+        --clean) CLEAN=1 ;;
+        --prepare) PREPARE=1 ;;
+        *) echo "❌ Unknown option: $arg" >&2; exit 1 ;;
+    esac
+done
+
+if [ -z "$ANDROID_NDK_HOME" ] && [ -z "$PREPARE" ]; then
     echo "❌ ANDROID_NDK_HOME is not set." >&2
     exit 1
 fi
@@ -19,15 +35,18 @@ echo "-> NetBird ${NB_VERSION}"
 # stamp the version, the patches and our daemon entry point, and re-extract
 # when any of them moves.
 STAMP=$(cat NETBIRD_VERSION patches/*.patch 2>/dev/null | sha256sum | cut -d" " -f1)
-if [ "$1" = "--clean" ] || [ "$(cat netbird_src/.patch_stamp 2>/dev/null)" != "$STAMP" ]; then
+if [ -n "$CLEAN" ] || [ "$(cat netbird_src/.patch_stamp 2>/dev/null)" != "$STAMP" ]; then
     rm -rf netbird_src netbird_orig
 fi
 
 if [ ! -d netbird_src ]; then
     # Checked against NETBIRD_SHA256 before anything in it is used. A new
     # version has no line yet: verify the printed hash and add it.
-    TARBALL="netbird-${NB_VERSION}.tar.gz"
-    curl -fsSL -o "$TARBALL" "https://github.com/netbirdio/netbird/archive/refs/tags/${NB_VERSION}.tar.gz"
+    if [ -n "$NETBIRD_DIST_DIR" ]; then mkdir -p "$NETBIRD_DIST_DIR"; fi
+    TARBALL="${NETBIRD_DIST_DIR:-.}/netbird-${NB_VERSION}.tar.gz"
+    if [ -z "$NETBIRD_DIST_DIR" ] || [ ! -s "$TARBALL" ]; then
+        curl -fsSL -o "$TARBALL" "https://github.com/netbirdio/netbird/archive/refs/tags/${NB_VERSION}.tar.gz"
+    fi
     ACTUAL=$(sha256sum "$TARBALL" | cut -d" " -f1)
     EXPECTED=$(awk -v v="$NB_VERSION" '!/^#/ && $2 == v { print $1 }' NETBIRD_SHA256)
     if [ "$ACTUAL" != "$EXPECTED" ]; then
@@ -35,7 +54,8 @@ if [ ! -d netbird_src ]; then
         echo "❌ ${NB_VERSION} archive: expected '${EXPECTED:-no line in NETBIRD_SHA256}', got $ACTUAL" >&2
         exit 1
     fi
-    mkdir -p .extract && tar -xzf "$TARBALL" -C .extract && rm -f "$TARBALL"
+    mkdir -p .extract && tar -xzf "$TARBALL" -C .extract
+    if [ -z "$NETBIRD_DIST_DIR" ]; then rm -f "$TARBALL"; fi
     mv ".extract/netbird-${NB_VERSION#v}" netbird_orig && rmdir .extract
     cp -r netbird_orig netbird_src
     for p in patches/*.patch; do
@@ -56,6 +76,11 @@ fi
 # appctr module, and inside NetBird's tree it would wall it off from client/internal.
 rm -rf netbird_src/client/birdsocksd && mkdir -p netbird_src/client/birdsocksd
 cp birdsocksd/*.go netbird_src/client/birdsocksd/
+
+if [ -n "$PREPARE" ]; then
+    echo "✅ netbird_src is ready."
+    exit 0
+fi
 
 export GOTOOLCHAIN=${GOTOOLCHAIN:-auto}
 # Reproducible: no VCS stamp, no build paths, no build ID.
