@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="484" viewBox="0 0 960 484" role="img" aria-labelledby="title desc">
+  <title id="title">BirdSocks' three ways in, compared</title>
+  <desc id="desc">The SOCKS5 proxy needs a proxy setting in an app, reaches peers, their networks and NetBird names, sends the rest straight out or through the exit node, and leaves Android's VPN slot free. The DNS proxy needs a DNS setting, answers NetBird names first, sends other names to the network's resolvers, and leaves the VPN slot free. VPN mode needs nothing in apps, carries NetBird's ranges and, with an exit node or Route all, everything; it takes the VPN slot.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #F3EDE7; }
+      .t { font-size: 24px; font-weight: 700; }
+      .st { font-size: 13.5px; fill: #A89C92; }
+      .h { font-size: 18px; font-weight: 700; fill: #F68330; }
+      .m { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; fill: #FFB06B; }
+      .k { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; fill: #8E847C; }
+      .v { font-size: 13.5px; fill: #E6DED7; }
+      .ok { font-size: 13.5px; font-weight: 600; fill: #5CC48A; }
+      .warn { font-size: 13.5px; font-weight: 600; fill: #E8B341; }
+      .card { fill: #201A16; stroke: #3A302A; stroke-width: 1.2; }
+      .rule { stroke: #2F2722; stroke-width: 1; }
+      .foot { font-size: 13px; fill: #A89C92; }
+    </style>
+  </defs>
+
+  <rect width="960" height="484" rx="16" fill="#16110E"/>
+  <rect x="0.5" y="0.5" width="959" height="483" rx="15.5" fill="none" stroke="#2B231E"/>
+
+  <text class="t" x="28" y="48">Three ways in</text>
+  <text class="st" x="28" y="72">Use one, two or all three. Each needs NetBird to be connected in BirdSocks.</text>
+
+  <!-- SOCKS5 proxy -->
+  <rect class="card" x="28" y="96" width="284" height="330" rx="14"/>
+  <text class="h" x="48" y="128">SOCKS5 proxy</text>
+  <text class="m" x="48" y="150">127.0.0.1:48125 · TCP and UDP</text>
+  <line class="rule" x1="48" y1="166" x2="292" y2="166"/>
+  <text class="k" x="48" y="190">SET IN APPS</text>
+  <text class="v" x="48" y="210">SOCKS5 with remote DNS, or</text>
+  <text class="v" x="48" y="228">a proxy client such as Throne</text>
+  <text class="k" x="48" y="256">REACHES</text>
+  <text class="v" x="48" y="276">peers, the networks they route</text>
+  <text class="v" x="48" y="294">and NetBird names</text>
+  <text class="k" x="48" y="322">EVERYTHING ELSE</text>
+  <text class="v" x="48" y="342">straight out, or through</text>
+  <text class="v" x="48" y="360">the exit node</text>
+  <text class="k" x="48" y="388">ANDROID'S VPN SLOT</text>
+  <text class="ok" x="48" y="406">✓ stays free</text>
+
+  <!-- DNS proxy -->
+  <rect class="card" x="338" y="96" width="284" height="330" rx="14"/>
+  <text class="h" x="358" y="128">DNS proxy</text>
+  <text class="m" x="358" y="150">127.0.0.1:48153 · UDP</text>
+  <line class="rule" x1="358" y1="166" x2="602" y2="166"/>
+  <text class="k" x="358" y="190">SET IN APPS</text>
+  <text class="v" x="358" y="210">a DNS server: in an ad-blocker</text>
+  <text class="v" x="358" y="228">or a proxy client</text>
+  <text class="k" x="358" y="256">REACHES</text>
+  <text class="v" x="358" y="276">NetBird names, answered first;</text>
+  <text class="v" x="358" y="294">they never go to a public resolver</text>
+  <text class="k" x="358" y="322">EVERYTHING ELSE</text>
+  <text class="v" x="358" y="342">the network's resolvers,</text>
+  <text class="v" x="358" y="360">or the fallbacks you set</text>
+  <text class="k" x="358" y="388">ANDROID'S VPN SLOT</text>
+  <text class="ok" x="358" y="406">✓ stays free</text>
+
+  <!-- VPN mode -->
+  <rect class="card" x="648" y="96" width="284" height="330" rx="14"/>
+  <text class="h" x="668" y="128">VPN mode</text>
+  <text class="m" x="668" y="150">TUN · hev-socks5-tunnel</text>
+  <line class="rule" x1="668" y1="166" x2="912" y2="166"/>
+  <text class="k" x="668" y="190">SET IN APPS</text>
+  <text class="v" x="668" y="210">nothing: every app goes in,</text>
+  <text class="v" x="668" y="228">but the ones you exclude</text>
+  <text class="k" x="668" y="256">REACHES</text>
+  <text class="v" x="668" y="276">NetBird's ranges and names</text>
+  <text class="v" x="668" y="294">(DNS 198.18.0.2, answered inside)</text>
+  <text class="k" x="668" y="322">EVERYTHING ELSE</text>
+  <text class="v" x="668" y="342">outside the tunnel, or in it with</text>
+  <text class="v" x="668" y="360">an exit node or Route all traffic</text>
+  <text class="k" x="668" y="388">ANDROID'S VPN SLOT</text>
+  <text class="warn" x="668" y="406">! taken: one VPN at a time</text>
+
+  <text class="foot" x="28" y="458">VPN mode feeds the same SOCKS5 proxy, so it reaches exactly what the proxy reaches.</text>
+</svg>

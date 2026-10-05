@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">How BirdSocks works</title>
+  <desc id="desc">Apps reach NetBird through BirdSocks' SOCKS5 proxy or DNS proxy; apps without a proxy setting go through VPN mode, where hev-socks5-tunnel feeds the same proxy. Inside the app the NetBird daemon runs as a userspace node: its netstack sends peer traffic over WireGuard, directly (P2P) or through a relay. Everything else goes straight to the internet, or through an exit node.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #F3EDE7; }
+      .t { font-size: 24px; font-weight: 700; }
+      .st { font-size: 13.5px; fill: #A89C92; }
+      .h { font-size: 15px; font-weight: 600; }
+      .s { font-size: 12.5px; fill: #A89C92; }
+      .m { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; fill: #FFB06B; }
+      .ours { fill: #F68330; }
+      .nbt { fill: #8DB6F0; }
+      .lg { font-size: 12.5px; fill: #CFC6BE; }
+      .box { fill: #221B17; stroke: #3A302A; stroke-width: 1.2; }
+      .app { fill: #1D1916; stroke: #3A302A; stroke-width: 1.2; }
+      .bird { fill: #F68330; fill-opacity: 0.06; stroke: #F68330; stroke-width: 1.5; }
+      .nb { fill: #5C8FD6; fill-opacity: 0.07; stroke: #5C8FD6; stroke-width: 1.3; stroke-dasharray: 5 4; }
+      .nbbox { fill: #18212D; stroke: #5C8FD6; stroke-width: 1.2; }
+      .line { fill: none; stroke: #CFC6BE; stroke-width: 1.6; }
+      .p2p { fill: none; stroke: #5CC48A; stroke-width: 2.2; }
+      .relay { fill: none; stroke: #E8B341; stroke-width: 2; stroke-dasharray: 7 5; }
+      .direct { fill: none; stroke: #8E847C; stroke-width: 1.8; }
+      .exit { fill: none; stroke: #F68330; stroke-width: 2; stroke-dasharray: 7 5; }
+      .pill { fill: #2B2416; stroke: #E8B341; stroke-width: 1.2; }
+    </style>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#CFC6BE"/></marker>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5CC48A"/></marker>
+    <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#E8B341"/></marker>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8E847C"/></marker>
+    <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F68330"/></marker>
+  </defs>
+
+  <rect width="960" height="500" rx="16" fill="#16110E"/>
+  <rect x="0.5" y="0.5" width="959" height="499" rx="15.5" fill="none" stroke="#2B231E"/>
+
+  <text class="t" x="28" y="48">How BirdSocks works</text>
+  <text class="st" x="28" y="72">NetBird runs inside the app as a userspace node. Apps reach it through local proxies; no VPN slot needed.</text>
+
+  <!-- Apps -->
+  <rect class="app" x="28" y="146" width="204" height="58" rx="12"/>
+  <text class="h" x="44" y="170">Proxy-aware apps</text>
+  <text class="s" x="44" y="190">browser, Telegram, Termux</text>
+
+  <rect class="app" x="28" y="236" width="204" height="58" rx="12"/>
+  <text class="h" x="44" y="260">Any other app</text>
+  <text class="s" x="44" y="280">through Android's VPN</text>
+
+  <rect class="app" x="28" y="326" width="204" height="58" rx="12"/>
+  <text class="h" x="44" y="350">DNS clients</text>
+  <text class="s" x="44" y="370">an ad-blocker, a proxy app</text>
+
+  <!-- BirdSocks -->
+  <rect class="bird" x="258" y="100" width="444" height="304" rx="18"/>
+  <text class="h ours" x="276" y="128">BirdSocks</text>
+
+  <rect class="box" x="276" y="146" width="152" height="58" rx="10"/>
+  <text class="h" x="290" y="170">SOCKS5 proxy</text>
+  <text class="m" x="290" y="190">127.0.0.1:48125</text>
+
+  <rect class="box" x="276" y="236" width="152" height="58" rx="10"/>
+  <text class="h" x="290" y="260">VPN mode</text>
+  <text class="s" x="290" y="280">hev-socks5-tunnel</text>
+
+  <rect class="box" x="276" y="326" width="152" height="58" rx="10"/>
+  <text class="h" x="290" y="350">DNS proxy</text>
+  <text class="m" x="290" y="370">127.0.0.1:48153</text>
+
+  <!-- NetBird daemon -->
+  <rect class="nb" x="444" y="110" width="248" height="284" rx="14"/>
+  <text class="h nbt" x="458" y="134">NetBird daemon</text>
+
+  <rect class="nbbox" x="458" y="146" width="100" height="238" rx="10"/>
+  <text class="h" x="508" y="252" text-anchor="middle">netstack</text>
+  <text class="s" x="508" y="274" text-anchor="middle">TCP/IP, DNS,</text>
+  <text class="s" x="508" y="291" text-anchor="middle">routes</text>
+
+  <rect class="nbbox" x="582" y="146" width="100" height="238" rx="10"/>
+  <text class="h" x="632" y="252" text-anchor="middle">WireGuard</text>
+  <text class="s" x="632" y="274" text-anchor="middle">encrypted,</text>
+  <text class="s" x="632" y="291" text-anchor="middle">over UDP</text>
+
+  <!-- Into the proxies -->
+  <path class="line" d="M232,175 H274" marker-end="url(#a)"/>
+  <path class="line" d="M232,265 H274" marker-end="url(#a)"/>
+  <path class="line" d="M232,355 H274" marker-end="url(#a)"/>
+  <path class="line" d="M352,236 V206" marker-end="url(#a)"/>
+  <path class="line" d="M428,175 H456" marker-end="url(#a)"/>
+  <path class="line" d="M428,355 H456" marker-end="url(#a)"/>
+  <path class="line" d="M558,265 H580" marker-end="url(#a)"/>
+
+  <!-- Out: peers -->
+  <rect class="app" x="792" y="146" width="140" height="80" rx="12"/>
+  <text class="h" x="808" y="172">Peers</text>
+  <text class="s" x="808" y="192">and the networks</text>
+  <text class="s" x="808" y="209">they route</text>
+
+  <path class="p2p" d="M682,170 H790" marker-end="url(#ag)"/>
+  <text class="s" x="737" y="162" text-anchor="middle" style="fill:#5CC48A">P2P</text>
+
+  <path class="relay" d="M682,211 H712"/>
+  <rect class="pill" x="712" y="199" width="56" height="24" rx="12"/>
+  <text class="s" x="740" y="215.5" text-anchor="middle" style="fill:#E8B341">relay</text>
+  <path class="relay" d="M768,211 H790" marker-end="url(#aa)"/>
+
+  <!-- Out: the internet -->
+  <rect class="app" x="792" y="316" width="140" height="62" rx="12"/>
+  <text class="h" x="808" y="342">Internet</text>
+  <text class="s" x="808" y="362">everything else</text>
+
+  <path class="exit" d="M862,228 V314" marker-end="url(#ao)"/>
+  <text class="s" x="854" y="276" text-anchor="end" style="fill:#F68330">exit node</text>
+
+  <path class="direct" d="M508,384 V428 H862 V380" marker-end="url(#ad)"/>
+  <text class="s" x="690" y="446" text-anchor="middle">or straight out, from the phone's own network</text>
+
+  <!-- Legend -->
+  <path class="p2p" d="M28,478 H56"/>
+  <text class="lg" x="64" y="482">P2P: WireGuard straight to the peer</text>
+  <path class="relay" d="M318,478 H346"/>
+  <text class="lg" x="354" y="482">relayed when no direct path</text>
+  <path class="exit" d="M560,478 H588"/>
+  <text class="lg" x="596" y="482">through an exit node</text>
+  <path class="direct" d="M758,478 H786"/>
+  <text class="lg" x="794" y="482">outside NetBird</text>
+</svg>

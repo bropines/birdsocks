@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="472" viewBox="0 0 960 472" role="img" aria-labelledby="title desc">
+  <title id="title">Server connection: direct, a proxy or ByeDPI</title>
+  <desc id="desc">The NetBird daemon reaches its server in one of three ways: directly, through the user's SOCKS5 or HTTP proxy, or through the built-in ByeDPI, which gets the TLS handshake past DPI. Management, signal, the relay over WebSocket and sign-in requests take that way. Direct peer traffic, WireGuard over UDP, keeps its own way.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #F3EDE7; }
+      .t { font-size: 24px; font-weight: 700; }
+      .st { font-size: 13.5px; fill: #A89C92; }
+      .h { font-size: 15px; font-weight: 600; }
+      .s { font-size: 12.5px; fill: #A89C92; }
+      .nbt { fill: #8DB6F0; }
+      .ours { fill: #F68330; }
+      .foot { font-size: 13px; fill: #A89C92; }
+      .box { fill: #221B17; stroke: #3A302A; stroke-width: 1.2; }
+      .bye { fill: #2A1D14; stroke: #F68330; stroke-width: 1.5; }
+      .nbbox { fill: #18212D; stroke: #5C8FD6; stroke-width: 1.2; }
+      .group { fill: #5C8FD6; fill-opacity: 0.07; stroke: #5C8FD6; stroke-width: 1.3; stroke-dasharray: 5 4; }
+      .row { fill: #18212D; stroke: #2F4361; stroke-width: 1; }
+      .line { fill: none; stroke: #CFC6BE; stroke-width: 1.6; }
+      .oline { fill: none; stroke: #F68330; stroke-width: 2; }
+      .p2p { fill: none; stroke: #5CC48A; stroke-width: 2.2; }
+    </style>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#CFC6BE"/></marker>
+    <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F68330"/></marker>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5CC48A"/></marker>
+  </defs>
+
+  <rect width="960" height="472" rx="16" fill="#16110E"/>
+  <rect x="0.5" y="0.5" width="959" height="471" rx="15.5" fill="none" stroke="#2B231E"/>
+
+  <text class="t" x="28" y="48">Server connection</text>
+  <text class="st" x="28" y="72">How the daemon reaches its NetBird server, for networks that block it. Settings → Connection.</text>
+
+  <!-- The daemon -->
+  <rect class="nbbox" x="28" y="186" width="180" height="62" rx="14"/>
+  <text class="h nbt" x="46" y="212">NetBird daemon</text>
+  <text class="s" x="46" y="232">on the phone</text>
+
+  <!-- The three ways: one at a time -->
+  <rect class="box" x="300" y="112" width="320" height="56" rx="12"/>
+  <text class="h" x="318" y="135">Direct</text>
+  <text class="s" x="318" y="155">when nothing is in the way</text>
+
+  <rect class="box" x="300" y="189" width="320" height="56" rx="12"/>
+  <text class="h" x="318" y="212">Your proxy</text>
+  <text class="s" x="318" y="232">SOCKS5 or HTTP, with a password if it asks</text>
+
+  <rect class="bye" x="300" y="266" width="320" height="56" rx="12"/>
+  <text class="h ours" x="318" y="289">ByeDPI</text>
+  <text class="s" x="318" y="309">built in; gets the TLS handshake past DPI</text>
+
+  <path class="line" d="M208,210 H240 Q250,210 250,200 V150 Q250,140 260,140 H298" marker-end="url(#a)"/>
+  <path class="line" d="M208,217 H298" marker-end="url(#a)"/>
+  <path class="oline" d="M208,224 H240 Q250,224 250,234 V284 Q250,294 260,294 H298" marker-end="url(#ao)"/>
+  <text class="s" x="118" y="140" text-anchor="middle">one way at a time,</text>
+  <text class="s" x="118" y="157" text-anchor="middle">chosen in the app</text>
+
+  <!-- The server -->
+  <rect class="group" x="700" y="100" width="232" height="234" rx="14"/>
+  <text class="h nbt" x="716" y="126">NetBird server</text>
+  <rect class="row" x="716" y="140" width="200" height="34" rx="9"/>
+  <text class="h" x="732" y="162" style="font-size:14px">Management</text>
+  <rect class="row" x="716" y="182" width="200" height="34" rx="9"/>
+  <text class="h" x="732" y="204" style="font-size:14px">Signal</text>
+  <rect class="row" x="716" y="224" width="200" height="34" rx="9"/>
+  <text class="h" x="732" y="246" style="font-size:14px">Relay <tspan class="s" style="font-weight:400">· WebSocket</tspan></text>
+  <rect class="row" x="716" y="266" width="200" height="34" rx="9"/>
+  <text class="h" x="732" y="288" style="font-size:14px">Sign-in requests</text>
+
+  <path class="line" d="M620,140 H698" marker-end="url(#a)"/>
+  <path class="line" d="M620,217 H698" marker-end="url(#a)"/>
+  <path class="oline" d="M620,294 H698" marker-end="url(#ao)"/>
+
+  <!-- Peers keep their own way -->
+  <rect class="box" x="700" y="364" width="232" height="54" rx="12"/>
+  <text class="h" x="716" y="386">Peers</text>
+  <text class="s" x="716" y="405">WireGuard over UDP</text>
+  <path class="p2p" d="M118,248 V391 H698" marker-end="url(#ag)"/>
+  <text class="s" x="408" y="382" text-anchor="middle" style="fill:#5CC48A">direct peer traffic keeps its own way</text>
+
+  <text class="foot" x="28" y="452">A setting that does not work fails the connection; it never falls back to direct. A change restarts NetBird.</text>
+</svg>

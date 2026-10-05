@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="504" viewBox="0 0 960 504" role="img" aria-labelledby="title desc">
+  <title id="title">BirdSocks at a glance</title>
+  <desc id="desc">Sign-in: NetBird Cloud or your own server, in the browser or with a setup key; Accounts: several, each with its own keys; switch from the main screen; SOCKS5 proxy: TCP and UDP, an optional password, can be shared on the LAN; DNS proxy: NetBird names first, the rest to your network or your fallbacks; VPN mode: for apps without a proxy setting; excluded apps, route all traffic; Peers and networks: P2P or relay, latency, traffic; networks and a checked exit node; DNS screen: proxy test, lookups, nameservers and the records the server sent; Server connection: through your proxy or ByeDPI where the server is blocked; Access and publish: peers reach the phone's services; a port gets a public address; Diagnostics: events, access check, packet capture, logs, debug bundle; Links and automation: birdsocks:// links, invite links, Tasker and adb behind a token; Around the app: Quick Settings tile, start on boot, shortcuts, encrypted backups</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #F3EDE7; }
+      .t { font-size: 24px; font-weight: 700; }
+      .st { font-size: 13.5px; fill: #A89C92; }
+      .h { font-size: 15px; font-weight: 600; }
+      .s { font-size: 12.5px; fill: #A89C92; }
+      .tile { fill: #201A16; stroke: #3A302A; stroke-width: 1.2; }
+      .bar { fill: #F68330; }
+    </style>
+  </defs>
+
+  <rect width="960" height="504" rx="16" fill="#16110E"/>
+  <rect x="0.5" y="0.5" width="959" height="503" rx="15.5" fill="none" stroke="#2B231E"/>
+
+  <text class="t" x="28" y="48">At a glance</text>
+  <text class="st" x="28" y="72">Every feature in a line or two; the user guide has the details.</text>
+
+  <rect class="tile" x="28" y="96" width="292" height="84" rx="12"/>
+  <rect class="bar" x="44" y="113" width="4" height="16" rx="2"/>
+  <text class="h" x="56" y="126">Sign-in</text>
+  <text class="s" x="44" y="149">NetBird Cloud or your own server,</text>
+  <text class="s" x="44" y="166">in the browser or with a setup key</text>
+  <rect class="tile" x="340" y="96" width="292" height="84" rx="12"/>
+  <rect class="bar" x="356" y="113" width="4" height="16" rx="2"/>
+  <text class="h" x="368" y="126">Accounts</text>
+  <text class="s" x="356" y="149">several, each with its own keys;</text>
+  <text class="s" x="356" y="166">switch from the main screen</text>
+  <rect class="tile" x="652" y="96" width="292" height="84" rx="12"/>
+  <rect class="bar" x="668" y="113" width="4" height="16" rx="2"/>
+  <text class="h" x="680" y="126">SOCKS5 proxy</text>
+  <text class="s" x="668" y="149">TCP and UDP, an optional password,</text>
+  <text class="s" x="668" y="166">can be shared on the LAN</text>
+  <rect class="tile" x="28" y="194" width="292" height="84" rx="12"/>
+  <rect class="bar" x="44" y="211" width="4" height="16" rx="2"/>
+  <text class="h" x="56" y="224">DNS proxy</text>
+  <text class="s" x="44" y="247">NetBird names first, the rest to</text>
+  <text class="s" x="44" y="264">your network or your fallbacks</text>
+  <rect class="tile" x="340" y="194" width="292" height="84" rx="12"/>
+  <rect class="bar" x="356" y="211" width="4" height="16" rx="2"/>
+  <text class="h" x="368" y="224">VPN mode</text>
+  <text class="s" x="356" y="247">for apps without a proxy setting;</text>
+  <text class="s" x="356" y="264">excluded apps, route all traffic</text>
+  <rect class="tile" x="652" y="194" width="292" height="84" rx="12"/>
+  <rect class="bar" x="668" y="211" width="4" height="16" rx="2"/>
+  <text class="h" x="680" y="224">Peers and networks</text>
+  <text class="s" x="668" y="247">P2P or relay, latency, traffic;</text>
+  <text class="s" x="668" y="264">networks and a checked exit node</text>
+  <rect class="tile" x="28" y="292" width="292" height="84" rx="12"/>
+  <rect class="bar" x="44" y="309" width="4" height="16" rx="2"/>
+  <text class="h" x="56" y="322">DNS screen</text>
+  <text class="s" x="44" y="345">proxy test, lookups, nameservers</text>
+  <text class="s" x="44" y="362">and the records the server sent</text>
+  <rect class="tile" x="340" y="292" width="292" height="84" rx="12"/>
+  <rect class="bar" x="356" y="309" width="4" height="16" rx="2"/>
+  <text class="h" x="368" y="322">Server connection</text>
+  <text class="s" x="356" y="345">through your proxy or ByeDPI</text>
+  <text class="s" x="356" y="362">where the server is blocked</text>
+  <rect class="tile" x="652" y="292" width="292" height="84" rx="12"/>
+  <rect class="bar" x="668" y="309" width="4" height="16" rx="2"/>
+  <text class="h" x="680" y="322">Access and publish</text>
+  <text class="s" x="668" y="345">peers reach the phone's services;</text>
+  <text class="s" x="668" y="362">a port gets a public address</text>
+  <rect class="tile" x="28" y="390" width="292" height="84" rx="12"/>
+  <rect class="bar" x="44" y="407" width="4" height="16" rx="2"/>
+  <text class="h" x="56" y="420">Diagnostics</text>
+  <text class="s" x="44" y="443">events, access check, packet</text>
+  <text class="s" x="44" y="460">capture, logs, debug bundle</text>
+  <rect class="tile" x="340" y="390" width="292" height="84" rx="12"/>
+  <rect class="bar" x="356" y="407" width="4" height="16" rx="2"/>
+  <text class="h" x="368" y="420">Links and automation</text>
+  <text class="s" x="356" y="443">birdsocks:// links, invite links,</text>
+  <text class="s" x="356" y="460">Tasker and adb behind a token</text>
+  <rect class="tile" x="652" y="390" width="292" height="84" rx="12"/>
+  <rect class="bar" x="668" y="407" width="4" height="16" rx="2"/>
+  <text class="h" x="680" y="420">Around the app</text>
+  <text class="s" x="668" y="443">Quick Settings tile, start on boot,</text>
+  <text class="s" x="668" y="460">shortcuts, encrypted backups</text>
+</svg>
