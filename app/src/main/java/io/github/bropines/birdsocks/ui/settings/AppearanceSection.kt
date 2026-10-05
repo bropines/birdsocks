@@ -113,5 +113,6 @@ internal fun AppearanceSection(a: Appearance) {
             SettingsSwitchItem(stringResource(R.string.settings_dynamic_color_title), stringResource(R.string.settings_dynamic_color_desc), Icons.Default.Palette, a.dynamicColor, onCheckedChange = a.onDynamicColor)
         }
         SettingsSwitchItem(stringResource(R.string.settings_amoled_black_title), stringResource(R.string.settings_amoled_black_desc), Icons.Default.Contrast, a.amoled, onCheckedChange = a.onAmoled)
+        AppIconRow()
     }
 }
