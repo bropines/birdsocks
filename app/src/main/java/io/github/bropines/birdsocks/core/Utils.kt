@@ -672,11 +672,18 @@ fun SlidingSegmentedChips(
                                 tint = contentColor
                             )
                         }
-                        Text(
+                        // One line, shrinking to fit: a long label ("Подключаются" in
+                        // four chips at phone width) broke mid-word.
+                        androidx.compose.foundation.text.BasicText(
                             text = item.title,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 13.sp,
-                            color = contentColor
+                            style = androidx.compose.ui.text.TextStyle(
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 13.sp,
+                                color = contentColor
+                            ),
+                            maxLines = 1,
+                            softWrap = false,
+                            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 13.sp)
                         )
                     }
                 }
