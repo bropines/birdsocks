@@ -236,7 +236,11 @@ private fun AnnotatedString.Builder.appendWithKeywords(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun rememberFullSheetState(): SheetState =
-    rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
+    rememberBottomSheetState(
+        // A demo draws the sheet already open: the renderer keeps the first frame, before the slide in.
+        initialValue = if (LocalDemo.current != null) SheetValue.Expanded else SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
 
 /**
  * Puts [text] on the clipboard from a callback: LocalClipboard, which

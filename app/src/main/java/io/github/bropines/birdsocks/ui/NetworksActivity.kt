@@ -24,7 +24,6 @@ import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdState
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.models.NbConnState
-import io.github.bropines.birdsocks.models.NbNetwork
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
 import kotlinx.coroutines.launch
 
@@ -47,12 +46,14 @@ class NetworksActivity : ComponentActivity() {
 fun NetworksScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val daemon by NetbirdState.daemon.collectAsState()
-    val status by NetbirdState.status.collectAsState()
+    // A preview hands in the networks to draw; see LocalDemo.
+    val demo = LocalDemo.current
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
+    val status by NetbirdState.status.collectAsStateOr { it.status }
     // Everything ListNetworks gives, exit nodes included; null until it answers.
-    var all by remember { mutableStateOf<List<NbNetwork>?>(null) }
+    var all by remember { mutableStateOf(demo?.networks) }
     // "Use networks" off: the daemon takes no routes, so the list stays empty.
-    var routesOff by remember { mutableStateOf(false) }
+    var routesOff by remember { mutableStateOf(demo?.config?.disableClientRoutes ?: false) }
     var busy by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     val revision = status?.fullStatus?.networksRevision
@@ -71,7 +72,10 @@ fun NetworksScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(daemon, revision) { if (daemon == NetbirdState.Daemon.Running) reload() else all = null }
+    LaunchedEffect(daemon, revision) {
+        if (demo != null) return@LaunchedEffect
+        if (daemon == NetbirdState.Daemon.Running) reload() else all = null
+    }
     // Back from Settings, where the switch lives: read it again.
     var resumes by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) {
@@ -79,7 +83,7 @@ fun NetworksScreen(onBack: () -> Unit) {
         onPauseOrDispose { }
     }
     LaunchedEffect(daemon, resumes) {
-        if (daemon != NetbirdState.Daemon.Running || resumes == 0) return@LaunchedEffect
+        if (demo != null || daemon != NetbirdState.Daemon.Running || resumes == 0) return@LaunchedEffect
         routesOff = runCatching { Netbird.config().disableClientRoutes }.getOrDefault(false)
         if (resumes > 1) reload()
     }

@@ -42,10 +42,11 @@ data class Account(val profile: NbProfile, val server: String) {
 /** The daemon's profiles with their servers; re-read when [key] changes. */
 @Composable
 fun rememberAccounts(key: Any?): State<List<Account>> {
-    val accounts = remember { mutableStateOf<List<Account>>(emptyList()) }
-    val daemon by NetbirdState.daemon.collectAsState()
+    val demo = LocalDemo.current
+    val accounts = remember { mutableStateOf(demo?.accounts ?: emptyList()) }
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
     LaunchedEffect(key, daemon) {
-        if (daemon != NetbirdState.Daemon.Running) return@LaunchedEffect
+        if (demo != null || daemon != NetbirdState.Daemon.Running) return@LaunchedEffect
         accounts.value = runCatching {
             Netbird.profiles().map { p ->
                 val url = runCatching { Netbird.config(p.name).managementUrl }.getOrDefault("")

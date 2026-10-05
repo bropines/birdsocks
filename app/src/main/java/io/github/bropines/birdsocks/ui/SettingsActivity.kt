@@ -39,7 +39,6 @@ import io.github.bropines.birdsocks.core.NetbirdService
 import io.github.bropines.birdsocks.core.NetbirdState
 import io.github.bropines.birdsocks.core.PredictiveBackContainer
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
-import io.github.bropines.birdsocks.models.NbConfig
 import io.github.bropines.birdsocks.ui.settings.*
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
 import kotlinx.coroutines.launch
@@ -128,9 +127,11 @@ private class ScrollAnchor(var index: Int = 0, var offset: Int = 0)
 fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: String? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val daemon by NetbirdState.daemon.collectAsState()
-    val status by NetbirdState.status.collectAsState()
-    val profile by NetbirdState.profile.collectAsState()
+    // A preview hands in the daemon's side; see LocalDemo.
+    val demo = LocalDemo.current
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
+    val status by NetbirdState.status.collectAsStateOr { it.status }
+    val profile by NetbirdState.profile.collectAsStateOr { it.profile }
     val running = daemon == NetbirdState.Daemon.Running
 
     // Two-level navigation: null is the hub, otherwise the id of the open section.
@@ -156,8 +157,11 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
 
     // The profile's settings, from the daemon; null until it answers, and read
     // again when the account sheet switches profiles.
-    var config by remember { mutableStateOf<NbConfig?>(null) }
-    LaunchedEffect(running, profile) { config = if (running) runCatching { Netbird.config() }.getOrNull() else null }
+    var config by remember { mutableStateOf(demo?.config) }
+    LaunchedEffect(running, profile) {
+        if (demo != null) return@LaunchedEffect
+        config = if (running) runCatching { Netbird.config() }.getOrNull() else null
+    }
     val setConfig: (JsonObjectBuilder.() -> Unit) -> Unit = { fields ->
         scope.launch {
             runCatching {

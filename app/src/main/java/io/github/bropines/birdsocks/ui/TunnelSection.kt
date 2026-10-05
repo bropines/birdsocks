@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -59,11 +60,14 @@ object TunnelSection {
 @Composable
 fun ColumnScope.TunnelSettings() {
     val context = LocalContext.current
+    // The preview renderer has no VPN service and no native library; a demo draws the VPN it hands in.
+    val inPreview = LocalInspectionMode.current
+    val demo = LocalDemo.current
     var tunOn by remember { mutableStateOf(GlobalSettings.isTunModeEnabled(context)) }
     var askSlot by remember { mutableStateOf(false) }
-    val running by TunVpnService.running.collectAsState()
-    val routes by TunVpnService.routes.collectAsState()
-    val daemon by NetbirdState.daemon.collectAsState()
+    val running by TunVpnService.running.collectAsStateOr { it.vpn }
+    val routes by TunVpnService.routes.collectAsStateOr { it.vpnRoutes }
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
     // Re-read what other screens change (the excluded apps) on the way back.
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
 
@@ -97,7 +101,7 @@ fun ColumnScope.TunnelSettings() {
         )
         Spacer(Modifier.height(8.dp))
         HelpText(stringResource(if (tunOn) R.string.nb_tun_mode_vpn_desc else R.string.nb_tun_mode_proxy_desc))
-        if (!TunVpnService.nativeLoaded) {
+        if (demo == null && !TunVpnService.nativeLoaded) {
             Text(
                 stringResource(R.string.nb_tun_unavailable),
                 style = MaterialTheme.typography.bodySmall,
@@ -108,7 +112,7 @@ fun ColumnScope.TunnelSettings() {
     }
 
     if (tunOn) SettingsCard(stringResource(R.string.nb_tun_card)) {
-        val needsConsent = remember(running, daemon, lifecycle) { VpnService.prepare(context) != null }
+        val needsConsent = remember(running, daemon, lifecycle) { !inPreview && VpnService.prepare(context) != null }
         val state = when {
             running -> {
                 val how = routes?.defaultReason?.let { reason ->

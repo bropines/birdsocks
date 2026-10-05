@@ -79,9 +79,11 @@ private fun NbPeer.matches(query: String) =
 fun PeersScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val streamed by NetbirdState.status.collectAsState()
-    val daemon by NetbirdState.daemon.collectAsState()
-    val profile by NetbirdState.profile.collectAsState()
+    // A preview hands in the network to draw, and maybe the sheet to open; see LocalDemo.
+    val demo = LocalDemo.current
+    val streamed by NetbirdState.status.collectAsStateOr { it.status }
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
+    val profile by NetbirdState.profile.collectAsStateOr { it.profile }
     val running = daemon == NetbirdState.Daemon.Running
 
     // The stream speaks when a peer's state moves; byte counters, latency and handshakes move
@@ -91,7 +93,7 @@ fun PeersScreen(onBack: () -> Unit) {
     LaunchedEffect(streamed) { latest = streamed }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(running, lifecycle) {
-        if (!running) return@LaunchedEffect
+        if (!running || demo != null) return@LaunchedEffect
         // Only while the screen is in front: nobody reads a list in the back stack.
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -112,7 +114,7 @@ fun PeersScreen(onBack: () -> Unit) {
 
     var query by rememberSaveable { mutableStateOf("") }
     val pager = rememberPagerState { PeerFilter.entries.size }
-    var openKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var openKey by rememberSaveable { mutableStateOf(demo?.openPeer) }
 
     val status = latest
     val fs = status?.fullStatus

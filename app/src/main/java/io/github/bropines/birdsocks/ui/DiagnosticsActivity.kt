@@ -133,14 +133,16 @@ fun DiagnosticsScreen(initialPage: Int, onBack: () -> Unit) {
 @Composable
 private fun ConnectionPage() {
     val scope = rememberCoroutineScope()
-    val daemon by NetbirdState.daemon.collectAsState()
-    val streamed by NetbirdState.status.collectAsState()
+    // A preview hands in the status to draw; see LocalDemo.
+    val demo = LocalDemo.current
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
+    val streamed by NetbirdState.status.collectAsStateOr { it.status }
     var polled by remember { mutableStateOf<NbStatus?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     val running = daemon == NetbirdState.Daemon.Running
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(running, lifecycle) {
-        if (!running) {
+        if (!running || demo != null) {
             polled = null
             return@LaunchedEffect
         }
@@ -289,7 +291,7 @@ private fun categoryOf(e: NbEvent): String =
 @Composable
 private fun EventsPage(page: DiagnosticsPage) {
     val scope = rememberCoroutineScope()
-    val events by EventLog.events.collectAsState()
+    val events by EventLog.events.collectAsStateOr { it.events }
     var selected by remember { mutableIntStateOf(0) }
     var refreshing by remember { mutableStateOf(false) }
     val filter = EVENT_CATEGORIES[selected].id

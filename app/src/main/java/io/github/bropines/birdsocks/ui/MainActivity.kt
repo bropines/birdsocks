@@ -145,22 +145,25 @@ fun cardStateOf(daemon: NetbirdState.Daemon, status: NbStatus?, network: Boolean
 fun MainScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val daemon by NetbirdState.daemon.collectAsState()
-    val status by NetbirdState.status.collectAsState()
-    val error by NetbirdState.error.collectAsState()
+    // A preview may hand in a whole state to draw; see LocalDemo.
+    val demo = LocalDemo.current
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
+    val status by NetbirdState.status.collectAsStateOr { it.status }
+    val error by NetbirdState.error.collectAsStateOr { null }
     val login by LoginFlow.state.collectAsState()
-    val network by NetbirdState.network.collectAsState()
+    val network by NetbirdState.network.collectAsStateOr { true }
     val card = cardStateOf(daemon, status, network)
 
     // Exit nodes come from ListNetworks; re-read when the daemon says the set moved.
-    var networks by remember { mutableStateOf<List<NbNetwork>>(emptyList()) }
+    var networks by remember { mutableStateOf(demo?.networks ?: emptyList()) }
     val revision = status?.fullStatus?.networksRevision
     LaunchedEffect(card == CardState.Connected, revision) {
+        if (demo != null) return@LaunchedEffect
         networks = if (card == CardState.Connected) runCatching { Netbird.networks() }.getOrDefault(emptyList()) else emptyList()
     }
     val sessionShown = sessionNeedsAttention(status?.sessionExpiresAt)
     var showAccounts by remember { mutableStateOf(false) }
-    val profile by NetbirdState.profile.collectAsState()
+    val profile by NetbirdState.profile.collectAsStateOr { it.profile }
     val accounts by rememberAccounts(profile)
     val accountLabel = accounts.firstOrNull { it.profile.name == profile }?.label
         ?: profile?.takeIf { it != "default" }
@@ -357,7 +360,7 @@ fun StatusCard(
                 CardState.Stopped -> stringResource(R.string.tap_to_start)
             }
             // The VPN mode says itself, as the notification and the tile do.
-            val vpn by io.github.bropines.birdsocks.core.TunVpnService.running.collectAsState()
+            val vpn by io.github.bropines.birdsocks.core.TunVpnService.running.collectAsStateOr { it.vpn }
             val line = if (vpn && state == CardState.Connected) "$subtitle · VPN" else subtitle
             Text(line, textAlign = TextAlign.Center, color = content, modifier = Modifier.alpha(0.8f))
             if (state == CardState.Idle) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -46,9 +47,7 @@ import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdState
 import io.github.bropines.birdsocks.core.PredictiveBackContainer
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
-import io.github.bropines.birdsocks.models.NbConfig
 import io.github.bropines.birdsocks.models.NbDnsRecord
-import io.github.bropines.birdsocks.models.NbDnsTable
 import io.github.bropines.birdsocks.models.NbDnsZone
 import io.github.bropines.birdsocks.models.NbNsGroup
 import io.github.bropines.birdsocks.models.NbStatus
@@ -326,13 +325,15 @@ fun DnsScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
     val focusManager = LocalFocusManager.current
-    val daemon by NetbirdState.daemon.collectAsState()
-    val streamed by NetbirdState.status.collectAsState()
-    val streamedProfile by NetbirdState.profile.collectAsState()
+    // A preview hands in what the daemon would answer; see LocalDemo.
+    val demo = LocalDemo.current
+    val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
+    val streamed by NetbirdState.status.collectAsStateOr { it.status }
+    val streamedProfile by NetbirdState.profile.collectAsStateOr { it.profile }
     val running = daemon == NetbirdState.Daemon.Running
 
     var polled by remember { mutableStateOf<NbStatus?>(null) }
-    var config by remember { mutableStateOf<NbConfig?>(null) }
+    var config by remember { mutableStateOf(demo?.config) }
     var readProfile by remember { mutableStateOf<String?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     // Settings may change them while this is in the background; read again on every return.
@@ -346,8 +347,8 @@ fun DnsScreen(onBack: () -> Unit) {
     var looking by remember { mutableStateOf(false) }
     var serverTests by remember { mutableStateOf<Map<String, DnsResult>>(emptyMap()) }
     var serversTesting by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var table by remember { mutableStateOf<NbDnsTable?>(null) }
-    var tableRead by remember { mutableStateOf(false) }
+    var table by remember { mutableStateOf(demo?.dnsTable) }
+    var tableRead by remember { mutableStateOf(demo != null) }
     var recordFilter by rememberSaveable { mutableStateOf("") }
 
     fun refresh(manual: Boolean = false) {
@@ -365,14 +366,14 @@ fun DnsScreen(onBack: () -> Unit) {
         }
     }
     LifecycleResumeEffect(running) {
-        refresh()
+        if (demo == null) refresh()
         onPauseOrDispose { }
     }
 
     // The table comes and goes with the engine: read again when the connection changes.
     val connState = streamed?.state
     LaunchedEffect(connState) {
-        if (NetbirdState.isRunning) { table = Netbird.dnsTable(context); tableRead = true }
+        if (demo == null && NetbirdState.isRunning) { table = Netbird.dnsTable(context); tableRead = true }
     }
 
     // The stream is live; the read is there until it has spoken.
@@ -426,6 +427,7 @@ fun DnsScreen(onBack: () -> Unit) {
             ) {
                 LazyColumn(
                     Modifier.fillMaxSize().readableWidth(),
+                    state = rememberLazyListState(demo?.firstItem ?: 0),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {

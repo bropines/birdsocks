@@ -19,6 +19,7 @@ import io.github.bropines.birdsocks.core.ByeDpiProxy
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.SlidingSegmentedChips
 import io.github.bropines.birdsocks.ui.HelpText
+import io.github.bropines.birdsocks.ui.LocalDemo
 import io.github.bropines.birdsocks.ui.SettingsCard
 import io.github.bropines.birdsocks.ui.SettingsEditItem
 import io.github.bropines.birdsocks.ui.SettingsSwitchItem
@@ -131,7 +132,7 @@ private fun ServerConnectionCard(env: SettingsEnv) {
                     env.startSetting { GlobalSettings.setByeDpiIpv4Only(context, it); ipv4 = it }
                 }
                 // Where it listens, while it does: its own log lines are in Diagnostics.
-                ByeDpiProxy.activeAddress?.let { (ip, p) ->
+                (LocalDemo.current?.byeDpiAddress ?: ByeDpiProxy.activeAddress)?.let { (ip, p) ->
                     Text(stringResource(R.string.cp_byedpi_running, "$ip:$p"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                 }
             }

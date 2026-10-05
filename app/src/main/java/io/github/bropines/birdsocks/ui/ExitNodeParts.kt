@@ -33,8 +33,10 @@ fun routingPeerOf(network: NbNetwork, status: NbStatus?): String? =
 @Composable
 fun rememberExitWorks(exit: NbNetwork?, connected: Boolean): State<Boolean?> {
     val context = LocalContext.current
+    val demo = LocalDemo.current
     val works = remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(exit?.id, connected) {
+        if (demo != null) return@LaunchedEffect
         works.value = null
         if (exit == null || !connected) return@LaunchedEffect
         while (true) {
