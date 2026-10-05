@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: NetBird itself — the server, the dashboard, every client
+    url: https://github.com/netbirdio/netbird/issues
+    about: A problem a desktop NetBird client on the same account has too belongs to NetBird.

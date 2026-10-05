@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in BirdSocks does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Russian, either is fine.
+
+        **Never paste** setup keys, access tokens, proxy or backup passwords. A debug bundle from the app is anonymized; plain logs may still name your peers and domains — look before you attach.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect with VPN mode off
+        2. Open …
+        3. …
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: Xiaomi POCO F5, HyperOS 2
+    validations:
+      required: true
+
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      placeholder: Android 15
+    validations:
+      required: true
+
+  - type: input
+    id: birdsocks
+    attributes:
+      label: BirdSocks version
+      description: Settings → About shows the version and the commit.
+      placeholder: 0.1.0 (abc123)
+    validations:
+      required: true
+
+  - type: input
+    id: server
+    attributes:
+      label: NetBird server
+      description: NetBird Cloud, or a self-hosted server and its version if you know it.
+      placeholder: self-hosted, v0.80.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: How BirdSocks was running
+      multiple: true
+      options:
+        - SOCKS5 / DNS proxy only
+        - VPN mode
+        - Server connection through a proxy
+        - Server connection through ByeDPI
+        - Not connected / signing in
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or debug bundle
+      description: |
+        Diagnostics → Logs: copy the lines around the problem, or save a debug bundle as a zip and attach it here (drag it into this field).
+      render: text
