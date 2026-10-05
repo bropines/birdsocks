@@ -22,4 +22,3 @@ roughly in order.
 - Root mode.
 - A native TUN engine on NetBird's own Android device code.
 - F-Droid (reproducible builds, all four ABIs), Weblate.
-- An own logo and screenshots.

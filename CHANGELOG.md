@@ -46,6 +46,7 @@
 - Automation for Tasker and adb: connect, disconnect, toggle, restart, status, exit node, account, VPN mode and server connection, behind a token.
 - Action links (`birdsocks://connect`, `exit-node`, `account`, `tun`) ask before they act; `birdsocks://add-account` opens the new-account dialog filled in, an invite an admin can send.
 - Launcher shortcuts: On / Off, Peers, DNS, Diagnostics.
+- BirdSocks' own icon, a bird in socks, with 40 variants to pick from in Appearance, in BirdSocks' colours and NetBird's.
 - Server connection in Settings: management, signal and the relay through a SOCKS5 or HTTP proxy, or through the built-in ByeDPI against DPI.
 - The DNS screen lists the records the server gave this device, the peers' zone and admins' zones, with a filter.
 - VPN mode (TUN): every app through BirdSocks over Android's VPN, NetBird's ranges by default, all traffic with an exit node or a domain route; DNS from a resolver inside the proxy; excluded apps; the tile asks for the permission.
