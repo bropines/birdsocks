@@ -1,13 +1,13 @@
 --- netbird_orig/client/server/server.go
 +++ netbird_src/client/server/server.go
-@@ -35,6 +35,7 @@
- 	"github.com/netbirdio/netbird/shared/management/domain"
- 
- 	"github.com/netbirdio/netbird/client/internal"
-+	"github.com/netbirdio/netbird/client/netevents"
+@@ -38,6 +38,7 @@
  	"github.com/netbirdio/netbird/client/internal/peer"
  	"github.com/netbirdio/netbird/client/internal/statemanager"
  	"github.com/netbirdio/netbird/client/internal/updater"
++	"github.com/netbirdio/netbird/client/netevents"
+ 	"github.com/netbirdio/netbird/client/proto"
+ 	"github.com/netbirdio/netbird/util"
+ 	"github.com/netbirdio/netbird/util/capture"
 @@ -68,6 +69,10 @@
  
  // Server for service control.
