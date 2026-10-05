@@ -1,0 +1,21 @@
+name: Pinned NDK
+description: >
+  Installs the NDK that app/build.gradle.kts pins (ndkVersion) when the runner
+  lacks it, and points ANDROID_NDK_HOME at it. The runner's own default NDK is
+  another version; the Go core (cgo, gomobile) and Gradle's ndkBuild must use
+  the same one, the pinned one.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        NDK_VER=$(sed -n 's/.*ndkVersion = "\(.*\)".*/\1/p' app/build.gradle.kts)
+        [ -n "$NDK_VER" ] || { echo "::error::no ndkVersion in app/build.gradle.kts"; exit 1; }
+        SDK=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}
+        if [ ! -x "$SDK/ndk/$NDK_VER/ndk-build" ]; then
+          # (yes || true): under pipefail, yes dying of SIGPIPE would fail the step.
+          (yes || true) | "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VER" > /dev/null
+        fi
+        echo "ANDROID_NDK_HOME=$SDK/ndk/$NDK_VER" >> "$GITHUB_ENV"
+        echo "-> NDK $NDK_VER at $SDK/ndk/$NDK_VER"

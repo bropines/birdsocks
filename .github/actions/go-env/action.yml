@@ -1,0 +1,70 @@
+name: Go environment
+description: >
+  Go from appctr/go.mod with GOTOOLCHAIN=local, the Go module and build cache,
+  and the cached NetBird release archive (appctr/build.sh checks it against
+  appctr/NETBIRD_SHA256 on every use). Only restores: the calling job saves
+  with actions/cache/save, so pull requests and tags do not fill the
+  repository's cache quota.
+
+inputs:
+  cache-name:
+    description: >
+      Which Go cache. The tests and the core build compile different things
+      (host test binaries; four Linux daemons and the gomobile bridge), so
+      each keeps its own.
+    required: true
+
+outputs:
+  go-cache-key:
+    description: The Go cache's key, for actions/cache/save.
+    value: ${{ steps.keys.outputs.go }}
+  go-cache-hit:
+    description: Whether the Go cache was restored by its exact key.
+    value: ${{ steps.go-cache.outputs.cache-hit }}
+  dist-cache-key:
+    description: The NetBird archive cache's key, for actions/cache/save.
+    value: ${{ steps.keys.outputs.dist }}
+  dist-cache-hit:
+    description: Whether the NetBird archive was restored.
+    value: ${{ steps.dist-cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    # Exactly the Go of appctr/go.mod, for the bridge and for the daemon in
+    # NetBird's tree alike (NetBird's own go.mod asks for less). GOTOOLCHAIN
+    # local: nothing downloads another compiler behind the build's back.
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: appctr/go.mod
+        cache: false
+
+    # Keyed by what changes the bulk of the cache — the modules, the NetBird
+    # version, the patches — not by the commit: a key per commit filled the
+    # 10 GB quota and pushed Gradle's cache out.
+    - id: keys
+      shell: bash
+      run: |
+        echo "go=${{ runner.os }}-go-${{ inputs.cache-name }}-${{ hashFiles('appctr/go.sum', 'appctr/NETBIRD_VERSION', 'appctr/patches/*.patch') }}" >> "$GITHUB_OUTPUT"
+        echo "dist=netbird-dist-${{ hashFiles('appctr/NETBIRD_VERSION', 'appctr/NETBIRD_SHA256') }}" >> "$GITHUB_OUTPUT"
+
+    - id: go-cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ steps.keys.outputs.go }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ inputs.cache-name }}-
+
+    - id: dist-cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/netbird-dist
+        key: ${{ steps.keys.outputs.dist }}
+
+    - shell: bash
+      run: |
+        echo "GOTOOLCHAIN=local" >> "$GITHUB_ENV"
+        echo "NETBIRD_DIST_DIR=$HOME/.cache/netbird-dist" >> "$GITHUB_ENV"
