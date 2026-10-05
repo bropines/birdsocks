@@ -1,0 +1,276 @@
+name: Release
+
+# A pushed tag v<VERSION_NAME> builds the signed APKs and opens a draft GitHub
+# release with them, SHA256SUMS and the CHANGELOG section as its notes. The
+# draft is published by hand. Setup and secrets: docs/RELEASING.md.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  preflight:
+    name: Version, changelog, store notes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The app's version is version.properties, not the tag; a tag that says
+      # one version over an APK that says another confuses every updater.
+      - name: The tag against version.properties
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          name=$(sed -n 's/^VERSION_NAME=//p' version.properties)
+          code=$(sed -n 's/^VERSION_CODE=//p' version.properties)
+          if [ "$TAG" != "v$name" ]; then
+            echo "::error::Tag $TAG does not match VERSION_NAME=$name in version.properties"
+            exit 1
+          fi
+          if ! [[ $name =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::VERSION_NAME=$name is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          IFS=. read -r major minor patch <<< "$name"
+          if [ "$code" != "$((major * 1000000 + minor * 10000 + patch * 100))" ]; then
+            echo "::error::VERSION_CODE=$code does not follow VERSION_NAME=$name (major*1000000 + minor*10000 + patch*100)"
+            exit 1
+          fi
+          echo "version=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      # Fails while the heading still says "Unreleased": the tag is not on the
+      # release commit.
+      - name: The CHANGELOG section, dated
+        run: python3 scripts/changelog_section.py "${{ steps.version.outputs.version }}" --require-date > /dev/null
+
+      - name: The store changelogs
+        env:
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          for locale in en-US ru; do
+            f="fastlane/metadata/android/$locale/changelogs/$CODE.txt"
+            if [ ! -s "$f" ]; then
+              echo "::error file=$f::missing: the store changelog of $CODE ($locale)"
+              exit 1
+            fi
+            chars=$(wc -m < "$f")
+            if [ "$chars" -gt 500 ]; then
+              echo "::error file=$f::$chars characters; stores take at most 500"
+              exit 1
+            fi
+          done
+
+  core:
+    name: Native core, four ABIs
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Restored from main's runs; a tag's own saves would be visible to that
+      # tag alone, so the release saves nothing.
+      - uses: ./.github/actions/go-env
+        with:
+          cache-name: core
+
+      - uses: ./.github/actions/ndk
+
+      - name: Build libnetbird.so and appctr.aar
+        run: |
+          # Built where F-Droid builds, /home/vagrant/build/<applicationId>:
+          # gomobile writes the absolute path of the module it binds into
+          # libgojni.so, which -trimpath does not reach, and a reproducible
+          # build has to match that path.
+          BUILD_DIR=/home/vagrant/build/io.github.bropines.birdsocks
+          sudo mkdir -p /home/vagrant/build
+          sudo chown -R "$(id -u):$(id -g)" /home/vagrant
+          cp -a "$GITHUB_WORKSPACE" "$BUILD_DIR"
+          MOBILE_VER=$(awk '$1 == "golang.org/x/mobile" { print $2 }' "$BUILD_DIR/appctr/go.mod")
+          go install "golang.org/x/mobile/cmd/gomobile@$MOBILE_VER" "golang.org/x/mobile/cmd/gobind@$MOBILE_VER"
+          bash "$BUILD_DIR/appctr/build.sh" --clean
+          mkdir -p "$GITHUB_WORKSPACE/appctr/tmp" "$GITHUB_WORKSPACE/app/src/main/jniLibs"
+          cp "$BUILD_DIR/appctr/tmp/appctr.aar" "$GITHUB_WORKSPACE/appctr/tmp/"
+          cp -a "$BUILD_DIR/app/src/main/jniLibs/." "$GITHUB_WORKSPACE/app/src/main/jniLibs/"
+
+      - name: Every ABI is there
+        run: |
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            test -s "app/src/main/jniLibs/$abi/libnetbird.so" || { echo "::error::no libnetbird.so for $abi"; exit 1; }
+            unzip -l appctr/tmp/appctr.aar "jni/$abi/libgojni.so" > /dev/null || { echo "::error::appctr.aar has no $abi"; exit 1; }
+          done
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-core
+          path: |
+            app/src/main/jniLibs/
+            appctr/tmp/appctr.aar
+          if-no-files-found: error
+          retention-days: 1
+
+  apk:
+    name: Signed APKs
+    needs: [preflight, core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write # build provenance (public repository only)
+      attestations: write
+    env:
+      VERSION: ${{ needs.preflight.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive # hev-socks5-tunnel and its lwIP, hev-task-system
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: native-core
+          path: .
+
+      - uses: ./.github/actions/ndk
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Read-only on a tag (the action's default off the default branch).
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+
+      - name: Decode the keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for s in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "${!s}" ] || { echo "::error::The $s secret is not set (docs/RELEASING.md)"; exit 1; }
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/birdsocks.jks"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/birdsocks.jks" >> "$GITHUB_ENV"
+
+      # Clean, as every release is built: an incremental Kotlin build can
+      # differ from a clean one in classes.dex.
+      - name: Assemble the release
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew clean app:assembleRelease --stacktrace
+
+      - name: Name, verify and checksum the APKs
+        env:
+          RELEASE_CERT_SHA256: ${{ vars.RELEASE_CERT_SHA256 }}
+        run: |
+          rm -f "$KEYSTORE_FILE"
+          apksigner=$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -name apksigner | sort -V | tail -1)
+          [ -x "$apksigner" ] || { echo "::error::no apksigner under $ANDROID_HOME/build-tools"; exit 1; }
+          want=$(printf '%s' "$RELEASE_CERT_SHA256" | tr -d ': ' | tr 'A-F' 'a-f')
+          mkdir -p dist
+          for abi in armeabi-v7a arm64-v8a x86 x86_64 universal; do
+            src="app/build/outputs/apk/release/app-$abi-release.apk"
+            dst="dist/BirdSocks-v$VERSION-$abi.apk"
+            test -s "$src" || { echo "::error::$src was not built"; exit 1; }
+            cp "$src" "$dst"
+            certs=$("$apksigner" verify --print-certs "$dst")
+            got=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certs")
+            if [ -n "$want" ] && [ "$got" != "$want" ]; then
+              echo "::error::$dst is signed by $got, not RELEASE_CERT_SHA256 ($want)"
+              exit 1
+            fi
+            if [ "$abi" != universal ]; then
+              unzip -l "$dst" "lib/$abi/libnetbird.so" > /dev/null || { echo "::error::$dst has no libnetbird.so"; exit 1; }
+            fi
+            echo "$dst: $got"
+          done
+          (cd dist && sha256sum BirdSocks-*.apk > SHA256SUMS)
+          cat dist/SHA256SUMS
+          {
+            echo "### BirdSocks v$VERSION"
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Artifact attestations need a public repository (or GitHub Enterprise
+      # Cloud); while the repository is private this step is skipped.
+      - name: Attest build provenance
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/BirdSocks-*.apk
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-apks
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      # Release stack traces are readable only through it (retrace). Kept as
+      # an artifact, not a release asset; download it and keep it with the
+      # release before it expires.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mapping-v${{ env.VERSION }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    name: Draft GitHub release
+    needs: [preflight, apk]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-apks
+          path: dist
+
+      - name: Release notes from CHANGELOG.md
+        run: python3 scripts/changelog_section.py "${{ needs.preflight.outputs.version }}" > "$RUNNER_TEMP/notes.md"
+
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          name: BirdSocks ${{ github.ref_name }}
+          body_path: ${{ runner.temp }}/notes.md
+          files: |
+            dist/BirdSocks-*.apk
+            dist/SHA256SUMS
+          fail_on_unmatched_files: true
