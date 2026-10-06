@@ -4,7 +4,7 @@
 
 From a clean checkout to signed APKs, written for 0.1.0, the first release.
 A tag `v<VERSION_NAME>` pushed to GitHub builds the release in GitHub Actions
-and leaves it as a **draft**; the same build also runs locally (sections 5–6).
+and publishes it; the same build also runs locally (sections 5–6).
 **Actions are disabled** in the repository until the author turns them on
 (section 1). Nothing is pushed, tagged on GitHub or published without the author.
 
@@ -60,7 +60,7 @@ What then runs:
 | Workflow | When | What |
 |---|---|---|
 | `ci.yml` | a push to main, a pull request | gofmt; the daemon's Go tests in the patched NetBird tree; a debug APK (arm64-v8a) with the NewApi lint, kept 7 days |
-| `release.yml` | a tag `v*` | checks the tag against `version.properties`, the dated CHANGELOG section and the store changelogs; builds the core for four ABIs; signs, names and verifies the APKs; writes `SHA256SUMS`; opens a draft release |
+| `release.yml` | a tag `v*` | checks the tag against `version.properties`, the dated CHANGELOG section and the store changelogs; builds the core for four ABIs; signs, names and verifies the APKs; uploads one artifact per ABI, release and dev; publishes the release with `SHA256SUMS` |
 
 GitHub Free gives a private repository 2,000 Actions minutes a month and
 500 MB for artifacts (check the plan's current limits): a release run takes
@@ -97,13 +97,16 @@ The Release workflow runs four jobs: preflight, core, apk, release. Then:
 - Download the run's `mapping-v0.1.0` artifact and keep it with the release:
   a release stack trace is readable only through it (`retrace`). It expires
   in 90 days.
-- Releases → the draft: six files, `BirdSocks-v0.1.0-<abi>.apk` for
+- The release: six files, `BirdSocks-v0.1.0-<abi>-release.apk` for
   armeabi-v7a, arm64-v8a, x86, x86_64 and universal, and `SHA256SUMS`; the
-  notes are the CHANGELOG section. Test (section 7), then publish.
+  notes are the CHANGELOG section. The run also keeps one artifact per ABI
+  and type, `birdsocks-<abi>-release` and `birdsocks-<abi>-dev` (the `.dev`
+  package, which installs beside the release).
+- Test before you tag: a published release is what Obtainium hands out.
 
 A run that failed by chance: Re-run failed jobs. One that needs a fix: delete
-the draft, commit the fix, move the tag (`git tag -f v0.1.0`,
-`git push -f origin v0.1.0`) — only while nothing is published.
+the release, commit the fix, move the tag (`git tag -f v0.1.0`,
+`git push -f origin v0.1.0`) — only before anyone could have installed it.
 
 ## 4. Keeping CI current
 
@@ -137,7 +140,7 @@ export KEYSTORE_PASSWORD KEY_PASSWORD
 
 - Out come `app/build/outputs/apk/release/app-<abi>-release.apk` for the four
   ABIs (versionCode + 1…4) and `app-universal-release.apk` (versionCode).
-  Rename them `BirdSocks-v<VERSION>-<abi>.apk`, as CI does, and write
+  Rename them `BirdSocks-v<VERSION>-<abi>-release.apk`, as CI does, and write
   `sha256sum BirdSocks-*.apk > SHA256SUMS`.
 - The build fails when R8 removed a JNI method (`verifyReleaseNativeMethods`:
   hev's `TProxy*`, ByeDPI's `jni*`) or a signing variable is missing.
@@ -166,5 +169,5 @@ Install the release APK (not `.dev`); HyperOS asks on screen first.
 
 ## 8. Publishing
 
-The author's step: publishing the draft — or, after a local build, a GitHub
+The tag publishes the release. After a local build instead: a GitHub
 release with the APKs, `SHA256SUMS` and the CHANGELOG section as its notes.
