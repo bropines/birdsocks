@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-10-07
 
 ### Added
 - NetBird v0.80.0 as a userspace node with a local SOCKS5 proxy, without the VPN slot.
