@@ -51,8 +51,7 @@
 4. **Включить Actions**: Settings → Actions → General. Хватит разрешить
    действия GitHub и ещё `gradle/actions/*` и `softprops/action-gh-release@*`;
    права workflow можно оставить «только чтение», каждая задача просит своё.
-   Запустятся и старые `repomix-context.yml` и `repo-to-llm.yml` (первый — на
-   каждый пуш в main): удалите их, если они не нужны.
+   Запустится и старый `repo-to-llm.yml`: удалите его, если он не нужен.
 
 Что тогда работает:
 

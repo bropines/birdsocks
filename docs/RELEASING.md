@@ -52,8 +52,7 @@ and publishes it; the same build also runs locally (sections 5–6).
 4. **Actions on**: Settings → Actions → General. Allowing GitHub's actions
    plus `gradle/actions/*` and `softprops/action-gh-release@*` is enough;
    workflow permissions may stay read-only, each job asks for what it needs.
-   The older `repomix-context.yml` and `repo-to-llm.yml` start too (the first
-   on every push to main): delete them if they are not wanted.
+   The older `repo-to-llm.yml` starts too: delete it if it is not wanted.
 
 What then runs:
 
