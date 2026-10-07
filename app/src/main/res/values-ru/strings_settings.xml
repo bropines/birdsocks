@@ -19,7 +19,7 @@
     <string name="settings_cat_background_desc">Уведомления, автозапуск, разрешения</string>
     <string name="settings_cat_diagnostics">Диагностика и разработчику</string>
     <string name="settings_cat_diagnostics_desc">Подробность логов, окружение, удалённые задания, логи</string>
-    <string name="settings_cat_about_desc">Версии, документация, лицензии</string>
+    <string name="settings_cat_about_desc">Версии, обновления, документация, лицензии</string>
 
     <!-- How a group of settings applies -->
     <string name="settings_note_restart">Применится после перезапуска BirdSocks</string>

@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.LoginFlow
@@ -57,6 +58,7 @@ import io.github.bropines.birdsocks.core.NetbirdService
 import io.github.bropines.birdsocks.core.NetbirdState
 import io.github.bropines.birdsocks.core.SegmentedChipItem
 import io.github.bropines.birdsocks.core.SlidingSegmentedChips
+import io.github.bropines.birdsocks.core.Updater
 import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.models.NbConnState
 import io.github.bropines.birdsocks.models.NbNetwork
@@ -94,6 +96,19 @@ class MainActivity : ComponentActivity() {
             NetbirdService.start(this)
         }
         handleIntent(intent)
+        // A newer release on GitHub, once per launch: said in a toast and by a
+        // badge on the Info button; nothing is downloaded until asked.
+        if (savedInstanceState == null && GlobalSettings.isUpdateCheckOnLaunch(this)) {
+            lifecycleScope.launch {
+                val found = Updater.check(this@MainActivity)
+                val release = (found as? Updater.State.Available)?.release ?: (found as? Updater.State.Ready)?.release
+                if (release != null) {
+                    Toast.makeText(this@MainActivity, getString(R.string.update_available_toast, release.version), Toast.LENGTH_LONG).show()
+                }
+            }
+        } else if (savedInstanceState == null) {
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { Updater.prune(this@MainActivity) }
+        }
         setContent {
             BirdSocksTheme {
                 MainScreen()
@@ -111,6 +126,11 @@ class MainActivity : ComponentActivity() {
         if (intent?.getBooleanExtra(EXTRA_EXTEND, false) == true) {
             intent.removeExtra(EXTRA_EXTEND)
             io.github.bropines.birdsocks.core.ExtendFlow.start(this)
+        }
+        // The installer session's answer (Updater.installWithSession).
+        if (intent?.action == Updater.ACTION_INSTALL_STATUS) {
+            Updater.onInstallStatus(this, intent)
+            intent.action = null
         }
         // birdsocks:// links (DeepLinks): a screen opens on top of this one,
         // an action asks here first (ActionLinks).
@@ -168,13 +188,27 @@ fun MainScreen() {
     val accountLabel = accounts.firstOrNull { it.profile.name == profile }?.label
         ?: profile?.takeIf { it != "default" }
 
+    var showAbout by remember { mutableStateOf(false) }
+    val update by Updater.state.collectAsStateOr { Updater.State.Idle }
+    val updateWaiting = update is Updater.State.Available || update is Updater.State.Ready
+
     Scaffold(
         topBar = {
             AppTopBar(
                 title = stringResource(R.string.app_name),
                 subtitle = accountLabel,
                 // Stopped too: the sheet starts the daemon for what it does.
-                onTitleClick = { showAccounts = true }
+                onTitleClick = { showAccounts = true },
+                actions = {
+                    IconButton(onClick = { showAbout = true }) {
+                        BadgedBox(badge = { if (updateWaiting) Badge() }) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = stringResource(if (updateWaiting) R.string.about_cd_update else R.string.about_open)
+                            )
+                        }
+                    }
+                }
             )
         }
     ) { padding ->
@@ -240,6 +274,7 @@ fun MainScreen() {
     }
 
     if (showAccounts) AccountSheet(onDismiss = { showAccounts = false })
+    if (showAbout) AboutDialog(onDismiss = { showAbout = false })
 }
 
 /**

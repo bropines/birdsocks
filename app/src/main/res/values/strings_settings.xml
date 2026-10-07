@@ -20,7 +20,7 @@
     <string name="settings_cat_background_desc">Notifications, start on boot, permissions</string>
     <string name="settings_cat_diagnostics">Diagnostics &amp; developer</string>
     <string name="settings_cat_diagnostics_desc">Log detail, environment, remote jobs, logs</string>
-    <string name="settings_cat_about_desc">Versions, documentation, licenses</string>
+    <string name="settings_cat_about_desc">Versions, updates, documentation, licenses</string>
 
     <!-- How a group of settings applies -->
     <string name="settings_note_restart">Applies after BirdSocks restarts</string>
