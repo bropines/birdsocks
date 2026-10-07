@@ -80,6 +80,12 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
                 Credits()
 
+                FilledTonalButton(onClick = { openUrl(context, Updater.DONATE_URL) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Favorite, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.about_donate))
+                }
+
                 OutlinedButton(onClick = { showLicenses = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Gavel, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))

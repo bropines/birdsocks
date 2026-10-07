@@ -10,6 +10,7 @@
     <string name="about_whats_new">Что нового</string>
     <string name="about_releases">Релизы</string>
     <string name="about_docs">Документация NetBird</string>
+    <string name="about_donate">Поддержать проект</string>
     <string name="about_credits">Благодарности</string>
     <string name="about_credit_claude">Claude от Anthropic — разработка</string>
     <string name="about_credit_bropines">Bropines — идея, направление и тестирование</string>

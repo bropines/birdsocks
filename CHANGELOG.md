@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Support the project: a link to Boosty in About and in Settings → About.
 
 ## [0.2.0] - 2026-10-07
 

@@ -65,6 +65,9 @@ internal fun AboutSection(env: SettingsEnv) {
         SettingsClickableItem(stringResource(R.string.nb_about_source), "github.com/bropines/birdsocks", Icons.Default.Code) {
             openUrl(context, Updater.REPO_URL)
         }
+        SettingsClickableItem(stringResource(R.string.about_donate), "boosty.to/pinus", Icons.Default.Favorite) {
+            openUrl(context, Updater.DONATE_URL)
+        }
         SettingsClickableItem(stringResource(R.string.nb_about_licenses), stringResource(R.string.nb_about_licenses_desc), Icons.Default.Gavel) { showLicenses = true }
     }
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
