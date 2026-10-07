@@ -6,6 +6,7 @@
 ### Added
 - Updates from GitHub: checked on launch (a switch in Settings → About) and on demand; the APK for the device's ABI, verified against SHA256SUMS, goes to Android's installer.
 - About from the Info button on the main screen: versions, the update, what's new, links, credits and licenses; Settings → About opens it too.
+- A dashboard button on the main screen opens the active account's NetBird dashboard.
 
 ## [0.1.0] - 2026-10-07
 

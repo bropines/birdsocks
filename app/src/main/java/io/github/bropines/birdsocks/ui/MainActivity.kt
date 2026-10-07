@@ -188,6 +188,15 @@ fun MainScreen() {
     val accountLabel = accounts.firstOrNull { it.profile.name == profile }?.label
         ?: profile?.takeIf { it != "default" }
 
+    // The active account's dashboard, from its profile's config — the address the
+    // management server row in Settings opens. Unknown while the daemon is down.
+    val running = daemon == NetbirdState.Daemon.Running
+    var config by remember { mutableStateOf(demo?.config) }
+    LaunchedEffect(running, profile, card == CardState.Connected) {
+        if (demo != null) return@LaunchedEffect
+        config = if (running) runCatching { Netbird.config() }.getOrNull() else null
+    }
+    val dashboardUrl = config?.dashboardUrl?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
     var showAbout by remember { mutableStateOf(false) }
     val update by Updater.state.collectAsStateOr { Updater.State.Idle }
     val updateWaiting = update is Updater.State.Available || update is Updater.State.Ready
@@ -200,6 +209,11 @@ fun MainScreen() {
                 // Stopped too: the sheet starts the daemon for what it does.
                 onTitleClick = { showAccounts = true },
                 actions = {
+                    if (dashboardUrl != null) {
+                        IconButton(onClick = { openUrl(context, dashboardUrl) }) {
+                            Icon(Icons.Default.AdminPanelSettings, contentDescription = stringResource(R.string.main_cd_dashboard))
+                        }
+                    }
                     IconButton(onClick = { showAbout = true }) {
                         BadgedBox(badge = { if (updateWaiting) Badge() }) {
                             Icon(

@@ -8,4 +8,5 @@
     <string name="nb_networks_off_title">Сети выключены</string>
     <string name="nb_networks_off_desc">«Использовать сети» выключено в Настройках → Аккаунт: устройство не видит ни сетей, ни выходных узлов, которые маршрутизируют другие узлы.</string>
     <string name="nb_expose_inbound_in_settings">Прокси достаёт до телефона через NetBird, поэтому узлам должен быть разрешён доступ к его сервисам. Включите это в Настройках.</string>
+    <string name="main_cd_dashboard">Открыть панель управления</string>
 </resources>
