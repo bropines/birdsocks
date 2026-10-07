@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Roots for ${applicationId}.fileprovider. One thing is ever handed to
+    another app through it: the release APK the updater downloaded and
+    verified (core/Updater.kt), in cache/updates/, for the package installer.
+    Do not widen it: files/ holds the daemon's keys and its socket.
+-->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

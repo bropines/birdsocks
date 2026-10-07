@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The About dialog, "What's new" and the updater (ui/AboutDialog.kt, core/Updater.kt). -->
+<resources>
+    <!-- About -->
+    <string name="about_open">About BirdSocks</string>
+    <string name="about_open_desc">What\'s new, credits and licenses</string>
+    <string name="about_cd_update">About BirdSocks: an update is available</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_core_version">NetBird %1$s</string>
+    <string name="about_whats_new">What\'s new</string>
+    <string name="about_releases">Releases</string>
+    <string name="about_docs">NetBird docs</string>
+    <string name="about_credits">Credits</string>
+    <string name="about_credit_claude">Claude by Anthropic — development</string>
+    <string name="about_credit_bropines">Bropines — idea, direction and testing</string>
+    <string name="about_credit_netbird">NetBird — the client at the core</string>
+    <string name="about_credit_hev">hev-socks5-tunnel — VPN mode</string>
+    <string name="about_credit_byedpi">ByeDPI — the way past blocks to the server</string>
+    <string name="about_credit_anet">anet — network interfaces on Android 11+</string>
+    <string name="about_license_line">BirdSocks is free software under the BSD 3-Clause License.</string>
+
+    <!-- What's new -->
+    <string name="whats_new_title">What\'s new in %1$s</string>
+    <string name="whats_new_unavailable">The changelog is not available.</string>
+    <string name="whats_new_full">Full changelog</string>
+
+    <!-- Updates -->
+    <string name="update_check_on_launch">Check for updates automatically</string>
+    <string name="update_check_on_launch_desc">Asks GitHub for a newer release each time BirdSocks opens and says when there is one. Nothing is downloaded until you tap Download.</string>
+    <string name="update_check_now">Check for updates</string>
+    <string name="update_check_now_desc">Asks GitHub now; a newer release can be downloaded and installed from About</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You have the latest version</string>
+    <string name="update_new_version">Version %1$s is available</string>
+    <string name="update_available_toast">BirdSocks %1$s is available: see About on the main screen</string>
+    <string name="update_notes">Release notes</string>
+    <string name="update_download">Download and install</string>
+    <string name="update_install">Install</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_verify_desc">The APK for this device is downloaded from the release, checked against its SHA256SUMS and handed to Android\'s installer, which asks before it replaces this version.</string>
+    <string name="update_dev_build">This is a development build, a separate app: the release would install beside it, not over it. Get it from the release page.</string>
+    <string name="update_no_apk">The release has no APK for this device. Get one from the release page.</string>
+    <string name="update_open_page">Open the release page</string>
+    <string name="update_retry">Try again</string>
+    <string name="update_grant_permission">Allow BirdSocks to install apps, then tap Install</string>
+    <string name="update_install_failed">The installer failed: %1$s</string>
+    <string name="update_failed_check">Could not check for updates</string>
+    <string name="update_failed_download">The download failed</string>
+    <string name="update_failed_no_sums">The release has no checksum for this APK</string>
+    <string name="update_failed_checksum">The download does not match the release\'s checksum and was deleted</string>
+    <string name="update_failed_not_apk">The download is not a BirdSocks APK</string>
+    <string name="update_failed_not_newer">The download is not newer than this version</string>
+</resources>

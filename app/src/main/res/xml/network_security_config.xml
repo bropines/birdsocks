@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Cleartext is denied everywhere. The JVM side of the app fetches only over
-    HTTPS (the sign-in server probe); NetBird itself is the Go daemon, which
+    HTTPS (the sign-in server probe, the update check); NetBird itself is the Go daemon, which
     this file does not govern, and so are the local SOCKS5 and DNS proxies.
     A management server given as http:// is not probed (see probeServer).
 -->

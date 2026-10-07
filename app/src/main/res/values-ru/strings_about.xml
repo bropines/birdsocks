@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The About dialog, "What's new" and the updater (ui/AboutDialog.kt, core/Updater.kt). -->
+<resources>
+    <!-- About -->
+    <string name="about_open">О BirdSocks</string>
+    <string name="about_open_desc">Что нового, благодарности и лицензии</string>
+    <string name="about_cd_update">О BirdSocks: доступно обновление</string>
+    <string name="about_version">Версия %1$s</string>
+    <string name="about_core_version">NetBird %1$s</string>
+    <string name="about_whats_new">Что нового</string>
+    <string name="about_releases">Релизы</string>
+    <string name="about_docs">Документация NetBird</string>
+    <string name="about_credits">Благодарности</string>
+    <string name="about_credit_claude">Claude от Anthropic — разработка</string>
+    <string name="about_credit_bropines">Bropines — идея, направление и тестирование</string>
+    <string name="about_credit_netbird">NetBird — клиент в основе приложения</string>
+    <string name="about_credit_hev">hev-socks5-tunnel — режим VPN</string>
+    <string name="about_credit_byedpi">ByeDPI — обход блокировок до сервера</string>
+    <string name="about_credit_anet">anet — сетевые интерфейсы на Android 11+</string>
+    <string name="about_license_line">BirdSocks — свободное ПО под лицензией BSD 3-Clause.</string>
+
+    <!-- What's new -->
+    <string name="whats_new_title">Что нового в %1$s</string>
+    <string name="whats_new_unavailable">Список изменений недоступен.</string>
+    <string name="whats_new_full">Все изменения</string>
+
+    <!-- Updates -->
+    <string name="update_check_on_launch">Проверять обновления автоматически</string>
+    <string name="update_check_on_launch_desc">При каждом открытии BirdSocks спрашивает GitHub о новом релизе и сообщает, если он есть. Ничего не скачивается, пока вы не нажмёте «Скачать».</string>
+    <string name="update_check_now">Проверить обновления</string>
+    <string name="update_check_now_desc">Спросить GitHub сейчас; новый релиз скачивается и ставится из окна «О BirdSocks»</string>
+    <string name="update_checking">Проверка…</string>
+    <string name="update_up_to_date">У вас последняя версия</string>
+    <string name="update_new_version">Доступна версия %1$s</string>
+    <string name="update_available_toast">Доступен BirdSocks %1$s: см. «О BirdSocks» на главном экране</string>
+    <string name="update_notes">Что в релизе</string>
+    <string name="update_download">Скачать и установить</string>
+    <string name="update_install">Установить</string>
+    <string name="update_downloading">Загрузка… %1$d%%</string>
+    <string name="update_verify_desc">APK для этого устройства скачивается из релиза, сверяется с его SHA256SUMS и передаётся установщику Android, который спросит, прежде чем заменить эту версию.</string>
+    <string name="update_dev_build">Это сборка для разработки, отдельное приложение: релиз встанет рядом с ней, а не поверх. Скачайте его со страницы релиза.</string>
+    <string name="update_no_apk">В релизе нет APK для этого устройства. Скачайте подходящий со страницы релиза.</string>
+    <string name="update_open_page">Открыть страницу релиза</string>
+    <string name="update_retry">Повторить</string>
+    <string name="update_grant_permission">Разрешите BirdSocks устанавливать приложения, затем нажмите «Установить»</string>
+    <string name="update_install_failed">Ошибка установщика: %1$s</string>
+    <string name="update_failed_check">Не удалось проверить обновления</string>
+    <string name="update_failed_download">Загрузка не удалась</string>
+    <string name="update_failed_no_sums">В релизе нет контрольной суммы для этого APK</string>
+    <string name="update_failed_checksum">Загруженный файл не совпал с контрольной суммой релиза и удалён</string>
+    <string name="update_failed_not_apk">Загруженный файл — не APK BirdSocks</string>
+    <string name="update_failed_not_newer">Загруженная версия не новее установленной</string>
+</resources>

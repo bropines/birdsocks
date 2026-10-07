@@ -184,6 +184,8 @@ object BackupFormat {
         add(Scope.SETTING, Type.BOOLEAN, "byedpi_ipv4")
         // Lifecycle, notifications, logs
         add(Scope.SETTING, Type.BOOLEAN, "auto_start", "event_notifications", "logs_include_logcat")
+        // Updates from GitHub
+        add(Scope.SETTING, Type.BOOLEAN, "update_check_on_launch")
         // Automation: the switch; its token is a secret, and the app status goes to is this phone's
         add(Scope.SETTING, Type.BOOLEAN, "automation_enabled")
         // VPN mode

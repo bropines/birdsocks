@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Merged over the main manifest for a release built with -PselfUpdate=false
      (F-Droid): an app that cannot update itself has no business asking to
-     install packages. See app/build.gradle.kts. -->
+     install packages, nor a provider that exists only to hand the installer
+     an APK. See app/build.gradle.kts. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission
         android:name="android.permission.REQUEST_INSTALL_PACKAGES"
         tools:node="remove" />
+
+    <application>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            tools:node="remove" />
+    </application>
 </manifest>

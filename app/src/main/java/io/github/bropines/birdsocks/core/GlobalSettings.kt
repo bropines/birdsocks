@@ -210,6 +210,17 @@ object GlobalSettings {
     fun wasRunning(context: Context): Boolean = getBoolean(context, "was_running", false)
     fun setWasRunning(context: Context, running: Boolean) = setBoolean(context, "was_running", running)
 
+    // --- Updates (core/Updater.kt) ---
+    /**
+     * Ask GitHub for a newer release when the app opens. Never where the
+     * updater is off (UpdateChannel): a store installed the app, or the build
+     * has no updater. The default is the build's (-PupdateCheckDefault).
+     */
+    fun isUpdateCheckOnLaunch(context: Context): Boolean =
+        UpdateChannel.selfUpdate(context) &&
+            getBoolean(context, "update_check_on_launch", io.github.bropines.birdsocks.BuildConfig.UPDATE_CHECK_DEFAULT)
+    fun setUpdateCheckOnLaunch(context: Context, enabled: Boolean) = setBoolean(context, "update_check_on_launch", enabled)
+
     // --- VPN (TUN) mode: Android's VPN fed into the SOCKS5 proxy (TunVpnService) ---
     /** The VPN comes up with the daemon and goes down with it. */
     fun isTunModeEnabled(context: Context): Boolean = getBoolean(context, "tun_mode_enabled", false)
