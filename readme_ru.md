@@ -289,6 +289,18 @@ Issues и pull requests приветствуются. Сначала прочи�
 
 ---
 
+## ❤️ Поддержать проект
+
+BirdSocks бесплатный и с открытым кодом. Если он вам пригодился, можно поддержать разработку:
+
+<p align="center">
+  <a href="https://boosty.to/pinus"><img src="https://img.shields.io/badge/❤️_Поддержать_на-Boosty-f15f2c?style=for-the-badge" alt="Поддержать на Boosty" /></a>
+</p>
+
+Звезда на GitHub, отчёт об ошибке или рассказ другу, у которого стоит NetBird, тоже помогают.
+
+---
+
 ## 💡 Благодарности
 
 | | |

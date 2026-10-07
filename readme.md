@@ -289,6 +289,18 @@ Bug reports are most useful with the debug bundle from Diagnostics → Logs.
 
 ---
 
+## ❤️ Support the project
+
+BirdSocks is free and open source. If it is useful to you, you can support its development:
+
+<p align="center">
+  <a href="https://boosty.to/pinus"><img src="https://img.shields.io/badge/❤️_Support_on-Boosty-f15f2c?style=for-the-badge" alt="Support on Boosty" /></a>
+</p>
+
+A star on GitHub, a bug report or a word to a friend who runs NetBird helps too.
+
+---
+
 ## 💡 Credits
 
 | | |
