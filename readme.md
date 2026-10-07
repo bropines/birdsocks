@@ -59,7 +59,7 @@ It says what is actually going on:
 - what the server's DNS gave this device;
 - which firewall rule drops a packet.
 
-> 0.1.0 is the first release. What it contains is in [`CHANGELOG.md`](CHANGELOG.md).
+> What each release contains is in [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 

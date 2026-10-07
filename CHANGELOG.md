@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Unreleased]
+## [0.2.0] - 2026-10-07
 
 ### Added
 - Updates from GitHub: checked on launch (a switch in Settings → About) and on demand; the APK for the device's ABI, verified against SHA256SUMS, goes to Android's installer.

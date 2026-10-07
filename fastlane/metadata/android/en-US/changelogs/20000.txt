@@ -1,0 +1,3 @@
+Updates from GitHub inside the app: checked on launch or on demand, the APK for your device verified against SHA256SUMS before Android installs it.
+About from the Info button on the main screen: versions, what's new, links, credits and licenses.
+A dashboard button on the main screen opens your account's NetBird dashboard.
