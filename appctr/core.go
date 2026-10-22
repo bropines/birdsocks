@@ -218,6 +218,12 @@ func daemonEnv(opt *StartOptions, state string) []string {
 			env = append(env, kv)
 		}
 	}
+	// The system's tools, /system/bin/ping among them: the forwarder answers
+	// the VPN's pings with it when it has no raw socket. An app's own
+	// environment may have no PATH at all.
+	if !strings.Contains(os.Getenv("PATH"), "/system/bin") {
+		env = append(env, "PATH="+strings.Trim(os.Getenv("PATH")+":/system/bin:/system/xbin:/vendor/bin", ":"))
+	}
 	env = append(env,
 		"HOME="+opt.DataDir,
 		// os/user without cgo reads /etc/passwd, which Android does not have,
