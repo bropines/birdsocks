@@ -214,16 +214,13 @@ func Start(opt *StartOptions) error {
 func daemonEnv(opt *StartOptions, state string) []string {
 	var env []string
 	for _, kv := range os.Environ() {
-		if !strings.HasPrefix(kv, "NB_") && !strings.HasPrefix(kv, "USER=") {
+		if !strings.HasPrefix(kv, "NB_") && !strings.HasPrefix(kv, "USER=") && !strings.HasPrefix(kv, "PATH=") {
 			env = append(env, kv)
 		}
 	}
-	// The system's tools, /system/bin/ping among them: the forwarder answers
-	// the VPN's pings with it when it has no raw socket. An app's own
-	// environment may have no PATH at all.
-	if !strings.Contains(os.Getenv("PATH"), "/system/bin") {
-		env = append(env, "PATH="+strings.Trim(os.Getenv("PATH")+":/system/bin:/system/xbin:/vendor/bin", ":"))
-	}
+	// No PATH for the daemon, on purpose: os/exec searches it with
+	// faccessat2, which an app's seccomp filter answers with SIGSYS, killing
+	// the daemon. Whatever it runs is named by its path (patch 07, ping).
 	env = append(env,
 		"HOME="+opt.DataDir,
 		// os/user without cgo reads /etc/passwd, which Android does not have,

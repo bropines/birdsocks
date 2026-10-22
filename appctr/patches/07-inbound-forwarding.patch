@@ -79,7 +79,7 @@
 +}
 --- netbird_orig/client/firewall/uspfilter/forwarder/birdsocks_vpn.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/birdsocks_vpn.go
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,70 @@
 +package forwarder
 +
 +// birdsocks_vpn.go — BirdSocks: a forwarder for the app's VPN. What apps on
@@ -92,6 +92,7 @@
 +import (
 +	"context"
 +	"net"
++	"os"
 +	"sync"
 +
 +	log "github.com/sirupsen/logrus"
@@ -136,6 +137,19 @@
 +func (noFlowLogger) Close()                                              {}
 +func (noFlowLogger) Enable()                                             {}
 +func (noFlowLogger) UpdateConfig(bool, bool)                             {}
++
++// androidPing is where Android keeps ping.
++const androidPing = "/system/bin/ping"
++
++// linuxPingBin names ping by its path when it is Android's: searching PATH
++// makes os/exec call faccessat2, which an app's seccomp filter answers with
++// SIGSYS, and the daemon dies.
++var linuxPingBin = sync.OnceValue(func() string {
++	if st, err := os.Stat(androidPing); err == nil && !st.IsDir() {
++		return androidPing
++	}
++	return pingBin
++})
 --- netbird_orig/client/firewall/uspfilter/forwarder/forwarder.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/forwarder.go
 @@ -63,9 +63,16 @@
