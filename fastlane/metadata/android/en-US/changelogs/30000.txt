@@ -1,0 +1,2 @@
+A native VPN mode, now the default: the tunnel takes the phone's NetBird address. Ping works, and peers reach apps on the phone with their own address, so KDE Connect and the like work. The mode through the SOCKS5 proxy stays as a choice.
+Support the project: a Boosty link in About.
