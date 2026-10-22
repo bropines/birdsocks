@@ -1,0 +1,1286 @@
+--- netbird_orig/client/iface/netstack/vpn.go
++++ netbird_src/client/iface/netstack/vpn.go
+@@ -0,0 +1,402 @@
++//go:build linux
++
++package netstack
++
++// vpn.go — BirdSocks: Android's VPN interface, attached to the netstack
++// daemon. The app establishes the interface on the device's NetBird address
++// and hands its descriptor over a unix socket (ServeVPN); no daemon restart,
++// and a new descriptor when the routes change. What apps send through it:
++//
++//   - to a destination a peer carries (vpn_split.go) goes to WireGuard as it
++//     is, with the device's own address;
++//   - to anything else — the VPN's resolver (tundns.go), the local network
++//     behind an exit node, the internet under a domain route — is ended in a
++//     forwarder and dialed again from the daemon, which the VPN leaves out.
++//
++// Packets from peers to the device reach Android's apps through it with
++// the peer's address, which the netstack's forwarding to 127.0.0.1 cannot
++// give them.
++
++import (
++	"context"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"net"
++	"net/netip"
++	"os"
++	"strconv"
++	"strings"
++	"sync"
++	"sync/atomic"
++	"syscall"
++	"time"
++
++	log "github.com/sirupsen/logrus"
++	"golang.org/x/sys/unix"
++	"golang.zx2c4.com/wireguard/tun"
++
++	"github.com/netbirdio/netbird/client/iface/wgaddr"
++)
++
++const (
++	// envLocalForwarding is what the app sets when peers may reach the
++	// device's own services (Access to the phone).
++	envLocalForwarding = "NB_ENABLE_NETSTACK_LOCAL_FORWARDING"
++	// envNoForwardPorts: the app's own listeners, which peers never reach.
++	envNoForwardPorts = "NB_BIRDSOCKS_NO_FORWARD_PORTS"
++
++	vpnRequestMax = 4096
++	vpnConnWait   = 10 * time.Second
++)
++
++// PacketWriter takes packets back toward the apps behind the VPN.
++type PacketWriter interface {
++	CreateOutboundPacket(packet []byte, dst net.IP) error
++}
++
++// DialFunc reaches a destination of the direct path.
++type DialFunc = func(ctx context.Context, network, address string) (net.Conn, error)
++
++// DirectEgress ends what apps send to destinations no peer carries.
++type DirectEgress interface {
++	InjectIncomingPacket(packet []byte) error
++	Stop()
++}
++
++// DirectEgressFactory builds the direct path of a VPN interface: uspfilter's
++// forwarder, which the daemon passes in — this package cannot import it,
++// since client/net imports this one.
++type DirectEgressFactory func(addr wgaddr.Address, out PacketWriter, dial DialFunc, mtu uint16) (DirectEgress, error)
++
++var (
++	// vpnServing: the daemon takes a VPN interface, so engines wrap their device.
++	vpnServing atomic.Bool
++	vpnDirect  DirectEgressFactory
++	vpnKernel  atomic.Pointer[kernelTun]
++	vpnSplit   atomic.Pointer[splitTUN]
++)
++
++// VPNAttached reports whether the app's VPN interface carries the device's
++// traffic: packets for the device then go to Android's stack through it.
++func VPNAttached() bool { return vpnKernel.Load() != nil }
++
++func attachedKernel() *kernelTun { return vpnKernel.Load() }
++
++// WrapForVPN is the engine's netstack device, made able to share the
++// device with the VPN when the daemon serves one; dev itself otherwise.
++func WrapForVPN(dev tun.Device, local []netip.Addr) tun.Device {
++	if !vpnServing.Load() {
++		return dev
++	}
++	s := newSplitTUN(dev, local)
++	vpnSplit.Store(s)
++	return s
++}
++
++func releaseSplit(s *splitTUN) { vpnSplit.CompareAndSwap(s, nil) }
++
++var vpnInbound = sync.OnceValue(func() bool {
++	v, _ := strconv.ParseBool(os.Getenv(envLocalForwarding))
++	return v
++})
++
++var vpnOwnPorts = sync.OnceValue(func() map[uint16]bool {
++	ports := map[uint16]bool{}
++	for _, s := range strings.Split(os.Getenv(envNoForwardPorts), ",") {
++		if p, err := strconv.ParseUint(strings.TrimSpace(s), 10, 16); err == nil && p != 0 {
++			ports[uint16(p)] = true
++		}
++	}
++	return ports
++})
++
++// inboundAllowed: a peer may open a connection to this port of the device.
++func inboundAllowed(port uint16) bool { return vpnInbound() && !vpnOwnPorts()[port] }
++
++// inOverlayNetwork: an address in the NetBird network itself.
++func inOverlayNetwork(ip netip.Addr) bool {
++	routes.Lock()
++	defer routes.Unlock()
++	for _, p := range routes.overlay {
++		if p.Contains(ip) {
++			return true
++		}
++	}
++	return false
++}
++
++// kernelTun is the VPN interface the app handed over.
++type kernelTun struct {
++	f      *os.File
++	addrs  []netip.Addr
++	direct DirectEgress
++	closed atomic.Bool
++}
++
++func (k *kernelTun) write(p []byte) {
++	if _, err := k.f.Write(p); err != nil && !k.closed.Load() {
++		log.Debugf("VPN interface write: %v", err)
++	}
++}
++
++// CreateOutboundPacket takes the direct forwarder's answers to the apps.
++func (k *kernelTun) CreateOutboundPacket(packet []byte, _ net.IP) error {
++	_, err := k.f.Write(packet)
++	return err
++}
++
++func (k *kernelTun) readLoop() {
++	buf := make([]byte, 65535)
++	for {
++		n, err := k.f.Read(buf)
++		if err != nil {
++			if !k.closed.Load() {
++				log.Warnf("VPN interface: %v", err)
++				if vpnKernel.CompareAndSwap(k, nil) {
++					k.stop()
++				}
++			}
++			return
++		}
++		if n > 0 {
++			k.route(append([]byte(nil), buf[:n]...))
++		}
++	}
++}
++
++// route sends a packet an app wrote to WireGuard, or ends it here.
++func (k *kernelTun) route(p []byte) {
++	pi, ok := parsePacket(p)
++	if !ok {
++		return
++	}
++	dst := pi.dst.Unmap()
++	if dns, ok := tunDNSAddress(); ok && dst == dns {
++		k.inject(p)
++		return
++	}
++	if s := vpnSplit.Load(); s != nil && overlayAddr(dst) {
++		s.fromKernel(p, pi)
++		return
++	}
++	if inOverlayNetwork(dst) {
++		// No engine: no peer to give it to, and never the internet.
++		return
++	}
++	k.inject(p)
++}
++
++func (k *kernelTun) inject(p []byte) {
++	if err := k.direct.InjectIncomingPacket(p); err != nil {
++		log.Tracef("VPN direct: %v", err)
++	}
++}
++
++func (k *kernelTun) stop() {
++	k.closed.Store(true)
++	_ = k.f.Close()
++	k.direct.Stop()
++}
++
++// vpnDial reaches what the forwarder ends: the VPN's resolver in memory,
++// anything else from the daemon over the device's network.
++func vpnDial(ctx context.Context, network, addr string) (net.Conn, error) {
++	if conn, handled, err := tunDNSDial(network, addr); handled {
++		return conn, err
++	}
++	return dialDirect(ctx, network, addr)
++}
++
++// attachVPN makes f the VPN interface, replacing the one before.
++func attachVPN(f *os.File, mtu int, addrs []netip.Addr) error {
++	var addr wgaddr.Address
++	for _, a := range addrs {
++		switch {
++		case a.Is4() && !addr.IP.IsValid():
++			addr.IP, addr.Network = a, netip.PrefixFrom(a, 32)
++		case a.Is6() && !addr.IPv6.IsValid():
++			addr.IPv6, addr.IPv6Net = a, netip.PrefixFrom(a, 128)
++		}
++	}
++	if !addr.IP.IsValid() {
++		return errors.New("the VPN interface needs an IPv4 address")
++	}
++	if mtu < 576 || mtu > 65535 {
++		return fmt.Errorf("MTU %d", mtu)
++	}
++	k := &kernelTun{f: f, addrs: addrs}
++	direct, err := vpnDirect(addr, k, vpnDial, uint16(mtu))
++	if err != nil {
++		return fmt.Errorf("forwarder: %w", err)
++	}
++	k.direct = direct
++	old := vpnKernel.Swap(k)
++	go k.readLoop()
++	if old != nil {
++		old.stop()
++	}
++	log.Infof("VPN interface attached: %v, MTU %d", addrs, mtu)
++	return nil
++}
++
++func detachVPN() {
++	if old := vpnKernel.Swap(nil); old != nil {
++		old.stop()
++		log.Info("VPN interface detached")
++	}
++}
++
++// vpnRequest is one message on the VPN socket; "attach" carries the
++// interface's descriptor beside it.
++type vpnRequest struct {
++	Op    string   `json:"op"`
++	MTU   int      `json:"mtu"`
++	Addrs []string `json:"addrs"`
++}
++
++type vpnReply struct {
++	Error string `json:"error,omitempty"`
++}
++
++// ServeVPN listens on a unix socket at path for the app's VPN interface;
++// from then on every engine's device can share the NetBird address with it.
++// direct builds the path for what no peer carries.
++func ServeVPN(path string, direct DirectEgressFactory) error {
++	if direct == nil {
++		return errors.New("no direct path")
++	}
++	vpnDirect = direct
++	_ = os.Remove(path)
++	l, err := net.ListenUnix("unixpacket", &net.UnixAddr{Name: path, Net: "unixpacket"})
++	if err != nil {
++		return err
++	}
++	if err := os.Chmod(path, 0o600); err != nil {
++		_ = l.Close()
++		return err
++	}
++	vpnServing.Store(true)
++	go func() {
++		for {
++			c, err := l.AcceptUnix()
++			if err != nil {
++				log.Errorf("VPN socket: %v", err)
++				return
++			}
++			go handleVPNConn(c)
++		}
++	}()
++	return nil
++}
++
++func handleVPNConn(c *net.UnixConn) {
++	defer c.Close()
++	_ = c.SetDeadline(time.Now().Add(vpnConnWait))
++	buf := make([]byte, vpnRequestMax)
++	oob := make([]byte, syscall.CmsgSpace(4*4))
++	n, oobn, _, _, err := c.ReadMsgUnix(buf, oob)
++	if err != nil {
++		return
++	}
++	fds := receivedFDs(oob[:oobn])
++	reply := func(err error) {
++		var r vpnReply
++		if err != nil {
++			r.Error = err.Error()
++		}
++		b, _ := json.Marshal(r)
++		_, _ = c.Write(b)
++	}
++	if err := checkPeer(c); err != nil {
++		closeFDs(fds)
++		reply(err)
++		return
++	}
++	var req vpnRequest
++	if err := json.Unmarshal(buf[:n], &req); err != nil {
++		closeFDs(fds)
++		reply(fmt.Errorf("request: %w", err))
++		return
++	}
++	switch req.Op {
++	case "attach":
++		reply(attachRequest(req, fds))
++	case "detach":
++		closeFDs(fds)
++		detachVPN()
++		reply(nil)
++	default:
++		closeFDs(fds)
++		reply(fmt.Errorf("unknown op %q", req.Op))
++	}
++}
++
++func attachRequest(req vpnRequest, fds []int) error {
++	if len(fds) != 1 {
++		closeFDs(fds)
++		return fmt.Errorf("one descriptor expected, got %d", len(fds))
++	}
++	var addrs []netip.Addr
++	for _, s := range req.Addrs {
++		a, err := netip.ParseAddr(s)
++		if err != nil {
++			closeFDs(fds)
++			return fmt.Errorf("address %q: %w", s, err)
++		}
++		addrs = append(addrs, a.Unmap())
++	}
++	// Non-blocking, so the file is pollable and a Close ends a blocked Read.
++	if err := unix.SetNonblock(fds[0], true); err != nil {
++		closeFDs(fds)
++		return fmt.Errorf("descriptor: %w", err)
++	}
++	f := os.NewFile(uintptr(fds[0]), "vpn")
++	if err := attachVPN(f, req.MTU, addrs); err != nil {
++		_ = f.Close()
++		return err
++	}
++	return nil
++}
++
++// checkPeer: only this daemon's own UID — the app — hands over a VPN.
++func checkPeer(c *net.UnixConn) error {
++	raw, err := c.SyscallConn()
++	if err != nil {
++		return err
++	}
++	var cred *unix.Ucred
++	var credErr error
++	if err := raw.Control(func(fd uintptr) {
++		cred, credErr = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
++	}); err != nil {
++		return err
++	}
++	if credErr != nil {
++		return credErr
++	}
++	if int(cred.Uid) != os.Getuid() {
++		return fmt.Errorf("uid %d may not attach a VPN", cred.Uid)
++	}
++	return nil
++}
++
++func receivedFDs(oob []byte) []int {
++	msgs, err := syscall.ParseSocketControlMessage(oob)
++	if err != nil {
++		return nil
++	}
++	var fds []int
++	for i := range msgs {
++		if got, err := syscall.ParseUnixRights(&msgs[i]); err == nil {
++			fds = append(fds, got...)
++		}
++	}
++	return fds
++}
++
++func closeFDs(fds []int) {
++	for _, fd := range fds {
++		_ = syscall.Close(fd)
++	}
++}
+--- netbird_orig/client/iface/netstack/vpn_split.go
++++ netbird_src/client/iface/netstack/vpn_split.go
+@@ -0,0 +1,400 @@
++//go:build linux
++
++package netstack
++
++// vpn_split.go — BirdSocks: the engine's device while the app's VPN is
++// attached (vpn.go). Two stacks share the device's NetBird address: the
++// netstack, where the SOCKS5 and DNS proxies make their connections, and
++// Android's own, behind the VPN interface, where the phone's apps live.
++// Packets from both go to WireGuard; a packet from WireGuard goes back to
++// the netstack when it answers one of the netstack's connections, and to
++// Android otherwise, so a peer reaches the phone's apps with its own
++// address.
++
++import (
++	"encoding/binary"
++	"net/netip"
++	"os"
++	"sync"
++	"time"
++
++	"golang.zx2c4.com/wireguard/tun"
++)
++
++const (
++	protoICMP   = 1
++	protoTCP    = 6
++	protoUDP    = 17
++	protoICMPv6 = 58
++
++	tcpFlagFIN = 0x01
++	tcpFlagSYN = 0x02
++	tcpFlagRST = 0x04
++	tcpFlagACK = 0x10
++
++	// How long a connection is remembered without traffic.
++	flowTTLTCP     = 2 * time.Hour
++	flowTTLTCPDone = time.Minute
++	flowTTLUDP     = 3 * time.Minute
++	flowSweepEvery = time.Minute
++
++	// splitQueue is how many packets from Android wait for WireGuard, and
++	// kernelQueueWait how long a packet waits for room before it is dropped.
++	splitQueue      = 256
++	kernelQueueWait = 50 * time.Millisecond
++)
++
++// pktInfo is what routing needs from an IP packet.
++type pktInfo struct {
++	src, dst         netip.Addr
++	proto            uint8
++	srcPort, dstPort uint16
++	// ports is false for a fragment past the first, or a header cut short.
++	ports    bool
++	tcpFlags uint8
++}
++
++// parsePacket reads an IPv4 or IPv6 header and the ports after it. IPv6
++// extension headers are not followed: such a packet has no ports.
++func parsePacket(p []byte) (pktInfo, bool) {
++	var pi pktInfo
++	if len(p) == 0 {
++		return pi, false
++	}
++	var l4 []byte
++	switch p[0] >> 4 {
++	case 4:
++		if len(p) < 20 {
++			return pi, false
++		}
++		ihl := int(p[0]&0x0f) * 4
++		if ihl < 20 || len(p) < ihl {
++			return pi, false
++		}
++		pi.src = netip.AddrFrom4([4]byte(p[12:16]))
++		pi.dst = netip.AddrFrom4([4]byte(p[16:20]))
++		pi.proto = p[9]
++		if binary.BigEndian.Uint16(p[6:8])&0x1fff != 0 {
++			return pi, true
++		}
++		l4 = p[ihl:]
++	case 6:
++		if len(p) < 40 {
++			return pi, false
++		}
++		pi.src = netip.AddrFrom16([16]byte(p[8:24]))
++		pi.dst = netip.AddrFrom16([16]byte(p[24:40]))
++		pi.proto = p[6]
++		l4 = p[40:]
++	default:
++		return pi, false
++	}
++	switch pi.proto {
++	case protoTCP:
++		if len(l4) >= 14 {
++			pi.srcPort = binary.BigEndian.Uint16(l4[0:2])
++			pi.dstPort = binary.BigEndian.Uint16(l4[2:4])
++			pi.tcpFlags = l4[13]
++			pi.ports = true
++		}
++	case protoUDP:
++		if len(l4) >= 8 {
++			pi.srcPort = binary.BigEndian.Uint16(l4[0:2])
++			pi.dstPort = binary.BigEndian.Uint16(l4[2:4])
++			pi.ports = true
++		}
++	}
++	return pi, true
++}
++
++// flowKey is a connection seen from this device: protocol, local port,
++// remote address and port.
++type flowKey struct {
++	proto  uint8
++	local  uint16
++	remote netip.AddrPort
++}
++
++func outboundKey(pi pktInfo) flowKey {
++	return flowKey{proto: pi.proto, local: pi.srcPort}.withRemote(pi.dst, pi.dstPort)
++}
++
++func inboundKey(pi pktInfo) flowKey {
++	return flowKey{proto: pi.proto, local: pi.dstPort}.withRemote(pi.src, pi.srcPort)
++}
++
++func (k flowKey) withRemote(ip netip.Addr, port uint16) flowKey {
++	k.remote = netip.AddrPortFrom(ip.Unmap(), port)
++	return k
++}
++
++// flowTable remembers connections until they go quiet.
++type flowTable struct {
++	mu    sync.Mutex
++	until map[flowKey]time.Time
++	swept time.Time
++}
++
++func (t *flowTable) touch(k flowKey, ttl time.Duration) {
++	now := time.Now()
++	t.mu.Lock()
++	defer t.mu.Unlock()
++	if t.until == nil {
++		t.until = make(map[flowKey]time.Time)
++	}
++	t.until[k] = now.Add(ttl)
++	t.sweepLocked(now)
++}
++
++// shorten lets a closing connection go sooner, never later.
++func (t *flowTable) shorten(k flowKey, ttl time.Duration) {
++	deadline := time.Now().Add(ttl)
++	t.mu.Lock()
++	if cur, ok := t.until[k]; ok && cur.After(deadline) {
++		t.until[k] = deadline
++	}
++	t.mu.Unlock()
++}
++
++func (t *flowTable) has(k flowKey) bool {
++	t.mu.Lock()
++	defer t.mu.Unlock()
++	until, ok := t.until[k]
++	if !ok {
++		return false
++	}
++	if time.Now().After(until) {
++		delete(t.until, k)
++		return false
++	}
++	return true
++}
++
++func (t *flowTable) remove(k flowKey) {
++	t.mu.Lock()
++	delete(t.until, k)
++	t.mu.Unlock()
++}
++
++func (t *flowTable) sweepLocked(now time.Time) {
++	if now.Sub(t.swept) < flowSweepEvery {
++		return
++	}
++	t.swept = now
++	for k, until := range t.until {
++		if now.After(until) {
++			delete(t.until, k)
++		}
++	}
++}
++
++// noteTCP keeps a TCP connection's entry as its flags say: gone on a
++// reset, short-lived once it closes, refreshed otherwise.
++func (t *flowTable) noteTCP(k flowKey, flags uint8) {
++	switch {
++	case flags&tcpFlagRST != 0:
++		t.remove(k)
++	case flags&tcpFlagFIN != 0:
++		t.shorten(k, flowTTLTCPDone)
++	default:
++		t.touch(k, flowTTLTCP)
++	}
++}
++
++// splitTUN is the engine's tun device with the VPN beside the netstack.
++// Without a VPN attached it passes everything to and from the netstack.
++type splitTUN struct {
++	ns    tun.Device
++	local []netip.Addr
++
++	in     chan []byte
++	done   chan struct{}
++	nsDead chan struct{}
++	nsErr  error
++	once   sync.Once
++
++	// nsFlows: connections the netstack opened. kernelUDP: UDP flows
++	// Android's apps opened, so that their answers count as answers.
++	nsFlows   flowTable
++	kernelUDP flowTable
++}
++
++func newSplitTUN(ns tun.Device, local []netip.Addr) *splitTUN {
++	s := &splitTUN{
++		ns:     ns,
++		local:  local,
++		in:     make(chan []byte, splitQueue),
++		done:   make(chan struct{}),
++		nsDead: make(chan struct{}),
++	}
++	go s.pumpNetstack()
++	return s
++}
++
++func (s *splitTUN) pumpNetstack() {
++	buf := make([]byte, 65535)
++	bufs, sizes := [][]byte{buf}, []int{0}
++	for {
++		n, err := s.ns.Read(bufs, sizes, 0)
++		if err != nil {
++			s.nsErr = err
++			close(s.nsDead)
++			return
++		}
++		for i := 0; i < n; i++ {
++			p := append([]byte(nil), bufs[i][:sizes[i]]...)
++			s.noteNetstack(p)
++			select {
++			case s.in <- p:
++			case <-s.done:
++				return
++			}
++		}
++	}
++}
++
++func (s *splitTUN) noteNetstack(p []byte) {
++	pi, ok := parsePacket(p)
++	if !ok || !pi.ports {
++		return
++	}
++	k := outboundKey(pi)
++	switch pi.proto {
++	case protoTCP:
++		s.nsFlows.noteTCP(k, pi.tcpFlags)
++	case protoUDP:
++		s.nsFlows.touch(k, flowTTLUDP)
++	}
++}
++
++// fromKernel queues a packet an app sent to a peer; false when it was
++// dropped.
++func (s *splitTUN) fromKernel(p []byte, pi pktInfo) bool {
++	if pi.ports {
++		k := outboundKey(pi)
++		// Android owns this connection now, whatever the netstack had.
++		s.nsFlows.remove(k)
++		if pi.proto == protoUDP {
++			s.kernelUDP.touch(k, flowTTLUDP)
++		}
++	}
++	select {
++	case s.in <- p:
++		return true
++	default:
++	}
++	t := time.NewTimer(kernelQueueWait)
++	defer t.Stop()
++	select {
++	case s.in <- p:
++		return true
++	case <-t.C:
++	case <-s.done:
++	case <-s.nsDead:
++	}
++	return false
++}
++
++func (s *splitTUN) Read(bufs [][]byte, sizes []int, offset int) (int, error) {
++	select {
++	case p := <-s.in:
++		sizes[0] = copy(bufs[0][offset:], p)
++		return 1, nil
++	case <-s.nsDead:
++		return 0, s.nsErr
++	case <-s.done:
++		return 0, os.ErrClosed
++	}
++}
++
++func (s *splitTUN) Write(bufs [][]byte, offset int) (int, error) {
++	var toNS [][]byte
++	for _, b := range bufs {
++		if !s.toKernel(b[offset:]) {
++			toNS = append(toNS, b)
++		}
++	}
++	if len(toNS) > 0 {
++		if _, err := s.ns.Write(toNS, offset); err != nil {
++			return 0, err
++		}
++	}
++	return len(bufs), nil
++}
++
++// toKernel takes a packet from WireGuard that is Android's: written to the
++// VPN interface, or dropped when the device does not take new connections.
++// false leaves it to the netstack.
++func (s *splitTUN) toKernel(p []byte) bool {
++	k := attachedKernel()
++	if k == nil {
++		return false
++	}
++	pi, ok := parsePacket(p)
++	if !ok || !s.isLocal(pi.dst) {
++		return false
++	}
++	if pi.ports && (pi.proto == protoTCP || pi.proto == protoUDP) {
++		key := inboundKey(pi)
++		if s.nsFlows.has(key) {
++			if pi.proto == protoTCP {
++				s.nsFlows.noteTCP(key, pi.tcpFlags)
++			}
++			return false
++		}
++	}
++	if admitInbound(pi, &s.kernelUDP) {
++		k.write(p)
++	}
++	return true
++}
++
++func (s *splitTUN) isLocal(ip netip.Addr) bool {
++	for _, a := range s.local {
++		if a == ip {
++			return true
++		}
++	}
++	return false
++}
++
++// admitInbound decides a packet for Android that answers nothing the
++// netstack opened: answers to the apps' own connections pass, and a new
++// connection from a peer only when the device takes them (Access to the
++// phone), never to the app's own proxies. Pings pass, as the netstack
++// answers them without the VPN.
++func admitInbound(pi pktInfo, kernelUDP *flowTable) bool {
++	switch pi.proto {
++	case protoTCP:
++		if !pi.ports || pi.tcpFlags&(tcpFlagSYN|tcpFlagACK) != tcpFlagSYN {
++			return true
++		}
++		return inboundAllowed(pi.dstPort)
++	case protoUDP:
++		if !pi.ports {
++			return vpnInbound()
++		}
++		if kernelUDP.has(inboundKey(pi)) {
++			return true
++		}
++		return inboundAllowed(pi.dstPort)
++	case protoICMP, protoICMPv6:
++		return true
++	default:
++		return vpnInbound()
++	}
++}
++
++func (s *splitTUN) Close() error {
++	s.once.Do(func() {
++		close(s.done)
++		releaseSplit(s)
++	})
++	return s.ns.Close()
++}
++
++func (s *splitTUN) File() *os.File           { return nil }
++func (s *splitTUN) MTU() (int, error)        { return s.ns.MTU() }
++func (s *splitTUN) Name() (string, error)    { return s.ns.Name() }
++func (s *splitTUN) Events() <-chan tun.Event { return s.ns.Events() }
++func (s *splitTUN) BatchSize() int           { return 1 }
+--- netbird_orig/client/iface/netstack/vpn_other.go
++++ netbird_src/client/iface/netstack/vpn_other.go
+@@ -0,0 +1,25 @@
++//go:build !linux
++
++package netstack
++
++import (
++	"errors"
++	"net/netip"
++
++	"golang.zx2c4.com/wireguard/tun"
++)
++
++// VPNAttached reports whether an Android VPN interface carries the
++// device's traffic; BirdSocks' daemon is a Linux binary, so never here.
++func VPNAttached() bool { return false }
++
++// WrapForVPN returns dev: only the Linux daemon takes a VPN interface.
++func WrapForVPN(dev tun.Device, _ []netip.Addr) tun.Device { return dev }
++
++// DirectEgressFactory is the Linux daemon's (vpn.go).
++type DirectEgressFactory any
++
++// ServeVPN is Linux only.
++func ServeVPN(string, DirectEgressFactory) error {
++	return errors.New("a VPN interface is taken on Linux only")
++}
+--- netbird_orig/client/iface/netstack/vpn_test.go
++++ netbird_src/client/iface/netstack/vpn_test.go
+@@ -0,0 +1,432 @@
++//go:build linux
++
++package netstack
++
++import (
++	"encoding/binary"
++	"encoding/json"
++	"net"
++	"net/netip"
++	"os"
++	"path/filepath"
++	"syscall"
++	"testing"
++	"time"
++
++	"github.com/stretchr/testify/assert"
++	"github.com/stretchr/testify/require"
++	"golang.org/x/sys/unix"
++	"golang.zx2c4.com/wireguard/tun"
++	"gvisor.dev/gvisor/pkg/tcpip"
++	"gvisor.dev/gvisor/pkg/tcpip/checksum"
++	"gvisor.dev/gvisor/pkg/tcpip/header"
++
++	"github.com/netbirdio/netbird/client/firewall/uspfilter/forwarder"
++	"github.com/netbirdio/netbird/client/iface/wgaddr"
++)
++
++var (
++	vpnSelf = netip.MustParseAddr("100.92.1.5")
++	vpnPeer = netip.MustParseAddr("100.92.7.9")
++)
++
++// fakeNS stands in for the netstack: what it sends is fed to out, what
++// reaches it lands in got.
++type fakeNS struct {
++	out    chan []byte
++	got    chan []byte
++	events chan tun.Event
++	closed chan struct{}
++}
++
++func newFakeNS() *fakeNS {
++	return &fakeNS{out: make(chan []byte, 8), got: make(chan []byte, 8), events: make(chan tun.Event), closed: make(chan struct{})}
++}
++
++func (f *fakeNS) Read(bufs [][]byte, sizes []int, offset int) (int, error) {
++	select {
++	case p := <-f.out:
++		sizes[0] = copy(bufs[0][offset:], p)
++		return 1, nil
++	case <-f.closed:
++		return 0, os.ErrClosed
++	}
++}
++
++func (f *fakeNS) Write(bufs [][]byte, offset int) (int, error) {
++	for _, b := range bufs {
++		f.got <- append([]byte(nil), b[offset:]...)
++	}
++	return len(bufs), nil
++}
++
++func (f *fakeNS) File() *os.File           { return nil }
++func (f *fakeNS) MTU() (int, error)        { return 1280, nil }
++func (f *fakeNS) Name() (string, error)    { return "fake", nil }
++func (f *fakeNS) Events() <-chan tun.Event { return f.events }
++func (f *fakeNS) BatchSize() int           { return 1 }
++func (f *fakeNS) Close() error {
++	select {
++	case <-f.closed:
++	default:
++		close(f.closed)
++	}
++	return nil
++}
++
++// ipv4Packet builds an IPv4 packet with a TCP or UDP header and valid
++// checksums.
++func ipv4Packet(t *testing.T, proto uint8, src, dst netip.AddrPort, flags uint8, payload []byte) []byte {
++	t.Helper()
++	var l4 []byte
++	switch proto {
++	case protoTCP:
++		l4 = make([]byte, header.TCPMinimumSize+len(payload))
++		tcp := header.TCP(l4)
++		tcp.Encode(&header.TCPFields{
++			SrcPort:    src.Port(),
++			DstPort:    dst.Port(),
++			SeqNum:     1000,
++			DataOffset: header.TCPMinimumSize,
++			Flags:      header.TCPFlags(flags),
++			WindowSize: 65535,
++		})
++		copy(l4[header.TCPMinimumSize:], payload)
++	case protoUDP:
++		l4 = make([]byte, header.UDPMinimumSize+len(payload))
++		udp := header.UDP(l4)
++		udp.Encode(&header.UDPFields{SrcPort: src.Port(), DstPort: dst.Port(), Length: uint16(len(l4))})
++		copy(l4[header.UDPMinimumSize:], payload)
++	case protoICMP:
++		l4 = make([]byte, 8)
++		l4[0] = 8 // echo request
++	}
++	p := make([]byte, header.IPv4MinimumSize+len(l4))
++	ip := header.IPv4(p)
++	ip.Encode(&header.IPv4Fields{
++		TotalLength: uint16(len(p)),
++		TTL:         64,
++		Protocol:    proto,
++		SrcAddr:     tcpip.AddrFrom4(src.Addr().As4()),
++		DstAddr:     tcpip.AddrFrom4(dst.Addr().As4()),
++	})
++	ip.SetChecksum(^ip.CalculateChecksum())
++	copy(p[header.IPv4MinimumSize:], l4)
++	srcA, dstA := tcpip.AddrFrom4(src.Addr().As4()), tcpip.AddrFrom4(dst.Addr().As4())
++	switch proto {
++	case protoTCP:
++		tcp := header.TCP(p[header.IPv4MinimumSize:])
++		xsum := header.PseudoHeaderChecksum(header.TCPProtocolNumber, srcA, dstA, uint16(len(l4)))
++		xsum = checksum.Checksum(payload, xsum)
++		tcp.SetChecksum(^tcp.CalculateChecksum(xsum))
++	case protoUDP:
++		udp := header.UDP(p[header.IPv4MinimumSize:])
++		xsum := header.PseudoHeaderChecksum(header.UDPProtocolNumber, srcA, dstA, uint16(len(l4)))
++		xsum = checksum.Checksum(payload, xsum)
++		udp.SetChecksum(^udp.CalculateChecksum(xsum))
++	}
++	return p
++}
++
++// fakeKernel attaches one end of a SEQPACKET pair as the VPN interface,
++// with no forwarder, and returns the other end: Android's side.
++func fakeKernel(t *testing.T) *os.File {
++	t.Helper()
++	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
++	require.NoError(t, err)
++	require.NoError(t, unix.SetNonblock(fds[0], true))
++	require.NoError(t, unix.SetNonblock(fds[1], true))
++	k := &kernelTun{f: os.NewFile(uintptr(fds[0]), "vpn")}
++	vpnKernel.Store(k)
++	t.Cleanup(func() {
++		vpnKernel.CompareAndSwap(k, nil)
++		k.closed.Store(true)
++		_ = k.f.Close()
++	})
++	android := os.NewFile(uintptr(fds[1]), "android")
++	t.Cleanup(func() { _ = android.Close() })
++	return android
++}
++
++func readPacket(t *testing.T, f *os.File, wait time.Duration) []byte {
++	t.Helper()
++	require.NoError(t, f.SetReadDeadline(time.Now().Add(wait)))
++	buf := make([]byte, 65535)
++	n, err := f.Read(buf)
++	if err != nil {
++		return nil
++	}
++	return buf[:n]
++}
++
++func recvNS(ns *fakeNS, wait time.Duration) []byte {
++	select {
++	case p := <-ns.got:
++		return p
++	case <-time.After(wait):
++		return nil
++	}
++}
++
++func setInbound(t *testing.T, on bool, own ...uint16) {
++	t.Helper()
++	prevIn, prevPorts := vpnInbound, vpnOwnPorts
++	ports := map[uint16]bool{}
++	for _, p := range own {
++		ports[p] = true
++	}
++	vpnInbound = func() bool { return on }
++	vpnOwnPorts = func() map[uint16]bool { return ports }
++	t.Cleanup(func() { vpnInbound, vpnOwnPorts = prevIn, prevPorts })
++}
++
++func TestParsePacket(t *testing.T) {
++	p := ipv4Packet(t, protoTCP, netip.AddrPortFrom(vpnPeer, 40000), netip.AddrPortFrom(vpnSelf, 1716), tcpFlagSYN, nil)
++	pi, ok := parsePacket(p)
++	require.True(t, ok)
++	assert.Equal(t, vpnPeer, pi.src)
++	assert.Equal(t, vpnSelf, pi.dst)
++	assert.Equal(t, uint8(protoTCP), pi.proto)
++	assert.Equal(t, uint16(40000), pi.srcPort)
++	assert.Equal(t, uint16(1716), pi.dstPort)
++	assert.Equal(t, uint8(tcpFlagSYN), pi.tcpFlags)
++	assert.True(t, pi.ports)
++
++	// A later fragment carries no ports.
++	binary.BigEndian.PutUint16(p[6:8], 100)
++	pi, ok = parsePacket(p)
++	require.True(t, ok)
++	assert.False(t, pi.ports, "fragment offset 100 has no transport header")
++
++	_, ok = parsePacket([]byte{0x45, 0})
++	assert.False(t, ok, "a cut header is not a packet")
++
++	v6 := make([]byte, 48)
++	v6[0] = 0x60
++	v6[6] = protoUDP
++	copy(v6[8:24], netip.MustParseAddr("fd00::1").AsSlice())
++	copy(v6[24:40], netip.MustParseAddr("fd00::2").AsSlice())
++	binary.BigEndian.PutUint16(v6[40:42], 53)
++	binary.BigEndian.PutUint16(v6[42:44], 5353)
++	pi, ok = parsePacket(v6)
++	require.True(t, ok)
++	assert.Equal(t, netip.MustParseAddr("fd00::2"), pi.dst)
++	assert.Equal(t, uint16(5353), pi.dstPort)
++}
++
++func TestSplitWithoutVPNIsTheNetstack(t *testing.T) {
++	vpnKernel.Store(nil)
++	ns := newFakeNS()
++	s := newSplitTUN(ns, []netip.Addr{vpnSelf})
++	defer s.Close()
++
++	syn := ipv4Packet(t, protoTCP, netip.AddrPortFrom(vpnPeer, 40000), netip.AddrPortFrom(vpnSelf, 22), tcpFlagSYN, nil)
++	_, err := s.Write([][]byte{syn}, 0)
++	require.NoError(t, err)
++	assert.Equal(t, syn, recvNS(ns, time.Second), "with no VPN a new connection goes to the netstack")
++
++	out := ipv4Packet(t, protoUDP, netip.AddrPortFrom(vpnSelf, 5000), netip.AddrPortFrom(vpnPeer, 53), 0, []byte("q"))
++	ns.out <- out
++	bufs, sizes := [][]byte{make([]byte, 2000)}, []int{0}
++	n, err := s.Read(bufs, sizes, 0)
++	require.NoError(t, err)
++	require.Equal(t, 1, n)
++	assert.Equal(t, out, bufs[0][:sizes[0]], "the netstack's packets reach WireGuard unchanged")
++}
++
++func TestSplitRoutesPeersToAndroid(t *testing.T) {
++	android := fakeKernel(t)
++	setInbound(t, true, 48125)
++	ns := newFakeNS()
++	s := newSplitTUN(ns, []netip.Addr{vpnSelf})
++	defer s.Close()
++	peer := func(port uint16) netip.AddrPort { return netip.AddrPortFrom(vpnPeer, port) }
++	self := func(port uint16) netip.AddrPort { return netip.AddrPortFrom(vpnSelf, port) }
++
++	// The netstack opens a connection; the peer's answer goes back to it.
++	ns.out <- ipv4Packet(t, protoTCP, self(41000), peer(443), tcpFlagSYN, nil)
++	bufs, sizes := [][]byte{make([]byte, 2000)}, []int{0}
++	_, err := s.Read(bufs, sizes, 0)
++	require.NoError(t, err)
++	synAck := ipv4Packet(t, protoTCP, peer(443), self(41000), tcpFlagSYN|tcpFlagACK, nil)
++	_, err = s.Write([][]byte{synAck}, 0)
++	require.NoError(t, err)
++	assert.Equal(t, synAck, recvNS(ns, time.Second), "an answer to the netstack's connection goes to the netstack")
++
++	// A peer opens a connection to an app: Android gets it, with the peer's address.
++	syn := ipv4Packet(t, protoTCP, peer(50000), self(1716), tcpFlagSYN, nil)
++	_, err = s.Write([][]byte{syn}, 0)
++	require.NoError(t, err)
++	assert.Equal(t, syn, readPacket(t, android, time.Second), "a new connection from a peer reaches Android's apps")
++
++	// A datagram to an app (KDE Connect's discovery) too.
++	hello := ipv4Packet(t, protoUDP, peer(1716), self(1716), 0, []byte(`{"type":"kdeconnect.identity"}`))
++	_, err = s.Write([][]byte{hello}, 0)
++	require.NoError(t, err)
++	assert.Equal(t, hello, readPacket(t, android, time.Second), "a peer's datagram reaches Android's apps")
++
++	// Never the app's own proxy.
++	toProxy := ipv4Packet(t, protoTCP, peer(50001), self(48125), tcpFlagSYN, nil)
++	_, err = s.Write([][]byte{toProxy}, 0)
++	require.NoError(t, err)
++	assert.Nil(t, readPacket(t, android, 200*time.Millisecond), "the SOCKS5 port stays closed to peers")
++	assert.Nil(t, recvNS(ns, 50*time.Millisecond), "and the netstack does not get it either")
++}
++
++func TestSplitWithoutAccessAdmitsOnlyAnswers(t *testing.T) {
++	android := fakeKernel(t)
++	setInbound(t, false)
++	ns := newFakeNS()
++	s := newSplitTUN(ns, []netip.Addr{vpnSelf})
++	defer s.Close()
++	peer := func(port uint16) netip.AddrPort { return netip.AddrPortFrom(vpnPeer, port) }
++	self := func(port uint16) netip.AddrPort { return netip.AddrPortFrom(vpnSelf, port) }
++
++	syn := ipv4Packet(t, protoTCP, peer(50000), self(1716), tcpFlagSYN, nil)
++	_, _ = s.Write([][]byte{syn}, 0)
++	assert.Nil(t, readPacket(t, android, 200*time.Millisecond), "no new connections without Access to the phone")
++
++	stray := ipv4Packet(t, protoUDP, peer(1716), self(1716), 0, []byte("x"))
++	_, _ = s.Write([][]byte{stray}, 0)
++	assert.Nil(t, readPacket(t, android, 200*time.Millisecond), "nor datagrams nobody asked for")
++
++	// An app asks a peer over UDP: the answer is let in.
++	query := ipv4Packet(t, protoUDP, self(33000), peer(53), 0, []byte("q"))
++	pi, _ := parsePacket(query)
++	require.True(t, s.fromKernel(query, pi))
++	answer := ipv4Packet(t, protoUDP, peer(53), self(33000), 0, []byte("a"))
++	_, _ = s.Write([][]byte{answer}, 0)
++	assert.Equal(t, answer, readPacket(t, android, time.Second), "an answer to an app's datagram gets in")
++
++	// An app's own TCP connection: everything after the SYN passes.
++	ack := ipv4Packet(t, protoTCP, peer(443), self(42000), tcpFlagSYN|tcpFlagACK, nil)
++	_, _ = s.Write([][]byte{ack}, 0)
++	assert.Equal(t, ack, readPacket(t, android, time.Second), "the apps' own connections are answered")
++
++	ping := ipv4Packet(t, protoICMP, peer(0), self(0), 0, nil)
++	_, _ = s.Write([][]byte{ping}, 0)
++	assert.Equal(t, ping, readPacket(t, android, time.Second), "pings are answered, as in proxy mode")
++}
++
++func TestKernelOwnsWhatItSends(t *testing.T) {
++	fakeKernel(t)
++	setInbound(t, false)
++	ns := newFakeNS()
++	s := newSplitTUN(ns, []netip.Addr{vpnSelf})
++	defer s.Close()
++	self, peer := netip.AddrPortFrom(vpnSelf, 41000), netip.AddrPortFrom(vpnPeer, 443)
++
++	// The netstack used the 4-tuple once; now an app does.
++	s.noteNetstack(ipv4Packet(t, protoTCP, self, peer, tcpFlagSYN, nil))
++	p := ipv4Packet(t, protoTCP, self, peer, tcpFlagSYN, nil)
++	pi, _ := parsePacket(p)
++	s.fromKernel(p, pi)
++	assert.False(t, s.nsFlows.has(inboundKey(mustParse(t, ipv4Packet(t, protoTCP, peer, self, tcpFlagACK, nil)))),
++		"the answers go to the app that sent last")
++}
++
++func mustParse(t *testing.T, p []byte) pktInfo {
++	t.Helper()
++	pi, ok := parsePacket(p)
++	require.True(t, ok)
++	return pi
++}
++
++func TestFlowTableForgets(t *testing.T) {
++	var ft flowTable
++	k := flowKey{proto: protoTCP, local: 1, remote: netip.AddrPortFrom(vpnPeer, 2)}
++	ft.touch(k, time.Hour)
++	assert.True(t, ft.has(k))
++	ft.noteTCP(k, tcpFlagFIN)
++	assert.True(t, ft.has(k), "a closing connection lingers")
++	ft.noteTCP(k, tcpFlagRST)
++	assert.False(t, ft.has(k), "a reset one is gone")
++	ft.touch(k, -time.Second)
++	assert.False(t, ft.has(k), "an expired one is gone")
++}
++
++// TestServeVPNEndToEnd hands a VPN interface over the socket as the app
++// does and asks the VPN's resolver through it.
++func TestServeVPNEndToEnd(t *testing.T) {
++	t.Setenv(EnvTunDNSAddress, "198.18.0.2")
++	prev := tunDNSResolve
++	tunDNSResolve = func(q []byte) []byte { return append(append([]byte(nil), q...), "answer"...) }
++	t.Cleanup(func() { tunDNSResolve = prev; detachVPN() })
++
++	sock := filepath.Join(t.TempDir(), "vpn.sock")
++	require.NoError(t, ServeVPN(sock, testDirect))
++
++	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
++	require.NoError(t, err)
++	require.NoError(t, unix.SetNonblock(fds[1], true))
++	android := os.NewFile(uintptr(fds[1]), "android")
++	defer android.Close()
++
++	reply := vpnCall(t, sock, vpnRequest{Op: "attach", MTU: 1280, Addrs: []string{vpnSelf.String()}}, fds[0])
++	require.Empty(t, reply.Error)
++	require.True(t, VPNAttached())
++
++	query := append([]byte{0x12, 0x34}, make([]byte, 10)...)
++	pkt := ipv4Packet(t, protoUDP, netip.AddrPortFrom(vpnSelf, 35000), netip.MustParseAddrPort("198.18.0.2:53"), 0, query)
++	_, err = android.Write(pkt)
++	require.NoError(t, err)
++
++	got := readPacket(t, android, 5*time.Second)
++	require.NotNil(t, got, "the resolver answers through the VPN interface")
++	pi := mustParse(t, got)
++	assert.Equal(t, netip.MustParseAddr("198.18.0.2"), pi.src)
++	assert.Equal(t, vpnSelf, pi.dst)
++	assert.Equal(t, uint16(35000), pi.dstPort)
++	assert.Equal(t, "answer", string(got[len(got)-6:]))
++
++	reply = vpnCall(t, sock, vpnRequest{Op: "detach"}, -1)
++	require.Empty(t, reply.Error)
++	assert.False(t, VPNAttached())
++}
++
++func TestServeVPNRefusesBadRequests(t *testing.T) {
++	sock := filepath.Join(t.TempDir(), "vpn.sock")
++	require.NoError(t, ServeVPN(sock, testDirect))
++	reply := vpnCall(t, sock, vpnRequest{Op: "attach", MTU: 1280, Addrs: []string{vpnSelf.String()}}, -1)
++	assert.Contains(t, reply.Error, "one descriptor", "an attach needs the interface")
++
++	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
++	require.NoError(t, err)
++	defer unix.Close(fds[1])
++	reply = vpnCall(t, sock, vpnRequest{Op: "attach", MTU: 1280, Addrs: []string{"fd00::1"}}, fds[0])
++	assert.Contains(t, reply.Error, "IPv4", "an interface without an IPv4 address is refused")
++	assert.False(t, VPNAttached())
++}
++
++func vpnCall(t *testing.T, sock string, req vpnRequest, fd int) vpnReply {
++	t.Helper()
++	c, err := net.DialUnix("unixpacket", nil, &net.UnixAddr{Name: sock, Net: "unixpacket"})
++	require.NoError(t, err)
++	defer c.Close()
++	b, err := json.Marshal(req)
++	require.NoError(t, err)
++	var oob []byte
++	if fd >= 0 {
++		oob = syscall.UnixRights(fd)
++	}
++	_, _, err = c.WriteMsgUnix(b, oob, nil)
++	require.NoError(t, err)
++	if fd >= 0 {
++		_ = syscall.Close(fd)
++	}
++	require.NoError(t, c.SetReadDeadline(time.Now().Add(5*time.Second)))
++	buf := make([]byte, 4096)
++	n, err := c.Read(buf)
++	require.NoError(t, err)
++	var r vpnReply
++	require.NoError(t, json.Unmarshal(buf[:n], &r))
++	return r
++}
++
++func testDirect(addr wgaddr.Address, out PacketWriter, dial DialFunc, mtu uint16) (DirectEgress, error) {
++	f, err := forwarder.NewDirect(addr, out, dial, mtu)
++	if err != nil {
++		return nil, err
++	}
++	return f, nil
++}
+--- netbird_orig/client/firewall/uspfilter/filter.go
++++ netbird_src/client/firewall/uspfilter/filter.go
+@@ -1939,6 +1939,12 @@
+ 		return false
+ 	}
+ 
++	// BirdSocks: with the app's VPN attached the device has a native
++	// interface after all; packets for it go there, with the peer's address.
++	if m.netstack && netstack.VPNAttached() {
++		return false
++	}
++
+ 	// netstack always needs to forward because it's lacking a native interface
+ 	// exception for registered netstack services, those should go to netstack listeners
+ 	if m.netstack {

@@ -104,9 +104,14 @@ make_patch 06-connect-faster.patch \
 # (InboundAccess), a connection to the device's NetBird address goes on to
 # 127.0.0.1 at the same port — except the app's own proxies, which would
 # otherwise give every peer the ACLs let in a free exit through the phone.
+# The forwarder also takes another sink for its answers and another dialer,
+# so patch 09's VPN mode ends the apps' direct traffic in one (NewDirect).
 make_patch 07-inbound-forwarding.patch \
     client/firewall/uspfilter/forwarder/birdsocks.go \
     client/firewall/uspfilter/forwarder/birdsocks_test.go \
+    client/firewall/uspfilter/forwarder/birdsocks_vpn.go \
+    client/firewall/uspfilter/forwarder/forwarder.go \
+    client/firewall/uspfilter/forwarder/endpoint.go \
     client/firewall/uspfilter/forwarder/tcp.go \
     client/firewall/uspfilter/forwarder/udp.go
 
@@ -118,3 +123,16 @@ make_patch 08-control-proxy.patch \
     client/net/birdsocks_ctlproxy.go \
     client/net/birdsocks_ctlproxy_test.go \
     shared/relay/client/dialer/ws/ws.go
+
+# The app's VPN on the device's NetBird address, beside the netstack: the
+# app hands the interface over a unix socket, apps' packets to peers go to
+# WireGuard as they are, the rest ends in patch 07's forwarder, and peers
+# reach the phone's apps with their own address. uspfilter stops sending
+# local traffic to 127.0.0.1 while the VPN is attached. The device wraps
+# its netstack in patch 01's device_netstack.go (WrapForVPN).
+make_patch 09-native-vpn.patch \
+    client/iface/netstack/vpn.go \
+    client/iface/netstack/vpn_split.go \
+    client/iface/netstack/vpn_other.go \
+    client/iface/netstack/vpn_test.go \
+    client/firewall/uspfilter/filter.go

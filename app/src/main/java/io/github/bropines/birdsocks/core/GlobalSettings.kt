@@ -179,7 +179,7 @@ object GlobalSettings {
 
     /** What the app keeps per profile follows a rename. */
     fun renameProfileKeys(context: Context, from: String, to: String) {
-        for (key in listOf("account_email_", "dns_labels_", "tun_overlay_")) {
+        for (key in listOf("account_email_", "dns_labels_", "tun_overlay_", "tun_self_")) {
             val v = getString(context, key + from, "")
             prefs(context).edit().remove(key + from).apply()
             if (v.isNotEmpty()) setString(context, key + to, v)
@@ -188,7 +188,8 @@ object GlobalSettings {
 
     /** ...and goes with the profile. */
     fun removeProfileKeys(context: Context, profile: String) {
-        prefs(context).edit().remove("account_email_$profile").remove("dns_labels_$profile").remove("tun_overlay_$profile").apply()
+        prefs(context).edit().remove("account_email_$profile").remove("dns_labels_$profile").remove("tun_overlay_$profile")
+            .remove("tun_self_$profile").apply()
     }
     /** NAME=value lines handed to the daemon as they are. */
     fun getExtraEnv(context: Context): String = getString(context, "extra_env", "")
@@ -231,6 +232,18 @@ object GlobalSettings {
     /** ::/0 into the VPN beside 0.0.0.0/0; NetBird's own IPv6 goes in regardless. */
     fun isTunIpv6Enabled(context: Context): Boolean = getBoolean(context, "tun_ipv6_enabled", false)
     fun setTunIpv6Enabled(context: Context, on: Boolean) = setBoolean(context, "tun_ipv6_enabled", on)
+
+    /** The VPN on the device's NetBird address, its packets handed to the daemon as they are. */
+    const val TUN_ENGINE_NATIVE = "native"
+    /** The VPN on its own address, fed into the SOCKS5 proxy by hev-socks5-tunnel. */
+    const val TUN_ENGINE_SOCKS = "socks"
+    fun getTunEngine(context: Context): String =
+        if (getString(context, "tun_engine", TUN_ENGINE_NATIVE) == TUN_ENGINE_SOCKS) TUN_ENGINE_SOCKS else TUN_ENGINE_NATIVE
+    fun setTunEngine(context: Context, engine: String) = setString(context, "tun_engine", engine)
+    fun isTunNative(context: Context): Boolean = getTunEngine(context) == TUN_ENGINE_NATIVE
+    /** The device's NetBird addresses last seen under [profile], "ip,ipv6": the native VPN comes up on them before the first status. */
+    fun getTunSelf(context: Context, profile: String): String = getString(context, "tun_self_$profile", "")
+    fun setTunSelf(context: Context, profile: String, addrs: String) = setString(context, "tun_self_$profile", addrs)
 
     /**
      * Apps that bypass the VPN unless the user changed the list: banks and

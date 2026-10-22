@@ -4,6 +4,7 @@
 
 ### Added
 - Support the project: a link to Boosty in About and in Settings → About.
+- A native VPN engine, now the default: the tunnel takes the device's NetBird address, so apps reach peers as the phone itself, ping works, and peers reach apps on the phone with their own address (KDE Connect and the like). The engine through the SOCKS5 proxy stays as a choice.
 
 ## [0.2.0] - 2026-10-07
 

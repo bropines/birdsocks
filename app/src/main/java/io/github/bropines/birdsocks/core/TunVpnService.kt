@@ -36,8 +36,14 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 /**
- * VPN (TUN) mode: Android's VPN fed into BirdSocks' own SOCKS5 proxy by
- * hev-socks5-tunnel (native, JNI).
+ * VPN (TUN) mode, with two engines ([GlobalSettings.getTunEngine]):
+ *
+ * - **Native** (the default): the interface takes the device's NetBird
+ *   address and goes to the daemon ([Appctr.attachVPN]), which hands the
+ *   apps' packets to WireGuard as they are and ends the rest itself
+ *   (netstack/vpn.go). Peers reach the phone's apps with their own address.
+ * - **Through the proxy**: the interface on an address of its own, fed into
+ *   BirdSocks' SOCKS5 proxy by hev-socks5-tunnel (native, JNI).
  *
  * - **Follows the daemon.** NetbirdService starts it once the daemon answers
  *   ([start]) and stops it before every daemon stop, restart or after a
@@ -60,6 +66,8 @@ class TunVpnService : VpnService() {
         const val ACTION_START = "io.github.bropines.birdsocks.TUN_START"
         const val ACTION_STOP = "io.github.bropines.birdsocks.TUN_STOP"
         const val TUN_MTU = 1500
+        /** The native interface's MTU unless the profile sets NetBird's: WireGuard's own default. */
+        const val NATIVE_MTU = 1280
         private const val TAG = "TunVpnService"
         private const val CHANNEL_ID = "tun"
         private const val NOTIF_CONSENT = 7
@@ -99,6 +107,9 @@ class TunVpnService : VpnService() {
             }
         }
 
+        /** Whether VPN mode can run with the chosen engine: hev is a native library that may be missing. */
+        fun isAvailable(context: Context): Boolean = GlobalSettings.isTunNative(context) || nativeLoaded
+
         /**
          * Brings the VPN up, or makes it re-read its settings, when TUN mode
          * is on and the daemon runs; otherwise nothing. Without the VPN
@@ -106,7 +117,7 @@ class TunVpnService : VpnService() {
          * the background).
          */
         fun start(context: Context) {
-            if (!GlobalSettings.isTunModeEnabled(context) || !nativeLoaded || !NetbirdState.isRunning) return
+            if (!GlobalSettings.isTunModeEnabled(context) || !isAvailable(context) || !NetbirdState.isRunning) return
             if (VpnService.prepare(context) != null) {
                 postConsentNeeded(context)
                 return
@@ -173,7 +184,13 @@ class TunVpnService : VpnService() {
     // Executor-confined state (the key is read from the status collector too).
     private var tunFd: ParcelFileDescriptor? = null
     private var hevRunning = false
+    /** The daemon has the interface (native engine). */
+    private var daemonAttached = false
     @Volatile private var establishedKey: String? = null
+    /** Native: no NetBird address known yet; a status with one brings the VPN up. */
+    @Volatile private var waitingForAddress = false
+    /** NetBird's interface MTU from the profile: 0 when it sets none, -1 until read. */
+    @Volatile private var profileMtu = -1
 
     /** Set by [shutdown]: this instance is on its way out, a start needs a new one. */
     @Volatile private var stopping = false
@@ -206,7 +223,7 @@ class TunVpnService : VpnService() {
                     .onFailure { Log.w(TAG, "could not start the daemon: ${it.message}") }
             }
         }
-        if (!nativeLoaded) {
+        if (!isAvailable(this)) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -261,6 +278,7 @@ class TunVpnService : VpnService() {
         if (ask != networksAsked) {
             networksAsked = ask
             scope.launch {
+                runCatching { Netbird.config() }.onSuccess { profileMtu = it.mtu.toInt() }
                 runCatching { Netbird.networks() }
                     .onSuccess { networks = it; networksLoaded = true; requestApplyIfChanged() }
             }
@@ -269,15 +287,49 @@ class TunVpnService : VpnService() {
     }
 
     private fun requestApplyIfChanged() {
-        if (establishedKey == null) return // not up: start() and the settings decide
+        if (establishedKey == null) {
+            // Not up: start() and the settings decide, unless it waits for an address.
+            if (waitingForAddress && selfAddresses() != null) requestApply(0)
+            return
+        }
         if (inputs().key != establishedKey) requestApply(REBUILD_DEBOUNCE_MS)
     }
+
+    /**
+     * The device's NetBird addresses for the native interface, IPv4 and
+     * IPv6 (or null), without prefixes: from the status, else the ones last
+     * seen under this profile. Null when none is known.
+     */
+    private fun selfAddresses(): Pair<String, String?>? {
+        val profile = NetbirdState.profile.value ?: "default"
+        val local = NetbirdState.status.value?.fullStatus?.localPeerState
+        val v4 = local?.ip.orEmpty().substringBefore('/').trim()
+        val v6 = local?.ipv6.orEmpty().substringBefore('/').trim()
+        if (v4.isNotEmpty()) {
+            val live = if (v6.isNotEmpty()) "$v4,$v6" else v4
+            if (live != GlobalSettings.getTunSelf(this, profile)) GlobalSettings.setTunSelf(this, profile, live)
+            return v4 to v6.ifEmpty { null }
+        }
+        val cached = GlobalSettings.getTunSelf(this, profile).split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        val c4 = cached.firstOrNull { ':' !in it } ?: return null
+        return c4 to cached.firstOrNull { ':' in it }
+    }
+
+    /** The native interface's MTU: NetBird's, so no packet is larger than WireGuard takes. */
+    private fun nativeMtu(): Int = profileMtu.takeIf { it in 576..NATIVE_MTU } ?: NATIVE_MTU
 
     // -------------------------------------------------------------------------
     // The VPN, on the executor
     // -------------------------------------------------------------------------
 
-    private class Inputs(val routes: TunRoutes.RouteSet, val key: String)
+    private class Inputs(
+        val routes: TunRoutes.RouteSet,
+        val key: String,
+        /** Native engine: the interface's addresses (null until NetBird gave one) and MTU. */
+        val native: Boolean,
+        val self: Pair<String, String?>?,
+        val mtu: Int,
+    )
 
     /** Everything the Builder and hev are given, and its comparable key. */
     private fun inputs(): Inputs {
@@ -291,17 +343,24 @@ class TunVpnService : VpnService() {
             local?.ip.orEmpty(), local?.ipv6.orEmpty(), cached, networks,
             GlobalSettings.isTunRouteAll(this), GlobalSettings.isTunIpv6Enabled(this)
         )
-        val key = listOf(
+        val native = GlobalSettings.isTunNative(this)
+        val self = if (native) selfAddresses() else null
+        val mtu = if (native) nativeMtu() else TUN_MTU
+        val common = listOf(
             routes.key,
             GlobalSettings.getTunExcludedApps(this).sorted().joinToString(","),
             GlobalSettings.getTunExcludedCIDRs(this),
-            GlobalSettings.getTunAddress(this),
             GlobalSettings.getTunUla(this),
+        )
+        val engine = if (native) listOf("native", self.toString(), mtu.toString())
+        else listOf(
+            "socks",
+            GlobalSettings.getTunAddress(this),
             GlobalSettings.getSocksAddress(this),
             GlobalSettings.getSocksUser(this),
             GlobalSettings.getSocksPass(this).hashCode().toString(),
-        ).joinToString("|")
-        return Inputs(routes, key)
+        )
+        return Inputs(routes, (common + engine).joinToString("|"), native, self, mtu)
     }
 
     private fun apply() {
@@ -329,8 +388,21 @@ class TunVpnService : VpnService() {
                 runBlocking { withTimeoutOrNull(3000) { runCatching { Netbird.networks() }.getOrNull() } }
                     ?.let { networks = it; networksLoaded = true }
             }
+            if (GlobalSettings.isTunNative(this) && profileMtu < 0) {
+                runBlocking { withTimeoutOrNull(3000) { runCatching { Netbird.config() }.getOrNull() } }
+                    ?.let { profileMtu = it.mtu.toInt() }
+            }
             val inputs = inputs()
             if (inputs.key == establishedKey && tunFd != null) return
+            if (inputs.native && inputs.self == null) {
+                // The interface takes the NetBird address: none until the first
+                // connect of this account. A status with one brings it up.
+                if (!waitingForAddress) Appctr.logAndroid("INFO", "CORE", "VPN: waiting for this device's NetBird address")
+                waitingForAddress = true
+                stopTunnel()
+                return
+            }
+            waitingForAddress = false
             establish(inputs)
         } catch (e: Exception) {
             Log.e(TAG, "apply failed", e)
@@ -340,15 +412,19 @@ class TunVpnService : VpnService() {
 
     private fun establish(inputs: Inputs) {
         val r = inputs.routes
-        val (addr, prefix) = parseAddress(GlobalSettings.getTunAddress(this))
-        val builder = Builder()
-            .setSession(getString(R.string.app_name))
-            .setMtu(TUN_MTU)
-            .addAddress(addr, prefix)
-            // An IPv6 address keeps IPv6 alive for the apps inside: a family
-            // with no address in a VPN is blocked for them.
-            .addAddress(GlobalSettings.getTunUla(this), 128)
-            .addDnsServer(TunRoutes.DNS_IP)
+        val builder = Builder().setSession(getString(R.string.app_name)).setMtu(inputs.mtu)
+        // An IPv6 address keeps IPv6 alive for the apps inside: a family with
+        // no address in a VPN is blocked for them. NetBird's own when it has one.
+        val v6 = inputs.self?.second ?: GlobalSettings.getTunUla(this)
+        if (inputs.native) {
+            // The device's own NetBird address: what apps send reaches peers as
+            // it is, and what peers send reaches the apps with their address.
+            builder.addAddress(inputs.self!!.first, 32)
+        } else {
+            val (addr, prefix) = parseAddress(GlobalSettings.getTunAddress(this))
+            builder.addAddress(addr, prefix)
+        }
+        builder.addAddress(v6, 128).addDnsServer(TunRoutes.DNS_IP)
         for (p in r.v4) addRoute(builder, p)
         for (p in r.v6) addRoute(builder, p)
         if (r.defaultV4) builder.addRoute("0.0.0.0", 0)
@@ -367,38 +443,84 @@ class TunVpnService : VpnService() {
             stopSelf()
             return
         }
-        val config = File(cacheDir, "tun.conf")
-        if (!writeHevConfig(config)) {
+        val swap = tunFd != null
+        val started = if (inputs.native) handToDaemon(fd, inputs.self!!.first, v6, inputs.mtu) else startHev(fd)
+        if (!started) {
             runCatching { fd.close() }
+            stopTunnel()
             return
         }
-        // The new interface is up; now hev moves to it. Stop it first, then
-        // close the old fd: lwip reads and writes the raw fd number until
-        // TProxyStopService has joined its thread, and a number closed
-        // early is reused at once by another thread's socket.
-        val swap = tunFd != null
-        if (hevRunning) {
-            runCatching { TProxyStopService() }.onFailure { Log.e(TAG, "TProxyStopService: $it") }
-            hevRunning = false
-        }
+        // The new interface carries the traffic; the old one goes.
         runCatching { tunFd?.close() }
         tunFd = fd
-        TProxyStartService(config.absolutePath, fd.fd)
-        hevRunning = true
         establishedKey = inputs.key
         routesFlow.value = r
         runningFlow.value = true
         val how = r.defaultReason?.let { "all traffic ($it)" } ?: "NetBird ranges"
-        Log.i(TAG, "VPN ${if (swap) "rebuilt" else "up"}: ${r.v4 + r.v6}, $how")
-        Appctr.logAndroid("INFO", "CORE", "VPN ${if (swap) "rebuilt" else "up"}: $how; routes ${(r.v4 + r.v6).joinToString(" ")}")
+        val engine = if (inputs.native) "on ${inputs.self!!.first}" else "through the proxy"
+        Log.i(TAG, "VPN ${if (swap) "rebuilt" else "up"} $engine: ${r.v4 + r.v6}, $how")
+        Appctr.logAndroid("INFO", "CORE", "VPN ${if (swap) "rebuilt" else "up"} $engine: $how; routes ${(r.v4 + r.v6).joinToString(" ")}")
     }
 
-    private fun stopTunnel() {
-        val wasUp = tunFd != null
+    /**
+     * Native engine: the daemon takes a duplicate of the interface and lets
+     * go of the one before; hev stops when it ran on the old one.
+     */
+    private fun handToDaemon(fd: ParcelFileDescriptor, v4: String, v6: String, mtu: Int): Boolean {
+        val dup = try {
+            fd.dup()
+        } catch (e: Exception) {
+            Appctr.logAndroid("ERROR", "CORE", "VPN: ${e.message}")
+            return false
+        }
+        try {
+            // attachVPN closes the duplicate whatever happens.
+            Appctr.attachVPN(filesDir.absolutePath, dup.detachFd().toLong(), mtu.toLong(), "$v4,$v6")
+        } catch (e: Exception) {
+            Log.e(TAG, "attachVPN: ${e.message}")
+            Appctr.logAndroid("ERROR", "CORE", "VPN: the daemon did not take the interface: ${e.message}")
+            return false
+        }
+        daemonAttached = true
+        stopHev()
+        return true
+    }
+
+    /**
+     * Through the proxy: hev moves to the new interface. Stop it first, then
+     * close the old fd: lwip reads and writes the raw fd number until
+     * TProxyStopService has joined its thread, and a number closed early is
+     * reused at once by another thread's socket.
+     */
+    private fun startHev(fd: ParcelFileDescriptor): Boolean {
+        val config = File(cacheDir, "tun.conf")
+        if (!writeHevConfig(config)) return false
+        stopHev()
+        TProxyStartService(config.absolutePath, fd.fd)
+        hevRunning = true
+        detachFromDaemon()
+        return true
+    }
+
+    private fun stopHev() {
         if (hevRunning) {
             runCatching { TProxyStopService() }.onFailure { Log.e(TAG, "TProxyStopService: $it") }
             hevRunning = false
         }
+    }
+
+    /** The daemon lets go of the interface; a daemon already gone has nothing to let go of. */
+    private fun detachFromDaemon() {
+        if (!daemonAttached) return
+        daemonAttached = false
+        runCatching { Appctr.detachVPN(filesDir.absolutePath) }
+            .onFailure { Log.d(TAG, "detachVPN: ${it.message}") }
+    }
+
+    private fun stopTunnel() {
+        val wasUp = tunFd != null
+        stopHev()
+        detachFromDaemon()
         runCatching { tunFd?.close() }
         tunFd = null
         establishedKey = null

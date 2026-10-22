@@ -240,7 +240,7 @@ object Automation {
 
     /** VPN mode on and no permission yet: Android's dialog, through the see-through trampoline. */
     fun askVpnConsent(activity: Activity) {
-        if (!GlobalSettings.isTunModeEnabled(activity) || !TunVpnService.nativeLoaded) return
+        if (!GlobalSettings.isTunModeEnabled(activity) || !TunVpnService.isAvailable(activity)) return
         if (VpnService.prepare(activity) != null) activity.startActivity(Intent(activity, TunPermissionActivity::class.java))
     }
 
@@ -384,7 +384,7 @@ object Automation {
             TunVpnService.stop(waitMs = 0)
             return Outcome(true, "VPN mode off")
         }
-        if (!TunVpnService.nativeLoaded) return Outcome(false, "VPN mode is unavailable in this build")
+        if (!TunVpnService.isAvailable(context)) return Outcome(false, "VPN mode is unavailable in this build")
         GlobalSettings.setTunModeEnabled(context, true)
         TunVpnService.clearConsentNotice(context)
         // Without the VPN permission this posts the notification that asks for it.

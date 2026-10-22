@@ -77,9 +77,154 @@
 +		t.Error("refused outside netstack mode")
 +	}
 +}
+--- netbird_orig/client/firewall/uspfilter/forwarder/birdsocks_vpn.go
++++ netbird_src/client/firewall/uspfilter/forwarder/birdsocks_vpn.go
+@@ -0,0 +1,56 @@
++package forwarder
++
++// birdsocks_vpn.go — BirdSocks: a forwarder for the app's VPN. What apps on
++// the phone send through Android's VPN to a destination no peer carries (the
++// local network behind an exit node, the internet under a domain route, the
++// VPN's own resolver) is terminated in this stack and dialed again from the
++// daemon, whose UID the VPN leaves out; the answers go back into the VPN
++// interface instead of to a peer.
++
++import (
++	"context"
++	"net"
++	"sync"
++
++	log "github.com/sirupsen/logrus"
++
++	nblog "github.com/netbirdio/netbird/client/firewall/uspfilter/log"
++	"github.com/netbirdio/netbird/client/iface/wgaddr"
++	nftypes "github.com/netbirdio/netbird/client/internal/netflow/types"
++)
++
++// OutboundWriter takes the packets the forwarder sends back toward the
++// source of a connection: a peer through the WireGuard device, or an app
++// through the VPN interface. dst is the packet's destination address.
++type OutboundWriter interface {
++	CreateOutboundPacket(packet []byte, dst net.IP) error
++}
++
++// DialFunc reaches the destination of a forwarded connection.
++type DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
++
++var directLogger = sync.OnceValue(func() *nblog.Logger { return nblog.NewFromLogrus(log.StandardLogger()) })
++
++// NewDirect is a forwarder whose answers go to out and whose connections
++// are dialed with dial. addr is the address apps send from; every other
++// destination is accepted too (the stack is promiscuous and spoofs).
++func NewDirect(addr wgaddr.Address, out OutboundWriter, dial DialFunc, mtu uint16) (*Forwarder, error) {
++	f, err := newForwarder(addr, out, directLogger(), noFlowLogger{}, false, mtu)
++	if err != nil {
++		return nil, err
++	}
++	if dial != nil {
++		f.dial = dial
++	}
++	return f, nil
++}
++
++// noFlowLogger: the apps' own traffic is not NetBird network traffic, and
++// the flow log is for that.
++type noFlowLogger struct{}
++
++func (noFlowLogger) ResetAggregationWindow() nftypes.FlowEventAggregator { return nil }
++func (noFlowLogger) StoreEvent(nftypes.EventFields)                      {}
++func (noFlowLogger) Close()                                              {}
++func (noFlowLogger) Enable()                                             {}
++func (noFlowLogger) UpdateConfig(bool, bool)                             {}
+--- netbird_orig/client/firewall/uspfilter/forwarder/forwarder.go
++++ netbird_src/client/firewall/uspfilter/forwarder/forwarder.go
+@@ -63,9 +63,16 @@
+ 	hasRawICMPAccess   bool
+ 	hasRawICMPv6Access bool
+ 	pingSemaphore      chan struct{}
++	// BirdSocks: how forwarded connections reach their destination
++	// (birdsocks_vpn.go).
++	dial DialFunc
+ }
+ 
+ func New(iface IFace, logger *nblog.Logger, flowLogger nftypes.FlowLogger, netstack bool, mtu uint16) (*Forwarder, error) {
++	return newForwarder(iface.Address(), iface.GetWGDevice(), logger, flowLogger, netstack, mtu)
++}
++
++func newForwarder(addr wgaddr.Address, out OutboundWriter, logger *nblog.Logger, flowLogger nftypes.FlowLogger, netstack bool, mtu uint16) (*Forwarder, error) {
+ 	s := stack.New(stack.Options{
+ 		NetworkProtocols: []stack.NetworkProtocolFactory{
+ 			ipv4.NewProtocol,
+@@ -83,7 +90,7 @@
+ 	nicID := tcpip.NICID(1)
+ 	endpoint := &endpoint{
+ 		logger: logger,
+-		device: iface.GetWGDevice(),
++		device: out,
+ 	}
+ 	endpoint.mtu.Store(uint32(mtu))
+ 
+@@ -94,8 +101,8 @@
+ 	protoAddr := tcpip.ProtocolAddress{
+ 		Protocol: ipv4.ProtocolNumber,
+ 		AddressWithPrefix: tcpip.AddressWithPrefix{
+-			Address:   tcpip.AddrFrom4(iface.Address().IP.As4()),
+-			PrefixLen: iface.Address().Network.Bits(),
++			Address:   tcpip.AddrFrom4(addr.IP.As4()),
++			PrefixLen: addr.Network.Bits(),
+ 		},
+ 	}
+ 
+@@ -103,12 +110,12 @@
+ 		return nil, fmt.Errorf("failed to add protocol address: %s", err)
+ 	}
+ 
+-	if v6 := iface.Address().IPv6; v6.IsValid() {
++	if v6 := addr.IPv6; v6.IsValid() {
+ 		v6Addr := tcpip.ProtocolAddress{
+ 			Protocol: ipv6.ProtocolNumber,
+ 			AddressWithPrefix: tcpip.AddressWithPrefix{
+ 				Address:   tcpip.AddrFrom16(v6.As16()),
+-				PrefixLen: iface.Address().IPv6Net.Bits(),
++				PrefixLen: addr.IPv6Net.Bits(),
+ 			},
+ 		}
+ 		if err := s.AddProtocolAddress(nicID, v6Addr, stack.AddressProperties{}); err != nil {
+@@ -154,9 +161,10 @@
+ 		ctx:           ctx,
+ 		cancel:        cancel,
+ 		netstack:      netstack,
+-		ip:            tcpip.AddrFrom4(iface.Address().IP.As4()),
+-		ipv6:          addrFromNetipAddr(iface.Address().IPv6),
++		ip:            tcpip.AddrFrom4(addr.IP.As4()),
++		ipv6:          addrFromNetipAddr(addr.IPv6),
+ 		pingSemaphore: make(chan struct{}, 3),
++		dial:          (&net.Dialer{}).DialContext,
+ 	}
+ 
+ 	receiveWindow := defaultReceiveWindow
+--- netbird_orig/client/firewall/uspfilter/forwarder/endpoint.go
++++ netbird_src/client/firewall/uspfilter/forwarder/endpoint.go
+@@ -5,7 +5,6 @@
+ 	"strconv"
+ 	"sync/atomic"
+ 
+-	wgdevice "golang.zx2c4.com/wireguard/device"
+ 	"gvisor.dev/gvisor/pkg/tcpip"
+ 	"gvisor.dev/gvisor/pkg/tcpip/header"
+ 	"gvisor.dev/gvisor/pkg/tcpip/stack"
+@@ -23,7 +22,7 @@
+ type endpoint struct {
+ 	logger     *nblog.Logger
+ 	dispatcher stack.NetworkDispatcher
+-	device     *wgdevice.Device
++	device     OutboundWriter
+ 	mtu        atomic.Uint32
+ 	capture    atomic.Pointer[PacketCapture]
+ }
 --- netbird_orig/client/firewall/uspfilter/forwarder/tcp.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/tcp.go
-@@ -31,6 +31,12 @@
+@@ -31,9 +31,15 @@
  		}
  	}()
  
@@ -91,7 +236,11 @@
 +
  	dialAddr := net.JoinHostPort(f.determineDialAddr(id.LocalAddress).String(), strconv.Itoa(int(id.LocalPort)))
  
- 	outConn, err := (&net.Dialer{}).DialContext(f.ctx, "tcp", dialAddr)
+-	outConn, err := (&net.Dialer{}).DialContext(f.ctx, "tcp", dialAddr)
++	outConn, err := f.dial(f.ctx, "tcp", dialAddr)
+ 	if err != nil {
+ 		r.Complete(true)
+ 		if f.logger.Enabled(nblog.LevelTrace) {
 --- netbird_orig/client/firewall/uspfilter/forwarder/udp.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/udp.go
 @@ -142,6 +142,11 @@
@@ -106,3 +255,12 @@
  	f.udpForwarder.RLock()
  	_, exists := f.udpForwarder.conns[id]
  	f.udpForwarder.RUnlock()
+@@ -163,7 +168,7 @@
+ 	}()
+ 
+ 	dstAddr := net.JoinHostPort(f.determineDialAddr(id.LocalAddress).String(), strconv.Itoa(int(id.LocalPort)))
+-	outConn, err := (&net.Dialer{}).DialContext(f.ctx, "udp", dstAddr)
++	outConn, err := f.dial(f.ctx, "udp", dstAddr)
+ 	if err != nil {
+ 		f.logger.Debug2("forwarder: UDP dial error for %v: %v", epID(id), err)
+ 		// TODO: Send ICMP error message

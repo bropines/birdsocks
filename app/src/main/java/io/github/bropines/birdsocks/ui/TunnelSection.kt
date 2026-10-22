@@ -101,7 +101,7 @@ fun ColumnScope.TunnelSettings() {
         )
         Spacer(Modifier.height(8.dp))
         HelpText(stringResource(if (tunOn) R.string.nb_tun_mode_vpn_desc else R.string.nb_tun_mode_proxy_desc))
-        if (demo == null && !TunVpnService.nativeLoaded) {
+        if (demo == null && !inPreview && tunOn && !TunVpnService.isAvailable(context)) {
             Text(
                 stringResource(R.string.nb_tun_unavailable),
                 style = MaterialTheme.typography.bodySmall,
@@ -137,8 +137,25 @@ fun ColumnScope.TunnelSettings() {
             style = MaterialTheme.typography.bodyMedium,
             color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
+        var native by remember { mutableStateOf(GlobalSettings.isTunNative(context)) }
+        Spacer(Modifier.height(8.dp))
+        SlidingSegmentedChips(
+            options = listOf(stringResource(R.string.nb_tun_engine_native), stringResource(R.string.nb_tun_engine_socks)),
+            selectedIndex = if (native) 0 else 1,
+            onOptionSelected = { i ->
+                val toNative = i == 0
+                if (toNative != native) {
+                    GlobalSettings.setTunEngine(context, if (toNative) GlobalSettings.TUN_ENGINE_NATIVE else GlobalSettings.TUN_ENGINE_SOCKS)
+                    native = toNative
+                    TunVpnService.start(context)
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
         HelpText(
-            stringResource(R.string.nb_tun_help, NetAddr.dialable(GlobalSettings.getSocksAddress(context))),
+            if (native) stringResource(R.string.nb_tun_engine_native_desc) + "\n" + stringResource(R.string.nb_tun_help_native)
+            else stringResource(R.string.nb_tun_engine_socks_desc) + "\n" +
+                stringResource(R.string.nb_tun_help, NetAddr.dialable(GlobalSettings.getSocksAddress(context))),
             modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
         )
 
@@ -174,7 +191,8 @@ fun ColumnScope.TunnelSettings() {
             }
         }
         var address by remember { mutableStateOf(GlobalSettings.getTunAddress(context)) }
-        SettingsEditItem(
+        // The native interface takes NetBird's address.
+        if (!native) SettingsEditItem(
             stringResource(R.string.nb_tun_address_title), address, Icons.Default.SettingsEthernet,
             placeholder = GlobalSettings.DEFAULT_TUN_ADDRESS, description = stringResource(R.string.nb_tun_address_desc)
         ) { v ->

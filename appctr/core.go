@@ -108,8 +108,9 @@ var (
 	processHandlesOnce sync.Once
 )
 
-func socketPath(dir string) string  { return filepath.Join(dir, "netbird.sock") }
-func dnsFilePath(dir string) string { return filepath.Join(dir, "dns-servers") }
+func socketPath(dir string) string    { return filepath.Join(dir, "netbird.sock") }
+func dnsFilePath(dir string) string   { return filepath.Join(dir, "dns-servers") }
+func vpnSocketPath(dir string) string { return filepath.Join(dir, "vpn.sock") }
 
 // SetDNSServers records the current network's DNS servers, one per line, for
 // the daemon's own lookups (birdsocksd/resolver.go); it re-reads the file on
@@ -167,6 +168,7 @@ func Start(opt *StartOptions) error {
 		"-log-file", "console,"+filepath.Join(state, "client.log"),
 		"-log-level", level,
 		"-dns-file", dnsFilePath(opt.DataDir),
+		"-vpn-socket", vpnSocketPath(opt.DataDir),
 		"-hostname", opt.Hostname,
 	)
 	cmd.Dir = opt.DataDir

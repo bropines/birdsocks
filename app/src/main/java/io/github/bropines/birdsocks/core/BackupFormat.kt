@@ -190,7 +190,7 @@ object BackupFormat {
         add(Scope.SETTING, Type.BOOLEAN, "automation_enabled")
         // VPN mode
         add(Scope.SETTING, Type.BOOLEAN, "tun_mode_enabled", "tun_route_all", "tun_ipv6_enabled")
-        add(Scope.SETTING, Type.STRING, "tun_excluded_apps", "tun_excluded_cidrs", "tun_address")
+        add(Scope.SETTING, Type.STRING, "tun_excluded_apps", "tun_excluded_cidrs", "tun_address", "tun_engine")
         // Secrets
         add(Scope.SECRET, Type.STRING, "socks_user", "socks_pass", "cp_user", "cp_pass", "automation_token")
         // This device: the name it registers under
@@ -201,7 +201,7 @@ object BackupFormat {
     val APPEARANCE_KEYS = setOf("app_theme", "theme_preset", "dynamic_color", "amoled_mode", "app_locale")
 
     /** Per-profile keys, the profile's name after the prefix; they come and go with NetBird's profiles. */
-    private val PROFILE_PREFIXES = listOf("account_email_", "dns_labels_", "tun_overlay_")
+    private val PROFILE_PREFIXES = listOf("account_email_", "dns_labels_", "tun_overlay_", "tun_self_")
 
     fun isProfileKey(key: String): Boolean {
         val prefix = PROFILE_PREFIXES.firstOrNull { key.startsWith(it) } ?: return false

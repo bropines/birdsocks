@@ -210,7 +210,7 @@
     <string name="nb_capture_start">Начать</string>
     <string name="nb_capture_stop">Остановить</string>
     <string name="nb_settings_inbound">Доступ к телефону</string>
-    <string name="nb_settings_inbound_desc">Узлы достают сервисы самого телефона по его адресу NetBird: adb по Wi‑Fi, sshd в Termux, локальный веб-сервер — насколько разрешают правила доступа сети. Прокси BirdSocks остаются недоступны.</string>
+    <string name="nb_settings_inbound_desc">Узлы достают сервисы самого телефона по его адресу NetBird: adb по Wi‑Fi, sshd в Termux, локальный веб-сервер — насколько разрешают правила доступа сети. Прокси BirdSocks остаются недоступны.\n• В режиме прокси приложения видят соединение с 127.0.0.1, в нативном VPN — с адреса самого пира; это нужно KDE Connect и подобным.</string>
     <string name="nb_settings_dns_labels">Дополнительные имена</string>
     <string name="nb_settings_dns_labels_desc">Ещё имена устройства в сети, через запятую. Только если устройство добавлено ключом установки, разрешающим доп. DNS-метки; иначе сервер откажет во входе.</string>
     <string name="nb_settings_event_notifications">Предупреждения NetBird</string>

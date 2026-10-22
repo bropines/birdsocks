@@ -22,6 +22,11 @@
     <string name="nb_tun_reason_domain">доменный маршрут</string>
     <string name="nb_tun_reason_all">по настройке</string>
     <string name="nb_tun_help">Трафик приложений уходит в SOCKS5-прокси (%1$s), а дальше сети NetBird идут через mesh, остальное — напрямую. Ping через туннель не ходит.\n• DNS — один резолвер внутри BirdSocks: сначала имена NetBird, потом вышестоящий DNS или резолверы сети.\n• Частный DNS с именем хоста обходит его: имена NetBird перестают резолвиться.\n• VPN падает всякий раз, когда падает демон NetBird.</string>
+    <string name="nb_tun_engine_native">Нативный</string>
+    <string name="nb_tun_engine_socks">Через прокси</string>
+    <string name="nb_tun_engine_native_desc">Туннель получает NetBird-адрес этого устройства: приложения ходят к пирам от имени самого телефона, работает ping, а пиры достают приложения на телефоне со своим адресом (KDE Connect, передача файлов). Новые соединения от пиров — только с включённым «Доступом к телефону».</string>
+    <string name="nb_tun_engine_socks_desc">Туннель на собственном адресе, всё уходит в SOCKS5-прокси. Пиры достают приложения на телефоне только через «Доступ к телефону», и приложения видят их как 127.0.0.1.</string>
+    <string name="nb_tun_help_native">Пакеты приложений к NetBird уходят в mesh как есть, остальное — напрямую из BirdSocks.\n• DNS — один резолвер внутри BirdSocks: сначала имена NetBird, потом вышестоящий DNS или резолверы сети.\n• Частный DNS с именем хоста обходит его: имена NetBird перестают резолвиться.\n• Туннель поднимается, когда NetBird выдал устройству адрес, и падает всякий раз, когда падает демон NetBird.</string>
     <string name="nb_tun_route_all_title">Весь трафик через туннель</string>
     <string name="nb_tun_route_all_desc">В туннель идёт трафик всех приложений, а не только сети NetBird. Выбранный выходной узел или доменный маршрут включают это сами.</string>
     <string name="nb_tun_ipv6_title">Весь IPv6 через туннель</string>

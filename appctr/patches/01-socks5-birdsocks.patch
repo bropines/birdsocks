@@ -237,7 +237,7 @@
  	}
 --- netbird_orig/client/iface/netstack/route.go
 +++ netbird_src/client/iface/netstack/route.go
-@@ -0,0 +1,265 @@
+@@ -0,0 +1,269 @@
 +package netstack
 +
 +// route.go — BirdSocks: which destinations the SOCKS5 proxy sends through
@@ -304,7 +304,11 @@
 +	if err != nil {
 +		return true
 +	}
-+	ip = ip.Unmap()
++	return overlayAddr(ip.Unmap())
++}
++
++// overlayAddr is overlayDestination for an address.
++func overlayAddr(ip netip.Addr) bool {
 +	routes.Lock()
 +	if routes.dump == nil {
 +		routes.Unlock()
@@ -2925,7 +2929,17 @@
 +}
 --- netbird_orig/client/iface/device/device_netstack.go
 +++ netbird_src/client/iface/device/device_netstack.go
-@@ -84,6 +84,10 @@
+@@ -75,7 +75,8 @@
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error creating tun device: %s", err)
+ 	}
+-	t.filteredDevice = newDeviceFilter(tunIface)
++	// BirdSocks: the app's VPN, when it attaches, shares the device (vpn.go).
++	t.filteredDevice = newDeviceFilter(nbnetstack.WrapForVPN(tunIface, addresses))
+ 	t.net = net
+ 
+ 	t.device = device.NewDevice(
+@@ -84,6 +85,10 @@
  		device.NewLogger(wgLogLevel(), "[netbird] "),
  	)
  
@@ -2936,7 +2950,7 @@
  	t.configurer = configurer.NewUSPConfigurerNoUAPI(t.device, t.name, t.bind.ActivityRecorder())
  	err = t.configurer.ConfigureInterface(t.key, t.port)
  	if err != nil {
-@@ -125,6 +129,11 @@
+@@ -125,6 +130,11 @@
  }
  
  func (t *TunNetstackDevice) Close() error {

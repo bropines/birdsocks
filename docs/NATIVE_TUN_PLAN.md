@@ -1,5 +1,16 @@
 # BirdSocks native TUN: design
 
+**Status (2026-10-22): built, differently.** The native engine shipped as
+patch 09 without the kernel-mode device below. The daemon stays in netstack
+mode and the VPN interface is attached *beside* the netstack
+(`client/iface/netstack/vpn.go`, `vpn_split.go`): the app hands the fd over
+`files/vpn.sock` with SCM_RIGHTS, packets for peers go to WireGuard as they
+are, everything else ends in uspfilter's forwarder (`forwarder.NewDirect`,
+patch 07), and a flow table returns WireGuard's packets to the netstack or
+to Android. No kernel gates, no route callback: the routes stay
+`TunRoutes`' in Kotlin, as for hev. The text below is the original design,
+kept for its research on NetBird's Android device code.
+
 **Status (2026-10-04):** a design, not started. The plain TUN mode
 (VpnService → hev-socks5-tunnel → BirdSocks' SOCKS5 proxy, as TailSocks'
 default TUN) is being restored separately; this document is the *native*

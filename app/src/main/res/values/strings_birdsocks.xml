@@ -218,7 +218,7 @@
     <string name="nb_capture_start">Start</string>
     <string name="nb_capture_stop">Stop</string>
     <string name="nb_settings_inbound">Access to the phone</string>
-    <string name="nb_settings_inbound_desc">Peers reach this phone\'s own services by its NetBird address: adb over Wi-Fi, Termux\'s sshd, a local web server — as far as the network\'s access rules allow. BirdSocks\' own proxies stay out of reach.</string>
+    <string name="nb_settings_inbound_desc">Peers reach this phone\'s own services by its NetBird address: adb over Wi-Fi, Termux\'s sshd, a local web server — as far as the network\'s access rules allow. BirdSocks\' own proxies stay out of reach.\n• As a proxy, the apps see the connection come from 127.0.0.1; in the native VPN, from the peer itself — what KDE Connect and the like need.</string>
     <string name="nb_settings_dns_labels">Extra names</string>
     <string name="nb_settings_dns_labels_desc">More names for this device in the network, comma-separated. Only for a device added with a setup key that allows extra DNS labels; otherwise the server refuses the sign-in.</string>
     <string name="nb_settings_event_notifications">NetBird warnings</string>

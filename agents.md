@@ -47,8 +47,18 @@ client as a **userspace node** and hands its network to apps through a
   set (`NB_SOCKS5_USER`/`PASS`), resolves names through NetBird's DNS first, and
   dials destinations no peer routes directly from the host — a proxy for
   everything, not only the overlay.
-* **VPN mode** (`core/TunVpnService`) feeds Android's VPN into the SOCKS5 proxy
-  through hev-socks5-tunnel. It announces exactly one DNS server, 198.18.0.2,
+* **VPN mode** (`core/TunVpnService`) has two engines. **Native** (the
+  default, patch 09): the interface takes the device's NetBird address and
+  its descriptor goes to the daemon over `files/vpn.sock`
+  (`Appctr.attachVPN`, SCM_RIGHTS; a new one replaces the old, no restart).
+  The daemon stays in netstack mode; `netstack/vpn.go` sends the apps'
+  packets for peers into WireGuard as they are and ends the rest in
+  uspfilter's forwarder (`forwarder.NewDirect`), and `vpn_split.go` returns
+  WireGuard's packets to the netstack when they answer its connections, to
+  Android otherwise — so peers reach the apps with their own address. New
+  connections from peers pass only with InboundAccess, never to the app's
+  own proxy ports. **Through the proxy**: hev-socks5-tunnel feeds the VPN
+  into the SOCKS5 proxy. Both announce exactly one DNS server, 198.18.0.2,
   which the proxy answers itself (patch 01, `tundns.go`); never announce
   NetBird's resolver or a second server. Every `io.github.bropines.birdsocks*`
   package stays outside the VPN (a loop guard, and it keeps

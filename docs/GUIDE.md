@@ -60,6 +60,8 @@ Most apps have no proxy setting. A proxy client can carry their traffic to BirdS
 For apps that can use neither a proxy nor a proxy client. Turn it on in Settings → Tunnel mode → Mode: VPN (TUN). Android asks for the VPN permission the first time.
 
 - **It takes Android's VPN slot,** so another VPN such as AdGuard stops while it runs.
+- **Two engines.** **Native** (the default) puts the tunnel on this device's NetBird address. Apps reach peers as the phone itself, ping works, and peers reach apps on the phone with their own address: KDE Connect, file sharing and the like need that. **Through the proxy** feeds the tunnel into the SOCKS5 proxy instead. Peers then reach the phone only through Access to the phone, and its apps see them as `127.0.0.1`.
+- **Peers connecting to the phone** need Access to the phone in both engines. Answers to the apps' own connections always get in.
 - **What goes in:** by default only NetBird's ranges. Everything goes in with **Route all traffic**, or by itself when an exit node or a domain route is selected.
 - **DNS:** the VPN announces one DNS server, `198.18.0.2`. BirdSocks answers it itself, NetBird names first.
 - **Excluded apps** stay outside the tunnel. A few Russian apps that refuse to work behind a VPN (banks, VK, MAX) are excluded by default.

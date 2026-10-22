@@ -32,7 +32,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/forwarder"
 	"github.com/netbirdio/netbird/client/iface/netstack"
+	"github.com/netbirdio/netbird/client/iface/wgaddr"
 	"github.com/netbirdio/netbird/client/internal"
 	"github.com/netbirdio/netbird/client/internal/ipcauth"
 	nbnet "github.com/netbirdio/netbird/client/net"
@@ -49,6 +51,7 @@ func main() {
 	logLevel := flag.String("log-level", "info", "log level")
 	hostname := flag.String("hostname", "", "the name this device registers and reports under")
 	dnsServers := flag.String("dns-file", "", "the network's DNS servers, one per line, kept current by the app")
+	vpnSocket := flag.String("vpn-socket", "", "unix socket the app hands its VPN interface over")
 	flag.Parse()
 	if *socket == "" || *config == "" {
 		fmt.Fprintln(os.Stderr, "birdsocksd: -socket and -config are required")
@@ -86,6 +89,13 @@ func main() {
 		}
 		// The DNS records this peer got, beside the socket, for the app's DNS screen.
 		netstack.SetDNSTableSink(dnsTableWriter(filepath.Join(filepath.Dir(*socket), "dns-table.json")))
+		// The app's VPN mode: Android's VPN interface on the NetBird address,
+		// beside the netstack (netstack/vpn.go).
+		if *vpnSocket != "" {
+			if err := netstack.ServeVPN(*vpnSocket, directEgress); err != nil {
+				log.Errorf("VPN socket %s: %v", *vpnSocket, err)
+			}
+		}
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -199,4 +209,14 @@ func dnsTableWriter(path string) func([]byte) {
 			log.Warnf("dns table: %v", err)
 		}
 	}
+}
+
+// directEgress ends what apps in the VPN send outside the overlay: uspfilter's
+// forwarder, dialing from the daemon, which the VPN leaves out.
+func directEgress(addr wgaddr.Address, out netstack.PacketWriter, dial netstack.DialFunc, mtu uint16) (netstack.DirectEgress, error) {
+	f, err := forwarder.NewDirect(addr, out, dial, mtu)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
