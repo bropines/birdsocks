@@ -236,6 +236,18 @@
  	mtu        atomic.Uint32
  	capture    atomic.Pointer[PacketCapture]
  }
+--- netbird_orig/client/firewall/uspfilter/forwarder/icmp.go
++++ netbird_src/client/firewall/uspfilter/forwarder/icmp.go
+@@ -387,7 +387,8 @@
+ 
+ 	switch runtime.GOOS {
+ 	case "linux", "android":
+-		return exec.CommandContext(ctx, pingBin, "-c", "1", "-W", timeoutStr, "-q", target.String())
++		// BirdSocks: on Android by its path (birdsocks_vpn.go).
++		return exec.CommandContext(ctx, linuxPingBin(), "-c", "1", "-W", timeoutStr, "-q", target.String())
+ 	case "darwin", "ios":
+ 		bin := pingBin
+ 		if isV6 {
 --- netbird_orig/client/firewall/uspfilter/forwarder/tcp.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/tcp.go
 @@ -31,9 +31,15 @@

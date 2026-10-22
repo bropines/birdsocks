@@ -105,13 +105,15 @@ make_patch 06-connect-faster.patch \
 # 127.0.0.1 at the same port — except the app's own proxies, which would
 # otherwise give every peer the ACLs let in a free exit through the phone.
 # The forwarder also takes another sink for its answers and another dialer,
-# so patch 09's VPN mode ends the apps' direct traffic in one (NewDirect).
+# so patch 09's VPN mode ends the apps' direct traffic in one (NewDirect);
+# on Android ping runs by its path, as searching PATH trips the seccomp filter.
 make_patch 07-inbound-forwarding.patch \
     client/firewall/uspfilter/forwarder/birdsocks.go \
     client/firewall/uspfilter/forwarder/birdsocks_test.go \
     client/firewall/uspfilter/forwarder/birdsocks_vpn.go \
     client/firewall/uspfilter/forwarder/forwarder.go \
     client/firewall/uspfilter/forwarder/endpoint.go \
+    client/firewall/uspfilter/forwarder/icmp.go \
     client/firewall/uspfilter/forwarder/tcp.go \
     client/firewall/uspfilter/forwarder/udp.go
 
