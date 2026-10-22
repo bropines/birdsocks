@@ -1,6 +1,6 @@
 --- netbird_orig/client/iface/netstack/vpn.go
 +++ netbird_src/client/iface/netstack/vpn.go
-@@ -0,0 +1,402 @@
+@@ -0,0 +1,410 @@
 +//go:build linux
 +
 +package netstack
@@ -145,7 +145,15 @@
 +
 +// CreateOutboundPacket takes the direct forwarder's answers to the apps.
 +func (k *kernelTun) CreateOutboundPacket(packet []byte, _ net.IP) error {
++	// After a detach the forwarder's connections still answer for a moment;
++	// there is nobody to answer to, and that is not an error.
++	if k.closed.Load() {
++		return nil
++	}
 +	_, err := k.f.Write(packet)
++	if err != nil && k.closed.Load() {
++		return nil
++	}
 +	return err
 +}
 +
