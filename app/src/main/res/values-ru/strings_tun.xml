@@ -30,7 +30,7 @@
     <string name="nb_tun_engine_root">Root</string>
     <string name="nb_tun_engine_root_desc">С root — настоящий сетевой интерфейс на NetBird-адресе устройства вместо VPN Android: слот VPN остаётся свободным для другого VPN или блокировщика рекламы, а пиры достают приложения на телефоне со своим адресом. Новые соединения от пиров — только с «Доступом к телефону».</string>
     <string name="nb_tun_help_root">Помощник запускается через su и направляет трафик в интерфейс своими правилами маршрутизации; он убирает их, когда BirdSocks останавливается или падает его демон.\n• DNS: запросы на порт 53 идут в резолвер внутри BirdSocks — сначала имена NetBird. Частный DNS с именем хоста обходит его.\n• Android не знает об этом интерфейсе: нет значка VPN, и другие приложения не видят VPN.</string>
-    <string name="nb_tun_root_denied">Root-доступ не выдан</string>
+    <string name="nb_tun_root_denied">Root-доступ не выдан. Magisk спрашивает на экране; в KernelSU или APatch разрешите BirdSocks в списке суперпользователя и снова выберите Root.</string>
     <string name="nb_tun_route_all_title">Весь трафик через туннель</string>
     <string name="nb_tun_route_all_desc">В туннель идёт трафик всех приложений, а не только сети NetBird. Выбранный выходной узел или доменный маршрут включают это сами.</string>
     <string name="nb_tun_ipv6_title">Весь IPv6 через туннель</string>
@@ -55,4 +55,6 @@
     <string name="nb_tun_revoked_text">Слот VPN занял другой VPN. BirdSocks работает дальше как прокси.</string>
     <string name="nb_tun_notif_text">%1$s · VPN</string>
     <string name="nb_tun_tile_active">Активно · VPN</string>
+    <string name="nb_tun_notif_text_root">%1$s · Root</string>
+    <string name="nb_tun_tile_active_root">Активно · Root</string>
 </resources>

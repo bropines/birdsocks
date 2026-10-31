@@ -57,7 +57,7 @@ object TunnelSection {
 }
 
 /**
- * Proxy or VPN, and the VPN's own settings. Turning the VPN on or off needs
+ * Proxy, VPN or Root, and the VPN's own settings. Turning the VPN on or off needs
  * no daemon restart: the daemon always answers the VPN's resolver, and the
  * tunnel follows the running daemon (TunVpnService). Its settings apply at
  * once — a changed route set or exclusion list rebuilds the VPN.
@@ -76,6 +76,10 @@ fun ColumnScope.TunnelSettings() {
     // Re-read what other screens change (the excluded apps) on the way back.
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
 
+    var engine by remember { mutableStateOf(GlobalSettings.getTunEngine(context)) }
+    val rootMode = tunOn && engine == GlobalSettings.TUN_ENGINE_ROOT
+    val scope = rememberCoroutineScope()
+
     fun enable() {
         GlobalSettings.setTunModeEnabled(context, true)
         tunOn = true
@@ -87,26 +91,60 @@ fun ColumnScope.TunnelSettings() {
         tunOn = false
         TunVpnService.stop(waitMs = 0)
     }
+    /** VPN through Android's slot, once the slot warning and the consent are through; from Root, the native engine. */
+    fun enableVpn() {
+        if (engine == GlobalSettings.TUN_ENGINE_ROOT) {
+            GlobalSettings.setTunEngine(context, GlobalSettings.TUN_ENGINE_NATIVE)
+            engine = GlobalSettings.TUN_ENGINE_NATIVE
+        }
+        enable()
+    }
+    /** Root asks su here, so the root manager's prompt comes when the user picks it; a refusal changes nothing. */
+    fun enableRoot() = scope.launch {
+        if (withContext(Dispatchers.IO) { RootTun.isRootAvailable() }) {
+            GlobalSettings.setTunEngine(context, GlobalSettings.TUN_ENGINE_ROOT)
+            engine = GlobalSettings.TUN_ENGINE_ROOT
+            enable()
+        } else {
+            Toast.makeText(context, context.getString(R.string.nb_tun_root_denied), Toast.LENGTH_LONG).show()
+        }
+    }
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) enable()
+        if (result.resultCode == Activity.RESULT_OK) enableVpn()
         else Toast.makeText(context, context.getString(R.string.nb_tun_denied), Toast.LENGTH_SHORT).show()
     }
 
     SettingsCard(stringResource(R.string.nb_tun_mode_title)) {
         SlidingSegmentedChips(
-            options = listOf(stringResource(R.string.nb_tun_mode_proxy), stringResource(R.string.nb_tun_mode_vpn)),
-            selectedIndex = if (tunOn) 1 else 0,
+            options = listOf(
+                stringResource(R.string.nb_tun_mode_proxy),
+                stringResource(R.string.nb_tun_mode_vpn),
+                stringResource(R.string.nb_tun_engine_root)
+            ),
+            selectedIndex = when {
+                !tunOn -> 0
+                rootMode -> 2
+                else -> 1
+            },
             onOptionSelected = { i ->
-                when {
-                    // The root engine takes no VPN slot and needs no VPN permission.
-                    i == 1 && !tunOn -> if (GlobalSettings.isTunRoot(context)) enable() else askSlot = true
-                    i == 0 && tunOn -> disable()
+                when (i) {
+                    0 -> if (tunOn) disable()
+                    1 -> if (!tunOn || rootMode) askSlot = true
+                    2 -> if (!rootMode) enableRoot()
                 }
             },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
-        HelpText(stringResource(if (tunOn) R.string.nb_tun_mode_vpn_desc else R.string.nb_tun_mode_proxy_desc))
+        HelpText(
+            stringResource(
+                when {
+                    !tunOn -> R.string.nb_tun_mode_proxy_desc
+                    rootMode -> R.string.nb_tun_engine_root_desc
+                    else -> R.string.nb_tun_mode_vpn_desc
+                }
+            )
+        )
         if (demo == null && !inPreview && tunOn && !TunVpnService.isAvailable(context)) {
             Text(
                 stringResource(R.string.nb_tun_unavailable),
@@ -117,9 +155,9 @@ fun ColumnScope.TunnelSettings() {
         }
     }
 
-    if (tunOn) SettingsCard(stringResource(R.string.nb_tun_card)) {
+    if (tunOn) SettingsCard(stringResource(if (rootMode) R.string.nb_tun_engine_root else R.string.nb_tun_card)) {
         val needsConsent = remember(running, daemon, lifecycle) {
-            !inPreview && !GlobalSettings.isTunRoot(context) && VpnService.prepare(context) != null
+            !inPreview && !rootMode && VpnService.prepare(context) != null
         }
         val state = when {
             running -> {
@@ -145,41 +183,27 @@ fun ColumnScope.TunnelSettings() {
             style = MaterialTheme.typography.bodyMedium,
             color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
-        var engine by remember { mutableStateOf(GlobalSettings.getTunEngine(context)) }
-        val engines = listOf(GlobalSettings.TUN_ENGINE_NATIVE, GlobalSettings.TUN_ENGINE_SOCKS, GlobalSettings.TUN_ENGINE_ROOT)
-        val scope = rememberCoroutineScope()
-        fun switchTo(next: String) {
-            GlobalSettings.setTunEngine(context, next)
-            engine = next
-            TunVpnService.start(context)
-        }
-        Spacer(Modifier.height(8.dp))
-        SlidingSegmentedChips(
-            options = listOf(
-                stringResource(R.string.nb_tun_engine_native),
-                stringResource(R.string.nb_tun_engine_socks),
-                stringResource(R.string.nb_tun_engine_root)
-            ),
-            selectedIndex = engines.indexOf(engine).coerceAtLeast(0),
-            onOptionSelected = { i ->
-                val next = engines[i]
-                when {
-                    next == engine -> Unit
-                    next == GlobalSettings.TUN_ENGINE_ROOT -> scope.launch {
-                        // su asks the user the first time; a refusal keeps the engine as it was.
-                        if (withContext(Dispatchers.IO) { RootTun.isRootAvailable() }) switchTo(next)
-                        else Toast.makeText(context, context.getString(R.string.nb_tun_root_denied), Toast.LENGTH_LONG).show()
+        if (!rootMode) {
+            Spacer(Modifier.height(8.dp))
+            SlidingSegmentedChips(
+                options = listOf(stringResource(R.string.nb_tun_engine_native), stringResource(R.string.nb_tun_engine_socks)),
+                selectedIndex = if (engine == GlobalSettings.TUN_ENGINE_SOCKS) 1 else 0,
+                onOptionSelected = { i ->
+                    val next = if (i == 1) GlobalSettings.TUN_ENGINE_SOCKS else GlobalSettings.TUN_ENGINE_NATIVE
+                    if (next != engine) {
+                        GlobalSettings.setTunEngine(context, next)
+                        engine = next
+                        TunVpnService.start(context)
                     }
-                    else -> switchTo(next)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         HelpText(
             when (engine) {
                 GlobalSettings.TUN_ENGINE_SOCKS -> stringResource(R.string.nb_tun_engine_socks_desc) + "\n" +
                     stringResource(R.string.nb_tun_help, NetAddr.dialable(GlobalSettings.getSocksAddress(context)))
-                GlobalSettings.TUN_ENGINE_ROOT -> stringResource(R.string.nb_tun_engine_root_desc) + "\n" + stringResource(R.string.nb_tun_help_root)
+                GlobalSettings.TUN_ENGINE_ROOT -> stringResource(R.string.nb_tun_help_root)
                 else -> stringResource(R.string.nb_tun_engine_native_desc) + "\n" + stringResource(R.string.nb_tun_help_native)
             },
             modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
@@ -244,7 +268,7 @@ fun ColumnScope.TunnelSettings() {
                 Button(onClick = {
                     askSlot = false
                     val ask = VpnService.prepare(context)
-                    if (ask == null) enable() else runCatching { consent.launch(ask) }.onFailure {
+                    if (ask == null) enableVpn() else runCatching { consent.launch(ask) }.onFailure {
                         Toast.makeText(context, context.getString(R.string.nb_tun_denied), Toast.LENGTH_SHORT).show()
                     }
                 }) { Text(stringResource(R.string.nb_tun_warning_confirm)) }

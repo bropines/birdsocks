@@ -560,7 +560,13 @@ class NetbirdService : Service() {
             NbConnState.Connecting -> getString(R.string.nb_notif_connecting)
             NbConnState.NeedsLogin, NbConnState.LoginFailed, NbConnState.SessionExpired -> getString(R.string.nb_notif_login)
             else -> getString(R.string.nb_notif_idle)
-        }.let { if (TunVpnService.running.value) getString(R.string.nb_tun_notif_text, it) else it }
+        }.let {
+            when {
+                !TunVpnService.running.value -> it
+                GlobalSettings.isTunRoot(this) -> getString(R.string.nb_tun_notif_text_root, it)
+                else -> getString(R.string.nb_tun_notif_text, it)
+            }
+        }
         if (text == shownText) return
         val nm = getSystemService(NotificationManager::class.java)
         nm.notify(NOTIF_ID, buildNotification(text))

@@ -31,7 +31,7 @@
     <string name="nb_tun_engine_root">Root</string>
     <string name="nb_tun_engine_root_desc">With root, a real network interface on this device\'s NetBird address instead of Android\'s VPN: the VPN slot stays free for another VPN or an ad blocker, and peers reach apps on the phone with their own address. New connections from peers need Access to the phone.</string>
     <string name="nb_tun_help_root">A helper runs through su and steers traffic into the interface with its own routing rules; it takes them away when BirdSocks stops or its daemon dies.\n• DNS: queries on port 53 go to the resolver inside BirdSocks — NetBird\'s names first. Private DNS set to a hostname bypasses it.\n• Android does not know this interface: no VPN icon, and other apps see no VPN.</string>
-    <string name="nb_tun_root_denied">Root access was not granted</string>
+    <string name="nb_tun_root_denied">Root access was not granted. Magisk asks on screen; in KernelSU or APatch, allow BirdSocks in the superuser list, then pick Root again.</string>
     <string name="nb_tun_route_all_title">Route all traffic</string>
     <string name="nb_tun_route_all_desc">Every app\'s traffic into the tunnel, not only NetBird\'s ranges. A selected exit node or domain route does this by itself.</string>
     <string name="nb_tun_ipv6_title">Route all IPv6</string>
@@ -56,4 +56,6 @@
     <string name="nb_tun_revoked_text">Another VPN took the slot. BirdSocks goes on as a proxy.</string>
     <string name="nb_tun_notif_text">%1$s · VPN</string>
     <string name="nb_tun_tile_active">Active · VPN</string>
+    <string name="nb_tun_notif_text_root">%1$s · Root</string>
+    <string name="nb_tun_tile_active_root">Active · Root</string>
 </resources>

@@ -82,7 +82,13 @@ class ProxyTileService : TileService() {
             tile.subtitle = when {
                 daemon == NetbirdState.Daemon.Stopped -> null
                 daemon != NetbirdState.Daemon.Running -> getString(R.string.main_status_starting)
-                state == "Connected" -> getString(if (vpn) R.string.nb_tun_tile_active else R.string.main_status_active)
+                state == "Connected" -> getString(
+                    when {
+                        !vpn -> R.string.main_status_active
+                        GlobalSettings.isTunRoot(this) -> R.string.nb_tun_tile_active_root
+                        else -> R.string.nb_tun_tile_active
+                    }
+                )
                 state == "NeedsLogin" || state == "LoginFailed" || state == "SessionExpired" -> getString(R.string.main_status_needs_login)
                 else -> getString(R.string.main_status_connecting)
             }

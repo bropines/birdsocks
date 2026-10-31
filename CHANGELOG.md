@@ -4,7 +4,7 @@
 
 ### Added
 - Hide from recents: a switch in Settings → Background & permissions, applied immediately and kept in backups; background connections keep running.
-- A root engine for VPN mode: with root, a real interface on the NetBird address and policy routing instead of Android's VPN slot, so BirdSocks runs beside another VPN; its helper removes every rule when BirdSocks or its daemon stops.
+- Root mode beside Proxy and VPN, with "Root" on the main card: with root, a real interface on the NetBird address and policy routing instead of Android's VPN slot, so BirdSocks runs beside another VPN; its helper removes every rule when BirdSocks or its daemon stops.
 
 ## [0.3.0] - 2026-10-22
 
