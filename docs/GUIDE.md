@@ -14,6 +14,9 @@
 
 Settings → Background & permissions → **Hide from recents** hides BirdSocks' tasks from Android's recent apps list. It is off by default and applies immediately, including after a settings restore. Reopen BirdSocks from its launcher icon or notification; the daemon, SOCKS5 proxy and VPN keep running.
 
+- The card leaves the list once you leave BirdSocks; while it is open, Android may still show it.
+- On HyperOS/MIUI a hidden task cannot be locked in recents. Set the battery setting to **No restrictions**, or the system freezes BirdSocks in the background.
+
 ## The SOCKS5 proxy
 
 - The address is `127.0.0.1:48125` by default (Settings → Local proxies). Any `127.x.x.x` address works, and the dice picks a random one, which a port scanner will not guess.

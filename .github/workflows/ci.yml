@@ -169,8 +169,8 @@ jobs:
 
       # -PlintNewApiOnly fails on nothing but a call above minSdk
       # (app/build.gradle.kts); the full lint is not a gate.
-      - name: Assemble debug and lint (NewApi)
-        run: ./gradlew assembleDebug lintDebug -PlintNewApiOnly -PtargetAbi=arm64-v8a --stacktrace
+      - name: Assemble debug, unit tests and lint (NewApi)
+        run: ./gradlew assembleDebug testDebugUnitTest lintDebug -PlintNewApiOnly -PtargetAbi=arm64-v8a --stacktrace
 
       - name: Name the debug APK
         run: |
