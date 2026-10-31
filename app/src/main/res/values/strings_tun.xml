@@ -28,6 +28,10 @@
     <string name="nb_tun_engine_native_desc">The tunnel takes this device\'s NetBird address: apps reach peers as the phone itself, ping works, and peers reach apps on the phone with their own address (KDE Connect, file sharing). New connections from peers need Access to the phone.</string>
     <string name="nb_tun_engine_socks_desc">The tunnel on an address of its own, fed into the SOCKS5 proxy. Peers reach apps on the phone only through Access to the phone, and the apps see them as 127.0.0.1.</string>
     <string name="nb_tun_help_native">Apps\' packets to NetBird go into the mesh as they are; the rest leaves directly from BirdSocks.\n• DNS: one resolver inside BirdSocks — NetBird\'s names first, then the DNS upstream or the network\'s resolvers.\n• Private DNS set to a hostname bypasses it: NetBird names stop resolving.\n• The tunnel comes up once NetBird has given this device its address, and goes down whenever NetBird\'s daemon does.</string>
+    <string name="nb_tun_engine_root">Root</string>
+    <string name="nb_tun_engine_root_desc">With root, a real network interface on this device\'s NetBird address instead of Android\'s VPN: the VPN slot stays free for another VPN or an ad blocker, and peers reach apps on the phone with their own address. New connections from peers need Access to the phone.</string>
+    <string name="nb_tun_help_root">A helper runs through su and steers traffic into the interface with its own routing rules; it takes them away when BirdSocks stops or its daemon dies.\n• DNS: queries on port 53 go to the resolver inside BirdSocks — NetBird\'s names first. Private DNS set to a hostname bypasses it.\n• Android does not know this interface: no VPN icon, and other apps see no VPN.</string>
+    <string name="nb_tun_root_denied">Root access was not granted</string>
     <string name="nb_tun_route_all_title">Route all traffic</string>
     <string name="nb_tun_route_all_desc">Every app\'s traffic into the tunnel, not only NetBird\'s ranges. A selected exit node or domain route does this by itself.</string>
     <string name="nb_tun_ipv6_title">Route all IPv6</string>

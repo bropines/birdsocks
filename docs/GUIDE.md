@@ -72,6 +72,7 @@ For apps that can use neither a proxy nor a proxy client. Turn it on in Settings
 - **What goes in:** by default only NetBird's ranges. Everything goes in with **Route all traffic**, or by itself when an exit node or a domain route is selected.
 - **DNS:** the VPN announces one DNS server, `198.18.0.2`. BirdSocks answers it itself, NetBird names first.
 - **Excluded apps** stay outside the tunnel. A few Russian apps that refuse to work behind a VPN (banks, VK, MAX) are excluded by default.
+- **Root engine.** With root (Magisk, KernelSU, APatch), the third engine makes a real network interface on the NetBird address instead of taking Android's VPN slot, so BirdSocks runs beside AdGuard, Rethink or any other VPN. A helper started through `su` adds its own routing rules (table 25203, priority 90) and sends DNS on port 53 to BirdSocks' resolver; it removes all of it when BirdSocks stops or its daemon dies. IPv6 DNS is refused where the kernel has no IPv6 NAT, so resolvers fall back to IPv4.
 
 ## Exit node and networks
 

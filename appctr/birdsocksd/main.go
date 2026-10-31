@@ -52,7 +52,11 @@ func main() {
 	hostname := flag.String("hostname", "", "the name this device registers and reports under")
 	dnsServers := flag.String("dns-file", "", "the network's DNS servers, one per line, kept current by the app")
 	vpnSocket := flag.String("vpn-socket", "", "unix socket the app hands its VPN interface over")
+	rootTunMode := flag.Bool("root-tun", false, "run as the root engine's helper (roottun.go), not as the daemon")
 	flag.Parse()
+	if *rootTunMode {
+		os.Exit(runRootTun())
+	}
 	if *socket == "" || *config == "" {
 		fmt.Fprintln(os.Stderr, "birdsocksd: -socket and -config are required")
 		os.Exit(2)

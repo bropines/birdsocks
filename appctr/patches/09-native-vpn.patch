@@ -1,6 +1,6 @@
 --- netbird_orig/client/iface/netstack/vpn.go
 +++ netbird_src/client/iface/netstack/vpn.go
-@@ -0,0 +1,410 @@
+@@ -0,0 +1,411 @@
 +//go:build linux
 +
 +package netstack
@@ -370,7 +370,7 @@
 +	return nil
 +}
 +
-+// checkPeer: only this daemon's own UID — the app — hands over a VPN.
++// checkPeer: only this daemon's own UID (the app) or root (the root engine's helper) hands over a VPN.
 +func checkPeer(c *net.UnixConn) error {
 +	raw, err := c.SyscallConn()
 +	if err != nil {
@@ -386,7 +386,8 @@
 +	if credErr != nil {
 +		return credErr
 +	}
-+	if int(cred.Uid) != os.Getuid() {
++	// Root too: the root engine's helper hands over the interface it made.
++	if int(cred.Uid) != os.Getuid() && cred.Uid != 0 {
 +		return fmt.Errorf("uid %d may not attach a VPN", cred.Uid)
 +	}
 +	return nil

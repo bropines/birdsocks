@@ -108,7 +108,34 @@ class TunVpnService : VpnService() {
         }
 
         /** Whether VPN mode can run with the chosen engine: hev is a native library that may be missing. */
-        fun isAvailable(context: Context): Boolean = GlobalSettings.isTunNative(context) || nativeLoaded
+        fun isAvailable(context: Context): Boolean =
+            GlobalSettings.isTunNative(context) || GlobalSettings.isTunRoot(context) || nativeLoaded
+
+        /** The root engine's state, for the screens: it has no VpnService of its own. */
+        internal fun reportRoot(up: Boolean, set: TunRoutes.RouteSet?) {
+            runningFlow.value = up
+            routesFlow.value = if (up) set else null
+        }
+
+        /**
+         * The device's NetBird addresses for an interface on them, IPv4 and IPv6
+         * (or null), without prefixes: from the status, else the ones last seen
+         * under this profile. Null when none is known.
+         */
+        fun selfAddresses(context: Context): Pair<String, String?>? {
+            val profile = NetbirdState.profile.value ?: "default"
+            val local = NetbirdState.status.value?.fullStatus?.localPeerState
+            val v4 = local?.ip.orEmpty().substringBefore('/').trim()
+            val v6 = local?.ipv6.orEmpty().substringBefore('/').trim()
+            if (v4.isNotEmpty()) {
+                val live = if (v6.isNotEmpty()) "$v4,$v6" else v4
+                if (live != GlobalSettings.getTunSelf(context, profile)) GlobalSettings.setTunSelf(context, profile, live)
+                return v4 to v6.ifEmpty { null }
+            }
+            val cached = GlobalSettings.getTunSelf(context, profile).split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            val c4 = cached.firstOrNull { ':' !in it } ?: return null
+            return c4 to cached.firstOrNull { ':' in it }
+        }
 
         /**
          * Brings the VPN up, or makes it re-read its settings, when TUN mode
@@ -118,6 +145,14 @@ class TunVpnService : VpnService() {
          */
         fun start(context: Context) {
             if (!GlobalSettings.isTunModeEnabled(context) || !isAvailable(context) || !NetbirdState.isRunning) return
+            if (GlobalSettings.isTunRoot(context)) {
+                // No VpnService: a running one makes way for the root engine.
+                instance?.get()?.takeIf { !it.stopping }?.requestApply(0)
+                RootTun.start(context)
+                return
+            }
+            // Away from the root engine: its helper takes its interface and rules down.
+            if (RootTun.running) RootTun.stop(0)
             if (VpnService.prepare(context) != null) {
                 postConsentNeeded(context)
                 return
@@ -138,6 +173,7 @@ class TunVpnService : VpnService() {
          */
         fun stop(waitMs: Long = 3000) {
             instance?.get()?.shutdown(waitMs)
+            RootTun.stop(waitMs)
         }
 
         /** Whether another app's VPN carries this app's traffic now (this one excludes itself). */
@@ -300,20 +336,7 @@ class TunVpnService : VpnService() {
      * IPv6 (or null), without prefixes: from the status, else the ones last
      * seen under this profile. Null when none is known.
      */
-    private fun selfAddresses(): Pair<String, String?>? {
-        val profile = NetbirdState.profile.value ?: "default"
-        val local = NetbirdState.status.value?.fullStatus?.localPeerState
-        val v4 = local?.ip.orEmpty().substringBefore('/').trim()
-        val v6 = local?.ipv6.orEmpty().substringBefore('/').trim()
-        if (v4.isNotEmpty()) {
-            val live = if (v6.isNotEmpty()) "$v4,$v6" else v4
-            if (live != GlobalSettings.getTunSelf(this, profile)) GlobalSettings.setTunSelf(this, profile, live)
-            return v4 to v6.ifEmpty { null }
-        }
-        val cached = GlobalSettings.getTunSelf(this, profile).split(',').map { it.trim() }.filter { it.isNotEmpty() }
-        val c4 = cached.firstOrNull { ':' !in it } ?: return null
-        return c4 to cached.firstOrNull { ':' in it }
-    }
+    private fun selfAddresses(): Pair<String, String?>? = selfAddresses(this)
 
     /** The native interface's MTU: NetBird's, so no packet is larger than WireGuard takes. */
     private fun nativeMtu(): Int = profileMtu.takeIf { it in 576..NATIVE_MTU } ?: NATIVE_MTU
@@ -365,7 +388,8 @@ class TunVpnService : VpnService() {
 
     private fun apply() {
         try {
-            if (!GlobalSettings.isTunModeEnabled(this)) {
+            if (!GlobalSettings.isTunModeEnabled(this) || GlobalSettings.isTunRoot(this)) {
+                // Off, or the root engine's turn (RootTun): no VpnService.
                 stopTunnel()
                 stopSelf()
                 return
@@ -524,9 +548,10 @@ class TunVpnService : VpnService() {
         runCatching { tunFd?.close() }
         tunFd = null
         establishedKey = null
-        routesFlow.value = null
-        runningFlow.value = false
         if (wasUp) {
+            // Only this tunnel's state: the root engine may already report its own.
+            routesFlow.value = null
+            runningFlow.value = false
             Log.i(TAG, "VPN down")
             Appctr.logAndroid("INFO", "CORE", "VPN down")
         }

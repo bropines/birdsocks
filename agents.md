@@ -57,7 +57,14 @@ client as a **userspace node** and hands its network to apps through a
   WireGuard's packets to the netstack when they answer its connections, to
   Android otherwise — so peers reach the apps with their own address. New
   connections from peers pass only with InboundAccess, never to the app's
-  own proxy ports. **Through the proxy**: hev-socks5-tunnel feeds the VPN
+  own proxy ports. **Root** (`core/RootTun`, `birdsocksd/roottun.go`): no
+  VpnService; the daemon's binary runs as `-root-tun` through `su`, makes a
+  TUN on the NetBird address, hands it over the same socket and routes into
+  it (table 25203, rule priority 90, the app's and excluded UIDs skip to
+  netd's rules, port 53 DNAT to 198.18.0.2). Its stdin is the app's: EOF,
+  a signal or the interface vanishing removes every rule it made — keep
+  that invariant, or a dead daemon leaves the device routing into nothing.
+  **Through the proxy**: hev-socks5-tunnel feeds the VPN
   into the SOCKS5 proxy. Both announce exactly one DNS server, 198.18.0.2,
   which the proxy answers itself (patch 01, `tundns.go`); never announce
   NetBird's resolver or a second server. Every `io.github.bropines.birdsocks*`

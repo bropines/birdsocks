@@ -242,10 +242,16 @@ object GlobalSettings {
     const val TUN_ENGINE_NATIVE = "native"
     /** The VPN on its own address, fed into the SOCKS5 proxy by hev-socks5-tunnel. */
     const val TUN_ENGINE_SOCKS = "socks"
-    fun getTunEngine(context: Context): String =
-        if (getString(context, "tun_engine", TUN_ENGINE_NATIVE) == TUN_ENGINE_SOCKS) TUN_ENGINE_SOCKS else TUN_ENGINE_NATIVE
+    /** Root: a real TUN interface on the NetBird address with policy routing, no VPN slot (RootTun). */
+    const val TUN_ENGINE_ROOT = "root"
+    fun getTunEngine(context: Context): String = when (getString(context, "tun_engine", TUN_ENGINE_NATIVE)) {
+        TUN_ENGINE_SOCKS -> TUN_ENGINE_SOCKS
+        TUN_ENGINE_ROOT -> TUN_ENGINE_ROOT
+        else -> TUN_ENGINE_NATIVE
+    }
     fun setTunEngine(context: Context, engine: String) = setString(context, "tun_engine", engine)
     fun isTunNative(context: Context): Boolean = getTunEngine(context) == TUN_ENGINE_NATIVE
+    fun isTunRoot(context: Context): Boolean = getTunEngine(context) == TUN_ENGINE_ROOT
     /** The device's NetBird addresses last seen under [profile], "ip,ipv6": the native VPN comes up on them before the first status. */
     fun getTunSelf(context: Context, profile: String): String = getString(context, "tun_self_$profile", "")
     fun setTunSelf(context: Context, profile: String, addrs: String) = setString(context, "tun_self_$profile", addrs)

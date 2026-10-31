@@ -27,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,10 +35,14 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.NetAddr
 import io.github.bropines.birdsocks.core.NetbirdState
+import io.github.bropines.birdsocks.core.RootTun
 import io.github.bropines.birdsocks.core.SlidingSegmentedChips
 import io.github.bropines.birdsocks.core.TunRoutes
 import io.github.bropines.birdsocks.core.TunVpnService
@@ -93,7 +98,8 @@ fun ColumnScope.TunnelSettings() {
             selectedIndex = if (tunOn) 1 else 0,
             onOptionSelected = { i ->
                 when {
-                    i == 1 && !tunOn -> askSlot = true
+                    // The root engine takes no VPN slot and needs no VPN permission.
+                    i == 1 && !tunOn -> if (GlobalSettings.isTunRoot(context)) enable() else askSlot = true
                     i == 0 && tunOn -> disable()
                 }
             },
@@ -112,7 +118,9 @@ fun ColumnScope.TunnelSettings() {
     }
 
     if (tunOn) SettingsCard(stringResource(R.string.nb_tun_card)) {
-        val needsConsent = remember(running, daemon, lifecycle) { !inPreview && VpnService.prepare(context) != null }
+        val needsConsent = remember(running, daemon, lifecycle) {
+            !inPreview && !GlobalSettings.isTunRoot(context) && VpnService.prepare(context) != null
+        }
         val state = when {
             running -> {
                 val how = routes?.defaultReason?.let { reason ->
@@ -137,25 +145,43 @@ fun ColumnScope.TunnelSettings() {
             style = MaterialTheme.typography.bodyMedium,
             color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
-        var native by remember { mutableStateOf(GlobalSettings.isTunNative(context)) }
+        var engine by remember { mutableStateOf(GlobalSettings.getTunEngine(context)) }
+        val engines = listOf(GlobalSettings.TUN_ENGINE_NATIVE, GlobalSettings.TUN_ENGINE_SOCKS, GlobalSettings.TUN_ENGINE_ROOT)
+        val scope = rememberCoroutineScope()
+        fun switchTo(next: String) {
+            GlobalSettings.setTunEngine(context, next)
+            engine = next
+            TunVpnService.start(context)
+        }
         Spacer(Modifier.height(8.dp))
         SlidingSegmentedChips(
-            options = listOf(stringResource(R.string.nb_tun_engine_native), stringResource(R.string.nb_tun_engine_socks)),
-            selectedIndex = if (native) 0 else 1,
+            options = listOf(
+                stringResource(R.string.nb_tun_engine_native),
+                stringResource(R.string.nb_tun_engine_socks),
+                stringResource(R.string.nb_tun_engine_root)
+            ),
+            selectedIndex = engines.indexOf(engine).coerceAtLeast(0),
             onOptionSelected = { i ->
-                val toNative = i == 0
-                if (toNative != native) {
-                    GlobalSettings.setTunEngine(context, if (toNative) GlobalSettings.TUN_ENGINE_NATIVE else GlobalSettings.TUN_ENGINE_SOCKS)
-                    native = toNative
-                    TunVpnService.start(context)
+                val next = engines[i]
+                when {
+                    next == engine -> Unit
+                    next == GlobalSettings.TUN_ENGINE_ROOT -> scope.launch {
+                        // su asks the user the first time; a refusal keeps the engine as it was.
+                        if (withContext(Dispatchers.IO) { RootTun.isRootAvailable() }) switchTo(next)
+                        else Toast.makeText(context, context.getString(R.string.nb_tun_root_denied), Toast.LENGTH_LONG).show()
+                    }
+                    else -> switchTo(next)
                 }
             },
             modifier = Modifier.fillMaxWidth()
         )
         HelpText(
-            if (native) stringResource(R.string.nb_tun_engine_native_desc) + "\n" + stringResource(R.string.nb_tun_help_native)
-            else stringResource(R.string.nb_tun_engine_socks_desc) + "\n" +
-                stringResource(R.string.nb_tun_help, NetAddr.dialable(GlobalSettings.getSocksAddress(context))),
+            when (engine) {
+                GlobalSettings.TUN_ENGINE_SOCKS -> stringResource(R.string.nb_tun_engine_socks_desc) + "\n" +
+                    stringResource(R.string.nb_tun_help, NetAddr.dialable(GlobalSettings.getSocksAddress(context)))
+                GlobalSettings.TUN_ENGINE_ROOT -> stringResource(R.string.nb_tun_engine_root_desc) + "\n" + stringResource(R.string.nb_tun_help_root)
+                else -> stringResource(R.string.nb_tun_engine_native_desc) + "\n" + stringResource(R.string.nb_tun_help_native)
+            },
             modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
         )
 
@@ -192,7 +218,7 @@ fun ColumnScope.TunnelSettings() {
         }
         var address by remember { mutableStateOf(GlobalSettings.getTunAddress(context)) }
         // The native interface takes NetBird's address.
-        if (!native) SettingsEditItem(
+        if (engine == GlobalSettings.TUN_ENGINE_SOCKS) SettingsEditItem(
             stringResource(R.string.nb_tun_address_title), address, Icons.Default.SettingsEthernet,
             placeholder = GlobalSettings.DEFAULT_TUN_ADDRESS, description = stringResource(R.string.nb_tun_address_desc)
         ) { v ->
