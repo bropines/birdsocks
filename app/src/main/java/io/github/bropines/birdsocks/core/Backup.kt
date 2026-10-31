@@ -288,6 +288,7 @@ object Backup {
         val after = GlobalSettings.snapshot(context)
         // The launcher icon is PackageManager's state, not only a preference.
         if (before[AppIcons.PREF] != after[AppIcons.PREF]) AppIcons.reconcile(context)
+        if (before["hide_from_recents"] != after["hide_from_recents"]) TaskRecents.apply(context)
         return Restored(
             appearanceChanged = BackupFormat.APPEARANCE_KEYS.any { before[it] != after[it] },
             localeChanged = before["app_locale"] != after["app_locale"],

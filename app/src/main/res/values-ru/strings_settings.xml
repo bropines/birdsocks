@@ -25,6 +25,10 @@
     <string name="settings_note_restart">Применится после перезапуска BirdSocks</string>
     <string name="settings_note_reconnect">Хранится в профиле NetBird: изменение переподключит</string>
 
+    <!-- Background -->
+    <string name="settings_hide_from_recents">Скрывать из недавних</string>
+    <string name="settings_hide_from_recents_desc">Скрывать BirdSocks из списка недавних приложений. Открывайте его через значок или уведомление; фоновые соединения продолжают работать.</string>
+
     <!-- Cards -->
     <string name="settings_card_account">Аккаунт</string>
     <string name="settings_card_network">Сеть</string>

@@ -183,7 +183,7 @@ object BackupFormat {
         add(Scope.SETTING, Type.STRING, "cp_mode", "cp_type", "cp_host", "cp_port", "byedpi_flags")
         add(Scope.SETTING, Type.BOOLEAN, "byedpi_ipv4")
         // Lifecycle, notifications, logs
-        add(Scope.SETTING, Type.BOOLEAN, "auto_start", "event_notifications", "logs_include_logcat")
+        add(Scope.SETTING, Type.BOOLEAN, "auto_start", "hide_from_recents", "event_notifications", "logs_include_logcat")
         // Updates from GitHub
         add(Scope.SETTING, Type.BOOLEAN, "update_check_on_launch")
         // Automation: the switch; its token is a secret, and the app status goes to is this phone's

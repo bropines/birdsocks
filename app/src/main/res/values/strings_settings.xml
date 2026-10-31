@@ -26,6 +26,10 @@
     <string name="settings_note_restart">Applies after BirdSocks restarts</string>
     <string name="settings_note_reconnect">Kept in the NetBird profile: a change reconnects</string>
 
+    <!-- Background -->
+    <string name="settings_hide_from_recents">Hide from recents</string>
+    <string name="settings_hide_from_recents_desc">Hide BirdSocks from the recent apps list. Open it again from the launcher or notification; background connections keep running.</string>
+
     <!-- Cards -->
     <string name="settings_card_account">Account</string>
     <string name="settings_card_network">Network</string>

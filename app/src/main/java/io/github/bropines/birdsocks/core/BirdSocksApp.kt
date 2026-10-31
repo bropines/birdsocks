@@ -22,6 +22,7 @@ class BirdSocksApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        TaskRecents.watch(this)
         // The log ring, mirrored to a file anyone debugging can read with
         // `adb shell run-as <package> cat files/logs/birdsocks.log`.
         runCatching { Appctr.setLogFile(java.io.File(filesDir, "logs/birdsocks.log").absolutePath) }

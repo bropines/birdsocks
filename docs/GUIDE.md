@@ -10,6 +10,10 @@
 
 **Several accounts:** tap the title on the main screen, then **Add account**. A new account takes its server and setup key at once, and its name is taken from the server's domain. Each account keeps its own keys and settings. Switching reconnects, and the account you leave stays signed in.
 
+## Hide from recents
+
+Settings → Background & permissions → **Hide from recents** hides BirdSocks' tasks from Android's recent apps list. It is off by default and applies immediately, including after a settings restore. Reopen BirdSocks from its launcher icon or notification; the daemon, SOCKS5 proxy and VPN keep running.
+
 ## The SOCKS5 proxy
 
 - The address is `127.0.0.1:48125` by default (Settings → Local proxies). Any `127.x.x.x` address works, and the dice picks a random one, which a port scanner will not guess.

@@ -201,6 +201,10 @@ android {
     }
 
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -256,6 +260,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     screenshotTestImplementation(libs.screenshot.validation.api)
     screenshotTestImplementation(libs.androidx.ui.tooling)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16.1")
 }
 
 // Bundle the repository's CHANGELOG.md into the APK as assets/CHANGELOG.md so the

@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Hide from recents: a switch in Settings → Background & permissions, applied immediately and kept in backups; background connections keep running.
+
 ## [0.3.0] - 2026-10-22
 
 ### Added

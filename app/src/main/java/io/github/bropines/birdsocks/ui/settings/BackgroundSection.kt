@@ -27,6 +27,10 @@ internal fun BackgroundSection() {
         SettingsSwitchItem(stringResource(R.string.nb_settings_boot), stringResource(R.string.nb_settings_boot_desc), Icons.Default.RestartAlt, autoStart) {
             GlobalSettings.setAutoStartEnabled(context, it); autoStart = it
         }
+        var hideFromRecents by remember { mutableStateOf(GlobalSettings.isHideFromRecents(context)) }
+        SettingsSwitchItem(stringResource(R.string.settings_hide_from_recents), stringResource(R.string.settings_hide_from_recents_desc), Icons.Default.VisibilityOff, hideFromRecents) {
+            GlobalSettings.setHideFromRecents(context, it); hideFromRecents = it
+        }
         SettingsClickableItem(stringResource(R.string.nb_settings_permissions), stringResource(R.string.nb_settings_permissions_desc), Icons.Default.BatteryChargingFull) {
             context.startActivity(Intent(context, PermissionsActivity::class.java))
         }
