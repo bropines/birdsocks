@@ -207,6 +207,11 @@ object GlobalSettings {
     // --- Lifecycle ---
     fun isAutoStartEnabled(context: Context): Boolean = getBoolean(context, "auto_start", false)
     fun setAutoStartEnabled(context: Context, enabled: Boolean) = setBoolean(context, "auto_start", enabled)
+    fun isHideFromRecents(context: Context): Boolean = getBoolean(context, "hide_from_recents", false)
+    fun setHideFromRecents(context: Context, hidden: Boolean) {
+        setBoolean(context, "hide_from_recents", hidden)
+        TaskRecents.apply(context)
+    }
     /** The user wanted it on: the boot receiver and a restarted service bring it back. */
     fun wasRunning(context: Context): Boolean = getBoolean(context, "was_running", false)
     fun setWasRunning(context: Context, running: Boolean) = setBoolean(context, "was_running", running)
