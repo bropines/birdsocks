@@ -19,7 +19,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.io.BufferedWriter
 import java.io.File
-import java.util.concurrent.TimeUnit
 
 /**
  * VPN mode's root engine: no VpnService and no VPN slot. A helper, the
@@ -61,7 +60,7 @@ object RootTun {
     /** Whether `su` grants root to this app; blocks for up to ten seconds, so off the main thread. */
     fun isRootAvailable(): Boolean = try {
         val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-        val done = p.waitFor(10, TimeUnit.SECONDS)
+        val done = p.waitUpTo(10_000)
         val out = if (done) p.inputStream.bufferedReader().readText() else ""
         if (!done) p.destroy()
         done && p.exitValue() == 0 && "uid=0" in out
@@ -91,12 +90,12 @@ object RootTun {
             pending?.cancel(); pending = null
         }
         if (p != null) {
-            if (waitMs <= 0 || !runCatching { p.waitFor(waitMs, TimeUnit.MILLISECONDS) }.getOrDefault(false)) p.destroy()
+            if (waitMs <= 0 || !p.waitUpTo(waitMs)) p.destroy()
         }
         TunVpnService.reportRoot(false, null)
     }
 
-    val running: Boolean get() = synchronized(lock) { process?.isAlive == true }
+    val running: Boolean get() = synchronized(lock) { process?.running() == true }
 
     private fun ensureWatcher(context: Context) {
         synchronized(lock) {
@@ -138,8 +137,8 @@ object RootTun {
             return
         }
         synchronized(lock) {
-            if (config == lastConfig && process?.isAlive == true) return
-            if (process?.isAlive != true && !spawn(context)) return
+            if (config == lastConfig && process?.running() == true) return
+            if (process?.running() != true && !spawn(context)) return
             runCatching {
                 stdin!!.write(config); stdin!!.write("\n"); stdin!!.flush()
                 lastConfig = config
@@ -237,4 +236,20 @@ object RootTun {
             put("socket", File(context.filesDir, "vpn.sock").absolutePath)
         }.toString()
     }
+}
+
+/** Process.isAlive, which Android has only from API 26. */
+private fun Process.running(): Boolean = try {
+    exitValue()
+    false
+} catch (_: IllegalThreadStateException) {
+    true
+}
+
+/** Process.waitFor(timeout), also API 26: whether it ended within [ms]. */
+private fun Process.waitUpTo(ms: Long): Boolean {
+    if (!running()) return true
+    val waiter = Thread { runCatching { waitFor() } }.apply { isDaemon = true; start() }
+    waiter.join(ms)
+    return !running()
 }

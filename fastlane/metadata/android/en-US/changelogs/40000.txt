@@ -1,0 +1,2 @@
+Root mode: with root (Magisk, KernelSU, APatch), a real network interface on the phone's NetBird address instead of Android's VPN slot, so BirdSocks runs beside another VPN or ad blocker. The main card says Root while it runs.
+Hide from recents: a switch in Settings → Background & permissions.

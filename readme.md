@@ -49,7 +49,7 @@
 BirdSocks runs the real [NetBird](https://netbird.io) client on your phone as a userspace node and hands its network to apps the way you choose:
 - a **local SOCKS5 proxy** that needs no VPN permission and lives next to any other VPN, ad-blocker or proxy client;
 - a **DNS proxy** that answers NetBird names;
-- a **VPN mode** for apps that cannot use a proxy.
+- a **VPN mode** for apps that cannot use a proxy, and a **Root mode** that needs no VPN slot.
 
 Everything NetBird offers is there: peers and networks, exit nodes, NetBird DNS, several accounts, self-hosted servers. On networks that block the NetBird server, a built-in **ByeDPI** or your own proxy carries the connection to it.
 
@@ -75,7 +75,8 @@ It says what is actually going on:
 |---|---|
 | **SOCKS5 proxy** | `127.0.0.1:48125` by default, or any 127.x address. It carries TCP and UDP and can ask for a username and password, which you need before you open it to the LAN. Peers and the networks they route go through NetBird; everything else goes out directly or through the exit node. |
 | **DNS proxy** | `127.0.0.1:48153`. It answers NetBird names first and asks the network's resolvers, or your own fallbacks, for the rest, all at once. A NetBird name never goes to a public resolver. |
-| **VPN mode (TUN)** | For apps with no proxy setting, through hev-socks5-tunnel into the same proxy. Only NetBird's ranges go in by default; all traffic goes in with an exit node, a domain route or one switch. Apps can be excluded. |
+| **VPN mode (TUN)** | For apps with no proxy setting. The native engine puts the tunnel on the phone's NetBird address: ping works, and peers reach apps on the phone with their own address (KDE Connect). The engine through the proxy feeds the same tunnel into the SOCKS5 proxy. Only NetBird's ranges go in by default; all traffic goes in with an exit node, a domain route or one switch. Apps can be excluded. |
+| **Root mode** | With root (Magisk, KernelSU, APatch): a real network interface on the NetBird address and policy routing instead of Android's VPN slot, so BirdSocks runs beside AdGuard, Rethink or any other VPN. Its helper removes every rule when BirdSocks or its daemon stops. |
 | **Exit nodes and networks** | Choose networks and an exit node. The exit node is checked through the proxy, and one that forwards nothing is flagged with a way out. |
 | **Server connection** | Reach management, signal and the relay through a SOCKS5 or HTTP proxy, or through the built-in **ByeDPI**, where the server is blocked or its TLS handshake is filtered. |
 | **Access to the phone** | Peers reach the phone's own services (adb, Termux's `sshd`, a web server) on its NetBird address, as your ACLs allow. BirdSocks' own proxies stay closed to peers. |
@@ -181,6 +182,7 @@ BirdSocks keeps 8 patches in [`appctr/patches/`](appctr/patches/), each one docu
 | `06-connect-faster` | No kernel-WireGuard probe in netstack mode (it closed Signal's socket on Android), and faster redials of stuck connections |
 | `07-inbound-forwarding` | Peers reach the phone's own services; the app's proxies stay closed to them |
 | `08-control-proxy` | Management, signal, the relay and the daemon's HTTP requests through a SOCKS5 or HTTP proxy, or ByeDPI |
+| `09-native-vpn` | VPN mode and Root mode on the NetBird address: a VPN or root interface attached beside the netstack, peers reaching the phone's apps with their own address |
 
 ---
 
