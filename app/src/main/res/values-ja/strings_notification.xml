@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The ongoing connection card in the notification shade: its channel and its one action. -->
+<resources>
+    <string name="notif_channel_status">接続状態</string>
+    <string name="notif_action_stop">停止</string>
+</resources>

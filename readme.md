@@ -109,7 +109,7 @@ It says what is actually going on:
 | **Links** | `birdsocks://` opens any screen. Action links ask before they act, and invite links open a filled-in new account. |
 | **Backups** | A settings file, or a full backup with NetBird's accounts and keys under a password. |
 | **40 app icons** | Pick one in Settings → Appearance & language, in BirdSocks' colours or NetBird's. |
-| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English and Russian. |
+| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English, Russian and Japanese. |
 
 ---
 
@@ -284,7 +284,7 @@ The actions are `CONNECT`, `DISCONNECT`, `TOGGLE`, `RESTART`, `GET_STATUS`, `SET
 
 Issues and pull requests are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`agents.md`](agents.md) first. In short:
 - daemon changes are patches;
-- strings go in English and Russian;
+- strings go in English, Russian and Japanese;
 - every change in behaviour gets a line in the changelog.
 
 Bug reports are most useful with the debug bundle from Diagnostics → Logs.

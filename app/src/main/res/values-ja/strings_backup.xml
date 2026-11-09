@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings → Backup: BirdSocks' settings and NetBird's accounts to a file, and back. -->
+<resources>
+    <!-- The hub -->
+    <string name="settings_cat_backup">バックアップ</string>
+    <string name="settings_cat_backup_desc">設定とアカウントをファイルへ、そして復元</string>
+
+    <!-- Saving -->
+    <string name="backup_card_save">バックアップ</string>
+    <string name="backup_settings_title">設定ファイル</string>
+    <string name="backup_settings_desc">BirdSocks の設定をプレーンな JSON ファイルとして、このスマートフォンや別の端末向けに保存します。パスワード、NetBird アカウント、このデバイスの名前は含まれません。復元後はプロキシのパスワードを再入力し、サインインしてください。</string>
+    <string name="backup_full_title">完全バックアップ</string>
+    <string name="backup_full_desc">設定とそのパスワード、NetBird アカウントとそのキーを 1 つのファイルにまとめ、パスワードで保護します。再インストール後のこのスマートフォン向けです。</string>
+    <string name="backup_saved">バックアップを保存しました</string>
+    <string name="backup_save_failed">バックアップを保存できませんでした: %1$s</string>
+
+    <!-- Restoring -->
+    <string name="backup_card_restore">復元</string>
+    <string name="backup_restore_title">ファイルから復元</string>
+    <string name="backup_restore_desc">設定ファイルまたは完全バックアップ。復元内容を確認するまで何も変わりません。</string>
+    <string name="backup_restored">復元しました</string>
+    <string name="backup_restore_failed">復元できませんでした: %1$s</string>
+
+    <!-- Passwords -->
+    <string name="backup_password_title">バックアップのパスワード</string>
+    <string name="backup_password_text">ファイルには NetBird アカウントのキーとパスワードが、このパスワードで暗号化されて保存されます。このパスワードは復元できません。失うとバックアップを復元できなくなります。</string>
+    <string name="backup_password_label">パスワード</string>
+    <string name="backup_password_repeat">パスワードを再入力</string>
+    <string name="backup_password_mismatch">パスワードが一致しません</string>
+    <string name="backup_password_show">パスワードを表示</string>
+    <string name="backup_password_continue">保存先を選択</string>
+    <string name="backup_password_lost">保存先の選択中にパスワードが失われました。バックアップをやり直してください。</string>
+    <string name="backup_unlock_title">完全バックアップ</string>
+    <string name="backup_unlock_text">バックアップの保存時に設定したパスワードを入力してください。</string>
+    <string name="backup_unlock_action">開く</string>
+    <string name="backup_wrong_password">パスワードが違うか、ファイルが破損しています</string>
+
+    <!-- What to restore -->
+    <string name="backup_from">%1$s より、BirdSocks %2$s</string>
+    <string name="backup_settings_confirm_title">設定を復元しますか？</string>
+    <string name="backup_settings_confirm_text">%1$s。\n\nファイル内の設定が現在の設定を置き換えます。パスワード、NetBird アカウント、このデバイスの名前は含まれていないため、そのまま残ります。ここでプロキシにパスワードがない間は、ローカルネットワークでのプロキシ共有はオフのままです。</string>
+    <string name="backup_restore_action">復元</string>
+    <string name="backup_scope_title">復元する内容</string>
+    <string name="backup_scope_text">%1$s。含まれる NetBird アカウント: %2$d。</string>
+    <string name="backup_scope_settings">設定のみ</string>
+    <string name="backup_scope_settings_desc">設定とそのパスワード。ここにある NetBird アカウントはそのまま残ります。</string>
+    <string name="backup_scope_everything">すべて</string>
+    <string name="backup_scope_everything_desc">NetBird アカウントとそのキーもここにあるものと置き換え、このデバイスの名前も復元します。書き込み中は NetBird が停止し、その後再起動します。</string>
+    <string name="backup_scope_warning">別のスマートフォンで NetBird のキーを復元すると、2 台のデバイスが同じ ID を共有することになります。同じスマートフォン（再インストール後）で使うか、新しい端末では改めてサインインしてください。</string>
+
+    <!-- Why a file is refused; they follow "Not restored:" -->
+    <string name="backup_err_not_backup">BirdSocks のバックアップではありません</string>
+    <string name="backup_err_other_app">別のアプリのバックアップです（%1$s）</string>
+    <string name="backup_err_format_new">新しい BirdSocks で作成されたバックアップです。先にアプリを更新してください</string>
+    <string name="backup_err_app_new">BirdSocks %1$s で作成されたバックアップで、このバージョンより新しいものです。先にアプリを更新してください</string>
+    <string name="backup_err_entry">バックアップに復元で書き込めないファイルが含まれています: %1$s</string>
+    <string name="backup_err_too_large">ファイルがバックアップとして大きすぎます</string>
+    <string name="backup_err_daemon">NetBird が停止しなかったため、そのファイルには触れていません</string>
+</resources>

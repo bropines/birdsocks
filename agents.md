@@ -137,7 +137,7 @@ Binding:
 * Every screen uses `AppTopBar`. Explanations fold through `HelpText` (two lines,
   ⓘ, unfold on tap or long press); long text belongs in dialogs. No ⋮ menus on
   cards.
-* Every new string goes in English to `values/` and in Russian to `values-ru/`.
+* Every new string goes in English to `values/`, Russian to `values-ru/` and Japanese to `values-ja/`.
 * Never block the main thread on the bridge: `Netbird.*` calls are suspend
   functions on `Dispatchers.IO`.
 * The structure: the main screen is the status card, banners

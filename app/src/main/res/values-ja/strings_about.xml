@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The About dialog, "What's new" and the updater (ui/AboutDialog.kt, core/Updater.kt). -->
+<resources>
+    <!-- About -->
+    <string name="about_open">BirdSocks について</string>
+    <string name="about_open_desc">新機能、クレジット、ライセンス</string>
+    <string name="about_cd_update">BirdSocks について: アップデートがあります</string>
+    <string name="about_version">バージョン %1$s</string>
+    <string name="about_core_version">NetBird %1$s</string>
+    <string name="about_whats_new">新機能</string>
+    <string name="about_releases">リリース</string>
+    <string name="about_docs">NetBird ドキュメント</string>
+    <string name="about_donate">プロジェクトを支援</string>
+    <string name="about_credits">クレジット</string>
+    <string name="about_credit_claude">Anthropic の Claude — 開発</string>
+    <string name="about_credit_bropines">Bropines — アイデア、方向性、テスト</string>
+    <string name="about_credit_netbird">NetBird — 中核のクライアント</string>
+    <string name="about_credit_hev">hev-socks5-tunnel — VPN モード</string>
+    <string name="about_credit_byedpi">ByeDPI — サーバーへのブロックを回避する仕組み</string>
+    <string name="about_credit_anet">anet — Android 11+ のネットワークインターフェース</string>
+    <string name="about_license_line">BirdSocks は BSD 3-Clause ライセンスの自由ソフトウェアです。</string>
+
+    <!-- What's new -->
+    <string name="whats_new_title">%1$s の新機能</string>
+    <string name="whats_new_unavailable">変更履歴は利用できません。</string>
+    <string name="whats_new_full">完全な変更履歴</string>
+
+    <!-- Updates -->
+    <string name="update_check_on_launch">アップデートを自動で確認</string>
+    <string name="update_check_on_launch_desc">BirdSocks を開くたびに GitHub に新しいリリースを問い合わせ、あれば通知します。ダウンロードをタップするまで何もダウンロードされません。</string>
+    <string name="update_check_now">アップデートを確認</string>
+    <string name="update_check_now_desc">今すぐ GitHub に問い合わせます。新しいリリースは「BirdSocks について」からダウンロードしてインストールできます</string>
+    <string name="update_checking">確認中…</string>
+    <string name="update_up_to_date">最新バージョンです</string>
+    <string name="update_new_version">バージョン %1$s が利用可能です</string>
+    <string name="update_available_toast">BirdSocks %1$s が利用可能です: メイン画面の「BirdSocks について」をご覧ください</string>
+    <string name="update_notes">リリースノート</string>
+    <string name="update_download">ダウンロードしてインストール</string>
+    <string name="update_install">インストール</string>
+    <string name="update_downloading">ダウンロード中… %1$d%%</string>
+    <string name="update_verify_desc">このデバイス用の APK をリリースからダウンロードし、SHA256SUMS と照合してから Android のインストーラーに渡します。置き換え前には確認が表示されます。</string>
+    <string name="update_dev_build">これは開発ビルドで、別のアプリです。リリース版は上書きされず、並んでインストールされます。リリースページから取得してください。</string>
+    <string name="update_no_apk">このリリースにはこのデバイス用の APK がありません。リリースページから取得してください。</string>
+    <string name="update_open_page">リリースページを開く</string>
+    <string name="update_retry">再試行</string>
+    <string name="update_grant_permission">BirdSocks にアプリのインストールを許可してから、インストールをタップしてください</string>
+    <string name="update_install_failed">インストーラーが失敗しました: %1$s</string>
+    <string name="update_failed_check">アップデートを確認できませんでした</string>
+    <string name="update_failed_download">ダウンロードに失敗しました</string>
+    <string name="update_failed_no_sums">このリリースにはこの APK のチェックサムがありません</string>
+    <string name="update_failed_checksum">ダウンロードがリリースのチェックサムと一致しないため削除しました</string>
+    <string name="update_failed_not_apk">ダウンロードしたファイルは BirdSocks の APK ではありません</string>
+    <string name="update_failed_not_newer">ダウンロードしたバージョンは現在より新しくありません</string>
+</resources>
