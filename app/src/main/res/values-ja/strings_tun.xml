@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The VPN (TUN) mode: TunVpnService, its settings, its permission and its app list. -->
+<resources>
+    <string name="title_activity_tun_excluded_apps">除外アプリ</string>
+    <string name="tun_apps_filter_all">すべて</string>
+    <string name="tun_apps_filter_excluded">バイパス中</string>
+    <string name="tun_excluded_apps_count">トンネルをバイパス: %1$d</string>
+    <string name="nb_tun_apps_empty">何もありません</string>
+    <string name="tun_excluded_apps_not_installed">このスマートフォンにインストールされていません</string>
+
+    <string name="nb_tun_mode_proxy">プロキシ</string>
+    <string name="nb_tun_mode_vpn">VPN（TUN）</string>
+    <string name="nb_tun_mode_title">モード</string>
+    <string name="nb_tun_mode_proxy_desc">アプリはそれぞれに設定した SOCKS5 プロキシ（または DNS プロキシ）経由で NetBird に到達します。VPN スロットは空いたままです。</string>
+    <string name="nb_tun_mode_vpn_desc">すべてのアプリが Android の VPN 経由で BirdSocks を通ります。アプリ側の設定は不要です。VPN スロットを使用します。</string>
+    <string name="nb_tun_card">VPN</string>
+    <string name="nb_tun_status_up">トンネル稼働中 · %1$s</string>
+    <string name="nb_tun_status_waiting">NetBird とともに起動します</string>
+    <string name="nb_tun_status_consent">VPN の許可を待っています</string>
+    <string name="nb_tun_routes_split">NetBird の範囲のみ</string>
+    <string name="nb_tun_routes_all">すべてのトラフィック（%1$s）</string>
+    <string name="nb_tun_reason_exit">出口ノード</string>
+    <string name="nb_tun_reason_domain">ドメインルート</string>
+    <string name="nb_tun_reason_all">設定による</string>
+    <string name="nb_tun_help">アプリのトラフィックは SOCKS5 プロキシ（%1$s）に入り、そこから先へ進みます。NetBird の範囲はメッシュ経由、それ以外は直接です。トンネル内では ping は通りません。\n• DNS: BirdSocks 内の 1 つのリゾルバーが、まず NetBird の名前を、次に DNS アップストリームまたはネットワークのリゾルバーを引きます。\n• プライベート DNS にホスト名を設定するとこれを迂回し、NetBird の名前が解決されなくなります。\n• VPN は NetBird のデーモンとともに切断されます。</string>
+    <string name="nb_tun_engine_native">ネイティブ</string>
+    <string name="nb_tun_engine_socks">プロキシ経由</string>
+    <string name="nb_tun_engine_native_desc">トンネルはこのデバイスの NetBird アドレスを使用します。アプリはピアからスマートフォン本体として見え、ping も通り、ピアは各自のアドレスでスマートフォン上のアプリに到達できます（KDE Connect、ファイル共有）。ピアからの新規接続には「スマートフォンへのアクセス」が必要です。</string>
+    <string name="nb_tun_engine_socks_desc">トンネルは独自のアドレスを持ち、SOCKS5 プロキシに接続されます。ピアがスマートフォン上のアプリに到達できるのは「スマートフォンへのアクセス」経由のみで、アプリからは 127.0.0.1 に見えます。</string>
+    <string name="nb_tun_help_native">NetBird 宛てのアプリのパケットはそのままメッシュに入り、それ以外は BirdSocks から直接出ます。\n• DNS: BirdSocks 内の 1 つのリゾルバーが、まず NetBird の名前を、次に DNS アップストリームまたはネットワークのリゾルバーを引きます。\n• プライベート DNS にホスト名を設定するとこれを迂回し、NetBird の名前が解決されなくなります。\n• トンネルは NetBird がこのデバイスにアドレスを割り当てた後に立ち上がり、NetBird のデーモンとともに切断されます。</string>
+    <string name="nb_tun_engine_root">Root</string>
+    <string name="nb_tun_engine_root_desc">root があれば、Android の VPN の代わりにこのデバイスの NetBird アドレスへ実際のネットワークインターフェースを作ります。VPN スロットは別の VPN や広告ブロッカーのために空き、ピアは各自のアドレスでスマートフォン上のアプリに到達できます。ピアからの新規接続には「スマートフォンへのアクセス」が必要です。</string>
+    <string name="nb_tun_help_root">ヘルパーが su 経由で動作し、独自のルーティングルールでトラフィックをインターフェースへ導きます。BirdSocks の停止時やデーモンの終了時にはルールを削除します。\n• DNS: ポート 53 への問い合わせは BirdSocks 内のリゾルバーへ送られ、まず NetBird の名前を引きます。プライベート DNS にホスト名を設定すると迂回されます。\n• Android はこのインターフェースを認識しないため、VPN アイコンは表示されず、他のアプリからも VPN は見えません。</string>
+    <string name="nb_tun_root_denied">root アクセスが許可されませんでした。Magisk は画面で確認します。KernelSU や APatch ではスーパーユーザー一覧で BirdSocks を許可し、もう一度 Root を選択してください。</string>
+    <string name="nb_tun_route_all_title">すべてをトンネルへ</string>
+    <string name="nb_tun_route_all_desc">NetBird の範囲だけでなく、すべてのアプリのトラフィックをトンネルに入れます。出口ノードやドメインルートを選ぶと自動的にこうなります。</string>
+    <string name="nb_tun_ipv6_title">IPv6 もトンネルへ</string>
+    <string name="nb_tun_ipv6_desc">トンネルがすべてのトラフィックを扱うとき、IPv6 も通します。NetBird 自身の IPv6 は常に通ります。\n• 出口ノードが IPv6 を扱う場合にのみオンにしてください。\n• それ以外では IPv6 のサイトが IPv4 にフォールバックせず、応答しなくなります。</string>
+    <string name="nb_tun_apps_title">除外アプリ</string>
+    <string name="nb_tun_apps_desc">%1$d個がトンネルをバイパスします。BirdSocks 自身は常にバイパスします。「常時接続 VPN」と「VPN なしの接続をブロック」を併用すると、除外アプリはネットワークを失います。</string>
+    <string name="nb_tun_cidrs_title">除外する範囲</string>
+    <string name="nb_tun_cidrs_desc">トンネルがすべてのトラフィックを扱う際にトンネルから外すサブネット（カンマ区切り）。Android 13 以上。通常は不要です。プロキシはローカルネットワークを直接送ります。</string>
+    <string name="nb_tun_cidrs_hint">192.168.0.0/16</string>
+    <string name="nb_tun_address_title">VPN アドレス</string>
+    <string name="nb_tun_address_desc">トンネルインターフェースの IPv4 アドレスとプレフィックス。198.18.0.1 が他の何かと衝突する場合にのみ変更してください。</string>
+    <string name="nb_tun_address_invalid">プレフィックス付きの IPv4 アドレスではありません: %1$s</string>
+    <string name="nb_tun_warning_title">VPN スロットを使用しますか？</string>
+    <string name="nb_tun_warning_body">Android で同時に使える VPN は 1 つです。これをオンにするとスロットを占有し、後からスロットを取った VPN や広告ブロッカーが同様に BirdSocks を切断します。</string>
+    <string name="nb_tun_warning_body_busy">現在別の VPN（広告ブロッカー、DNS アプリ、他のトンネル）が動作しています。これをオンにするとスロットを奪い、戻すまでそれは停止します。</string>
+    <string name="nb_tun_warning_confirm">オンにする</string>
+    <string name="nb_tun_denied">VPN の許可がありません</string>
+    <string name="nb_tun_unavailable">このデバイスでトンネルライブラリを読み込めませんでした。</string>
+    <string name="nb_tun_channel">VPN</string>
+    <string name="nb_tun_consent_title">VPN の許可が必要です</string>
+    <string name="nb_tun_consent_text">タップして BirdSocks の VPN を開始できるようにしてください。</string>
+    <string name="nb_tun_revoked_text">別の VPN がスロットを取得しました。BirdSocks はプロキシとして動作を続けます。</string>
+    <string name="nb_tun_notif_text">%1$s · VPN</string>
+    <string name="nb_tun_tile_active">有効 · VPN</string>
+    <string name="nb_tun_notif_text_root">%1$s · Root</string>
+    <string name="nb_tun_tile_active_root">有効 · Root</string>
+</resources>

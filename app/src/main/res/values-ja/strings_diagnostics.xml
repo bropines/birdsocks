@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diagnostics (connection, events, tools) and the DNS screen. -->
+<resources>
+    <string name="diag_tools">ツール</string>
+    <string name="diag_tool_logs_desc">アプリと NetBird のログ: 検索、コピー、保存ができます。</string>
+    <string name="diag_tool_trace_desc">このスマートフォンとピアの間のパケットを NetBird のファイアウォールがどう扱うかを確認します。</string>
+    <string name="diag_forwarding_desc">ネットワークがルーティングピアとしてこのデバイスに転送するポート。ルールはサーバー側で設定します。</string>
+
+    <string name="dns_test">テスト</string>
+    <string name="dns_proxy_test_desc">プロキシにこのデバイス自身の名前を問い合わせます。応答があれば、背後で NetBird のリゾルバーが動いています。</string>
+    <string name="dns_proxy_off_title">DNS プロキシはオフです</string>
+    <string name="dns_proxy_off_desc">設定 → DNS でオンにすると、AdGuard などのアプリの DNS を NetBird に向けられます。</string>
+    <string name="dns_lookup_title">名前解決</string>
+    <string name="dns_lookup_desc">アプリが DNS プロキシを使うのと同じように問い合わせます。</string>
+    <string name="dns_lookup_placeholder">peer.netbird.cloud または example.com</string>
+    <string name="dns_cd_query">問い合わせ</string>
+    <string name="dns_answered">%1$dミリ秒で応答</string>
+    <string name="dns_answered_with">%1$dミリ秒で応答: %2$s</string>
+    <string name="dns_no_answer">応答なし: %1$s</string>
+    <string name="dns_timeout">タイムアウト</string>
+    <string name="dns_rcode_nxdomain">その名前は存在しません</string>
+    <string name="dns_rcode_nodata">レコードなし</string>
+    <string name="dns_rcode_servfail">サーバーエラー</string>
+    <string name="dns_rcode_refused">拒否されました</string>
+    <string name="dns_rcode_other">エラー %1$d</string>
+    <string name="dns_state">状態</string>
+    <string name="dns_netbird_off_desc">ピア名とネットワークのゾーンがこのデバイスで解決されません。設定 → DNS で NetBird DNS をオンにしてください。</string>
+    <string name="dns_device_name">このデバイス</string>
+    <string name="dns_domain">ネットワークドメイン</string>
+    <string name="dns_settings_link">DNS 設定</string>
+    <string name="dns_settings_link_desc">NetBird DNS、追加の名前、DNS プロキシ、その他の名前の送信先。</string>
+    <string name="dns_records_title">レコード</string>
+    <string name="dns_records_desc">サーバーがこのデバイスに与えた名前: ピアのゾーンと、管理者がグループ向けに作成したゾーン。名前をタップするとコピーできます。表全体はダッシュボードにあります。</string>
+    <string name="dns_records_none">サーバーはこのデバイスにレコードを与えていません。</string>
+    <string name="dns_records_not_connected">レコードは NetBird の接続後に届きます。</string>
+    <string name="dns_records_filter">名前またはアドレスで絞り込み</string>
+    <string name="dns_zone_peers">ピア</string>
+    <string name="dns_zone_custom">カスタムゾーン</string>
+    <string name="dns_zone_no_search">短縮名なし</string>
+    <plurals name="dns_zone_names">
+        <item quantity="other">%d件の名前</item>
+    </plurals>
+    <string name="dns_servers_title">ネームサーバー</string>
+    <string name="dns_servers_desc">NetBird がネットワークの設定に従って、ドメインごとに名前を送る先。テストは SOCKS5 プロキシ経由でサーバーに問い合わせます。アプリが到達するのと同じ経路で、ピアがそのアドレスをルーティングしていればメッシュ経由になります。</string>
+    <string name="dns_servers_none">ネットワークはこのデバイスにネームサーバーを与えていません。</string>
+    <string name="dns_group_off">未使用</string>
+    <string name="dns_cd_test_server">サーバーをテスト</string>
+</resources>

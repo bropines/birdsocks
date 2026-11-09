@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Peers screen: the list, this device's own row and the details sheet that
+  pages through them. The rest of the peer words (filters, ICE, latency) are
+  older and live in strings_birdsocks.xml.
+-->
+<resources>
+
+    <!-- The list. -->
+    <string name="state_peers_alone">このネットワークにはまだ他のピアがいません</string>
+    <string name="peer_state_connected">接続済み</string>
+    <string name="peer_state_connecting">接続中</string>
+    <string name="peer_state_idle">アイドル</string>
+    <!-- This device while the daemon is neither connected nor connecting. -->
+    <string name="peer_state_down">未接続</string>
+    <string name="peer_role_routing">ルーティングピア</string>
+    <string name="peer_self">このデバイス</string>
+
+    <!-- The sheet: turning pages, folding cards, copying rows. -->
+    <string name="peer_details_prev">前へ</string>
+    <string name="peer_details_next">次へ</string>
+    <string name="peer_copied">コピーしました</string>
+    <string name="peer_cd_expanded">展開済み</string>
+    <string name="peer_cd_collapsed">折りたたみ済み</string>
+
+    <!-- The card headings. -->
+    <string name="peer_group_connection">接続</string>
+    <string name="peer_group_addresses">アドレス</string>
+    <string name="peer_group_path">経路</string>
+    <string name="peer_group_traffic">通信量</string>
+    <string name="peer_group_networks">ネットワーク</string>
+    <string name="peer_group_security">セキュリティ</string>
+    <string name="peer_group_dns">DNS</string>
+
+    <!-- The connection card's caption under the latency, or under the dash
+         where there is none. -->
+    <string name="peer_conn_not_measured">未計測</string>
+    <string name="peer_conn_not_connected">現在接続なし</string>
+    <string name="peer_conn_lazy">初回使用時に接続</string>
+
+    <!-- Rows of the path card. -->
+    <string name="peer_local_endpoint">このデバイスのエンドポイント</string>
+    <string name="peer_remote_endpoint">ピアのエンドポイント</string>
+    <string name="peer_status_changed">状態が変わりました</string>
+
+    <string name="peer_traffic_total">転送量</string>
+    <string name="peer_traffic_rx">受信</string>
+    <string name="peer_traffic_tx">送信</string>
+
+    <!-- The networks card: one range is shown as it is, more are counted. -->
+    <string name="peer_networks_one">ルーティングするネットワーク</string>
+    <string name="peer_networks_many">ルーティングするネットワーク</string>
+    <plurals name="peer_networks_count">
+        <item quantity="other">%d件のネットワーク</item>
+    </plurals>
+
+    <string name="peer_rosenpass_caption">耐量子キー（Rosenpass）</string>
+    <string name="peer_rosenpass_permissive">オン、許容モード</string>
+    <string name="peer_ssh_session">SSH セッション</string>
+
+    <!-- This device's session and DNS cards. -->
+    <string name="peer_session_never">無期限</string>
+    <string name="peer_dns_labels">追加の DNS 名</string>
+    <string name="peer_dns_labels_edit">設定で変更</string>
+</resources>

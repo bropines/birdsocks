@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: the hub's sections and what moved into them. -->
+<resources>
+    <!-- The hub -->
+    <string name="settings_cat_appearance">外観と言語</string>
+    <string name="settings_cat_appearance_desc">テーマ、色、アプリの言語</string>
+    <string name="settings_cat_account">アカウントとデバイス</string>
+    <string name="settings_cat_account_desc">アカウント、デバイス名、サーバー、セッション、ネットワーク</string>
+    <string name="settings_cat_tunnel">トンネルモード</string>
+    <string name="settings_cat_tunnel_desc">プロキシを使えないアプリ向けの VPN インターフェース</string>
+    <string name="settings_cat_proxies">ローカルプロキシ</string>
+    <string name="settings_cat_proxies_desc">SOCKS5 のアドレスとパスワード、ローカルネットワークでの共有</string>
+    <string name="settings_cat_dns_desc">NetBird DNS、追加の名前、DNS プロキシ</string>
+    <string name="settings_cat_access">このスマートフォンへのアクセス</string>
+    <string name="settings_cat_access_desc">ピアからの接続、ポートの公開</string>
+    <string name="settings_cat_connection">接続</string>
+    <string name="settings_cat_connection_desc">遅延接続、リレー、IPv6、MTU</string>
+    <string name="settings_cat_background">バックグラウンドと権限</string>
+    <string name="settings_cat_background_desc">通知、起動時の自動開始、権限</string>
+    <string name="settings_cat_diagnostics">診断と開発者向け</string>
+    <string name="settings_cat_diagnostics_desc">ログの詳細、環境、リモートジョブ、ログ</string>
+    <string name="settings_cat_about_desc">バージョン、アップデート、ドキュメント、ライセンス</string>
+
+    <!-- How a group of settings applies -->
+    <string name="settings_note_restart">BirdSocks の再起動後に適用されます</string>
+    <string name="settings_note_reconnect">NetBird プロファイルに保存されます: 変更すると再接続します</string>
+
+    <!-- Background -->
+    <string name="settings_hide_from_recents">最近のアプリから隠す</string>
+    <string name="settings_hide_from_recents_desc">最近使ったアプリの一覧に BirdSocks を表示しません。ランチャーや通知から再度開けます。バックグラウンドの接続は継続します。</string>
+
+    <!-- Cards -->
+    <string name="settings_card_account">アカウント</string>
+    <string name="settings_card_network">ネットワーク</string>
+    <string name="settings_sect_lan">ローカルネットワーク</string>
+    <string name="settings_card_inbound">このスマートフォンへの接続</string>
+    <string name="settings_card_peers">ピアとリレー</string>
+    <string name="settings_card_packets">アドレスとパケット</string>
+    <string name="settings_card_server_connection">サーバー接続</string>
+    <string name="cp_desc">BirdSocks が NetBird サーバー（管理、シグナル、リレー）に到達する方法。サーバーがブロックされている場合はプロキシを経由するか、ByeDPI に TLS ハンドシェイクを DPI の先へ通させてください。ピア間のトラフィックは独自の経路を使います。</string>
+    <string name="cp_mode_direct">直接</string>
+    <string name="cp_mode_proxy">プロキシ</string>
+    <string name="cp_host">プロキシサーバー</string>
+    <string name="cp_port">ポート</string>
+    <string name="cp_bad_port">ポートは 1〜65535 です</string>
+    <string name="cp_user">ユーザー名</string>
+    <string name="cp_pass">パスワード</string>
+    <string name="cp_auth_desc">プロキシが要求する場合のみ。</string>
+    <string name="cp_no_host">プロキシサーバーが設定されていません: 直接接続します。</string>
+    <string name="cp_byedpi_flags">ByeDPI フラグ</string>
+    <string name="cp_byedpi_flags_desc">byedpi の文法によるデシンク設定。バインド、fork、ファイルに触れるオプションは除外されます。</string>
+    <string name="cp_byedpi_ipv4">IPv4 のみ</string>
+    <string name="cp_byedpi_ipv4_desc">サーバーの IPv6 アドレスが失敗するネットワーク向け。</string>
+    <string name="cp_byedpi_running">ByeDPI は %1$s で待ち受けています</string>
+    <string name="settings_card_developer">開発者</string>
+    <string name="settings_sect_tools">ツール</string>
+
+    <!-- Account -->
+    <string name="settings_account_hint">切り替え、追加、名前変更、削除</string>
+
+    <!-- Local proxies -->
+    <string name="settings_socks5_auth_needs_both">両方入力してください: 片方だけでは無視され、プロキシはオープンのままです</string>
+    <string name="settings_sagernet_copy">socks5:// リンクをコピー</string>
+    <string name="settings_sagernet_copied">リンクをコピーしました</string>
+    <string name="settings_sagernet_copy_for">クライアント用リンク…</string>
+    <string name="settings_sagernet_copy_local">このスマートフォン</string>
+    <string name="settings_lan_access_listening">すべてのインターフェースで待ち受け中: アドレスは下にあります</string>
+    <string name="settings_lan_endpoint_lan">Wi‑Fi / LAN</string>
+    <string name="settings_lan_endpoint_none">現在このネットワークにアドレスがありません</string>
+    <string name="settings_lan_copied">コピーしました: %1$s</string>
+    <string name="settings_lan_access_no_auth_warning">SOCKS5 プロキシにユーザー名とパスワードがありません: この Wi‑Fi 上の誰でも、それを経由してあなたの NetBird ネットワークに到達できます。</string>
+
+    <!-- DNS, access, diagnostics -->
+    <string name="settings_link_dns_desc">リゾルバー、名前、名前解決テスト</string>
+    <string name="settings_inbound_override">受信ブロックが優先されます: オンの場合、「スマートフォンへのアクセス」の設定にかかわらず、ピアはこのスマートフォン上の何にも到達できません。</string>
+    <string name="settings_link_publish_desc">このスマートフォンのポートに公開アドレスを付与</string>
+    <string name="settings_link_diagnostics_desc">接続、イベント、アクセス確認、パケットキャプチャ</string>
+    <string name="settings_link_logs_desc">デーモンのログ（フィルターと書き出し付き）</string>
+</resources>

@@ -2,7 +2,7 @@
 
 *Русская версия: [TRANSLATING_RU.md](TRANSLATING_RU.md)*
 
-BirdSocks is to be translated on [Hosted Weblate](https://hosted.weblate.org/). The project does not exist yet: Weblate's free Libre plan is for public projects, and this repository is still private. Until then English and Russian are maintained in the repository. Once it exists, translators work in the browser, with machine suggestions to start from, and Weblate sends the result back as pull requests.
+BirdSocks is to be translated on [Hosted Weblate](https://hosted.weblate.org/). The project does not exist yet: Weblate's free Libre plan is for public projects, and this repository is still private. Until then English, Russian and Japanese are maintained in the repository. Once it exists, translators work in the browser, with machine suggestions to start from, and Weblate sends the result back as pull requests.
 
 ## For translators
 
@@ -38,4 +38,4 @@ A few conventions:
 
 ## For contributors adding strings
 
-Add every new string in English to `values/` and in Russian to `values-ru/`; Weblate will carry the rest. Give a screen with many strings its own `strings_<area>.xml` rather than growing `strings.xml`. Mark a string `translatable="false"` only when it is not language at all: a brand or protocol name, an address, a format with no words.
+Add every new string in English to `values/`, in Russian to `values-ru/` and in Japanese to `values-ja/`; Weblate will carry the rest. Give a screen with many strings its own `strings_<area>.xml` rather than growing `strings.xml`. Mark a string `translatable="false"` only when it is not language at all: a brand or protocol name, an address, a format with no words.

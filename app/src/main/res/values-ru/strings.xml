@@ -60,6 +60,7 @@
     <string name="settings_lang_sys">Системный</string>
     <string name="settings_lang_en">English</string>
     <string name="settings_lang_ru">Русский</string>
+    <string name="settings_lang_ja">日本語</string>
     <string name="settings_preset_default">По умолчанию</string>
     <string name="settings_preset_lavender">Лаванда</string>
     <string name="settings_preset_emerald">Изумруд</string>

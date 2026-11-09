@@ -61,6 +61,7 @@
     <string name="settings_lang_sys">System</string>
     <string name="settings_lang_en">English</string>
     <string name="settings_lang_ru">Russian</string>
+    <string name="settings_lang_ja">日本語</string>
     <string name="settings_preset_default">Default</string>
     <string name="settings_preset_lavender">Lavender</string>
     <string name="settings_preset_emerald">Emerald</string>

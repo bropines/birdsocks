@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The main screen, the account sheet, Networks and Publish. -->
+<resources>
+    <string name="action_edit">編集</string>
+    <string name="accounts_done">完了</string>
+    <string name="accounts_not_connected">未接続</string>
+    <string name="nb_accounts_sheet_help">各アカウントには独自のキー、設定、セッションがあり、同時に接続されるのは 1 つだけです。切り替えると再接続され、離れたアカウントはサインインしたまま残ります。最初のアカウントは名前の変更も削除もできず、有効なアカウントは削除できません。</string>
+    <string name="nb_networks_off_title">ネットワークがオフです</string>
+    <string name="nb_networks_off_desc">設定 → アカウントの「ネットワークを使用」がオフです。このデバイスは、ピアがルーティングするネットワークや出口ノードに到達できません。</string>
+    <string name="nb_expose_inbound_in_settings">プロキシは NetBird 経由でスマートフォンに到達するため、ピアからのサービスへのアクセスを許可する必要があります。設定でオンにしてください。</string>
+    <string name="main_cd_dashboard">ダッシュボードを開く</string>
+</resources>

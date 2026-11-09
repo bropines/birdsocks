@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Automation: Settings → Automation, action links, launcher shortcuts (core/Automation.kt, ui/ActionLinks.kt). -->
+<resources>
+    <string name="settings_cat_automation">自動化</string>
+    <string name="settings_cat_automation_desc">Tasker と adb、アクションリンク、トークン</string>
+
+    <string name="automation_title">自動化</string>
+    <string name="automation_enable">自動化を許可</string>
+    <string name="automation_enable_desc">Tasker、MacroDroid、adb、トークン付きリンクが BirdSocks の起動・停止・切り替えを行えます。オフの場合、すべての要求は拒否されます。</string>
+    <string name="automation_token">トークン</string>
+    <string name="automation_token_clear">トークンをクリア</string>
+    <string name="automation_token_desc">すべてのブロードキャストは secret エクストラでこれを運び、&amp;secret= 付きのリンクは確認なしで実行されます。これを知っている人は BirdSocks を操作できます。</string>
+    <string name="automation_token_missing">%1$d文字以上のトークンがありません: すべての要求は拒否されます。生成してください。</string>
+    <string name="automation_status_to">状態の更新先: %1$s</string>
+    <string name="automation_status_stop">停止</string>
+    <string name="automation_docs">アクションと例</string>
+    <string name="automation_docs_desc">ブロードキャスト、リンク、adb コマンド</string>
+    <string name="automation_docs_url">https://github.com/bropines/birdsocks/blob/main/docs/AUTOMATION.md</string>
+
+    <string name="automation_failed">実行されませんでした: %1$s</string>
+    <string name="automation_start_refused">Android がバックグラウンドでの BirdSocks の自動起動を許可しませんでした。設定 → バックグラウンドと権限でバッテリー最適化の対象外にしてください。</string>
+
+    <string name="automation_link_connect">BirdSocks を起動して接続しますか？</string>
+    <string name="automation_link_disconnect">切断して BirdSocks を停止しますか？</string>
+    <string name="automation_link_exit_node">インターネットトラフィックを出口ノード %1$s 経由にしますか？</string>
+    <string name="automation_link_exit_none">出口ノードの使用をやめますか？</string>
+    <string name="automation_link_account">アカウント %1$s に切り替えますか？</string>
+    <string name="automation_link_tun_on">VPN モードをオンにしますか？</string>
+    <string name="automation_link_tun_off">VPN モードをオフにしますか？</string>
+    <string name="automation_link_body">別のアプリや Web ページからのリンクがこれを要求しています。自分で開いた場合にのみ許可してください。</string>
+    <string name="automation_link_allow">許可</string>
+    <string name="automation_link_invalid">この BirdSocks リンクは不完全か無効です</string>
+
+    <string name="shortcut_toggle">オン / オフ</string>
+    <string name="shortcut_toggle_long">BirdSocks をオンまたはオフにする</string>
+</resources>
