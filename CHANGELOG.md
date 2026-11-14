@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Quick Settings tile: shows the state a tap asked for until the service catches up, says "Stopping…" while it stops, and no longer sticks at "Starting…" when Android refuses a start from the panel.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added
