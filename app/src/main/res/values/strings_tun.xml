@@ -70,4 +70,5 @@
     <string name="nb_tun_root_take_confirm_title">Take every app?</string>
     <string name="nb_tun_root_take_confirm_body">While BirdSocks runs, the other VPN\'s apps lose their tunnel and its DNS — their traffic goes to NetBird instead. Stays on this phone only, not in backups.</string>
     <string name="nb_tun_root_take_confirm">Take</string>
+    <string name="nb_tun_engine_title">Engine</string>
 </resources>

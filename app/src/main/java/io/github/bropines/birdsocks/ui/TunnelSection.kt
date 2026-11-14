@@ -137,7 +137,7 @@ fun ColumnScope.TunnelSettings() {
                     2 -> if (!rootMode) enableRoot()
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().settingAnchor(stringResource(R.string.nb_tun_mode_title))
         )
         Spacer(Modifier.height(8.dp))
         HelpText(
@@ -218,7 +218,7 @@ fun ColumnScope.TunnelSettings() {
                         TunVpnService.start(context)
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().settingAnchor(stringResource(R.string.nb_tun_engine_title))
             )
         }
         HelpText(

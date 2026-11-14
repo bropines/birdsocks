@@ -9,9 +9,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -67,24 +67,26 @@ fun SettingsCard(title: String, note: String? = null, content: @Composable Colum
     }
 }
 
+/**
+ * A row that opens something. [modifier] goes on the row, inside its outer
+ * padding: a row whose title is not a fixed string gives it a
+ * [settingAnchor] of its own there, so the search can still open on it.
+ */
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 fun SettingsClickableItem(
     title: String,
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     enabled: Boolean = true,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val help = remember(subtitle) { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.3f else 0.1f),
-        modifier = Modifier.padding(vertical = 4.dp).clip(MaterialTheme.shapes.medium).combinedClickable(
-            onClick = { if (enabled) onClick() },
-            onLongClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); help.value = !help.value }
-        )
+    ExplainedRow(
+        onClick = { if (enabled) onClick() },
+        help = help,
+        modifier = Modifier.padding(vertical = 4.dp).settingAnchor(title).then(modifier),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.3f else 0.1f)
     ) {
         ListItem(
             supportingContent = { HelpText(subtitle, color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline, expanded = help, tapToExpand = false) },
@@ -193,7 +195,6 @@ private fun SettingsHelpDialog(title: String, text: String, onDismiss: () -> Uni
 }
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 fun SettingsSwitchItem(
     title: String,
     subtitle: String,
@@ -203,14 +204,11 @@ fun SettingsSwitchItem(
     onCheckedChange: (Boolean) -> Unit
 ) {
     val help = remember(subtitle) { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.3f else 0.1f),
-        modifier = Modifier.padding(vertical = 4.dp).clip(MaterialTheme.shapes.medium).combinedClickable(
-            onClick = { if (enabled) onCheckedChange(!checked) },
-            onLongClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); help.value = !help.value }
-        )
+    ExplainedRow(
+        onClick = { if (enabled) onCheckedChange(!checked) },
+        help = help,
+        modifier = Modifier.padding(vertical = 4.dp).settingAnchor(title),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.3f else 0.1f)
     ) {
         ListItem(
             supportingContent = { HelpText(subtitle, color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline, expanded = help, tapToExpand = false) },
@@ -221,8 +219,13 @@ fun SettingsSwitchItem(
     }
 }
 
+/**
+ * A row with a value, edited in a dialog. [suggestions] are values offered as
+ * chips under the field, each added to or taken out of a comma-separated list;
+ * [error] says what is wrong with a typed value, under the field, and Save
+ * waits until nothing is.
+ */
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 fun SettingsEditItem(
     title: String,
     value: String,
@@ -230,8 +233,10 @@ fun SettingsEditItem(
     placeholder: String = "",
     description: String = "",
     enabled: Boolean = true,
+    suggestions: List<String> = emptyList(),
     onAction: (() -> String)? = null,
     actionIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    error: ((String) -> String?)? = null,
     onSave: (String) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -251,16 +256,15 @@ fun SettingsEditItem(
     var showHelp by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     if (showHelp) SettingsHelpDialog(title, description.ifEmpty { placeholder.ifEmpty { notSet } }) { showHelp = false }
-    Surface(
-        shape = MaterialTheme.shapes.medium,
+    ExplainedRow(
+        onClick = { if (enabled) showDialog = true },
+        help = help,
+        modifier = Modifier.padding(vertical = 4.dp).settingAnchor(title),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.3f else 0.15f),
-        modifier = Modifier.padding(vertical = 4.dp).clip(MaterialTheme.shapes.medium).combinedClickable(
-            onClick = { if (enabled) showDialog = true },
-            onLongClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                if (showsDescription) help.value = !help.value else showHelp = true
-            }
-        )
+        onLongClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            if (showsDescription) help.value = !help.value else showHelp = true
+        }
     ) {
         ListItem(
             supportingContent = {
@@ -278,25 +282,48 @@ fun SettingsEditItem(
         ) { Text(title, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) }
     }
     if (showDialog) {
+        val problem = error?.invoke(text)
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text(title) },
             text = {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = MaterialTheme.shapes.medium,
-                    label = { if (placeholder.isNotEmpty()) Text(ctx.getString(R.string.settings_field_example, placeholder)) },
-                    placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
-                    trailingIcon = if (onAction != null && actionIcon != null) {
-                        { IconButton(onClick = { text = onAction() }) { Icon(actionIcon, ctx.getString(R.string.action_generate)) } }
-                    } else null
-                )
+                Column {
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = MaterialTheme.shapes.medium,
+                        label = { if (placeholder.isNotEmpty()) Text(ctx.getString(R.string.settings_field_example, placeholder)) },
+                        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
+                        isError = problem != null,
+                        supportingText = problem?.let { { Text(it) } },
+                        trailingIcon = if (onAction != null && actionIcon != null) {
+                            { IconButton(onClick = { text = onAction() }) { Icon(actionIcon, ctx.getString(R.string.action_generate)) } }
+                        } else null
+                    )
+                    if (suggestions.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(ctx.getString(R.string.settings_suggested), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            suggestions.forEach { item ->
+                                val current = text.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                                FilterChip(
+                                    selected = item in current,
+                                    onClick = { text = (if (item in current) current - item else current + item).joinToString(", ") },
+                                    label = { Text(item) }
+                                )
+                            }
+                        }
+                    }
+                }
             },
-            confirmButton = { Button(onClick = { onSave(text); showDialog = false }) { Text(ctx.getString(R.string.action_save)) } },
+            confirmButton = { Button(onClick = { onSave(text); showDialog = false }, enabled = problem == null) { Text(ctx.getString(R.string.action_save)) } },
             dismissButton = { TextButton(onClick = { showDialog = false }) { Text(ctx.getString(R.string.action_cancel)) } }
         )
     }

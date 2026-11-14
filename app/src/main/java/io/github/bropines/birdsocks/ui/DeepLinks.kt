@@ -13,6 +13,7 @@ import io.github.bropines.birdsocks.core.Automation
  *     birdsocks://access-check?peer=<ip>          the access check
  *     birdsocks://logs?category=NETBIRD           Logs, on one category
  *     birdsocks://settings?section=<id>           Settings, on a section (SettingsSections)
+ *     birdsocks://settings?q=<words>              Settings, with the words typed into its search
  *
  * Action links change something ([requestFor]):
  *
@@ -44,7 +45,7 @@ object DeepLinks {
             "events" -> DiagnosticsActivity.intent(context, DiagnosticsActivity.PAGE_EVENTS)
             "access-check" -> TraceActivity.intent(context, uri.getQueryParameter("peer"))
             "logs" -> LogsActivity.intent(context, uri.getQueryParameter("category")?.uppercase() ?: "ALL")
-            "settings" -> SettingsSections.intent(context, uri.getQueryParameter("section") ?: uri.pathSegments.firstOrNull())
+            "settings" -> SettingsSections.intent(context, uri.getQueryParameter("section") ?: uri.pathSegments.firstOrNull(), uri.getQueryParameter("q"))
             "permissions" -> Intent(context, PermissionsActivity::class.java)
             else -> null
         }

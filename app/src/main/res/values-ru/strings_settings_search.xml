@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_settings_hint">Поиск по настройкам</string>
+    <string name="search_recent">Недавно найденные</string>
+    <string name="search_suggested">Часто нужные</string>
+    <string name="search_none">По запросу «%1$s» ничего не найдено</string>
+    <string name="search_closest">Точных совпадений нет. Ближайшие:</string>
+    <string name="search_read_as">Показаны результаты для «%1$s»</string>
+
+    <string name="search_need_daemon">Видно, пока NetBird работает</string>
+    <string name="search_need_tun">Видно в режимах VPN и Root</string>
+    <string name="search_need_tun_vpn">Видно в режиме VPN</string>
+    <string name="search_need_tun_socks">Видно, когда VPN идёт через прокси</string>
+    <string name="search_need_control_proxy">Видно, когда подключение к серверу идёт через прокси</string>
+    <string name="search_need_control_byedpi">Видно, когда подключение к серверу идёт через ByeDPI</string>
+    <string name="search_need_automation">Видно, когда автоматизация разрешена</string>
+    <string name="search_need_static_colors">Видно, пока динамические цвета выключены</string>
+
+    <string name="search_title_tunnel_mode">Прокси, VPN или Root</string>
+
+    <string name="search_sum_theme">Светлая, тёмная или как в системе</string>
+    <string name="search_sum_language">Язык системы, английский или русский</string>
+    <string name="search_sum_palette">Акцентный цвет интерфейса</string>
+    <string name="search_sum_app_icon">Значок BirdSocks в лаунчере</string>
+    <string name="search_sum_device_name">Имя, под которым устройство видно другим узлам</string>
+    <string name="search_sum_management_server">Сервер NetBird этого аккаунта; открывает его панель</string>
+    <string name="search_sum_tunnel_mode">Только прокси, VPN для всех приложений или Root без слота VPN</string>
+    <string name="search_sum_tun_engine">Кто несёт пакеты VPN: сам NetBird или прокси SOCKS5</string>
+    <string name="search_sum_tun_excluded_apps">Приложения, которые остаются вне туннеля</string>
+    <string name="search_sum_socks_address">Адрес и порт, на которых слушает прокси SOCKS5</string>
+    <string name="search_sum_socks_username">Логин для прокси SOCKS5; задаётся вместе с паролем</string>
+    <string name="search_sum_socks_password">Пароль для прокси SOCKS5; задаётся вместе с логином</string>
+    <string name="search_sum_socks_link">Ссылка socks5:// на этот прокси для NekoBox, v2rayNG и похожих</string>
+    <string name="search_sum_dns_proxy_address">Адрес и порт локального DNS, который отвечает на имена NetBird</string>
+    <string name="search_sum_control_mode">До сервера NetBird напрямую, через прокси или через ByeDPI</string>
+    <string name="search_sum_control_proxy_host">Прокси, через который идёт подключение к серверу NetBird</string>
+    <string name="search_sum_control_proxy_port">Порт этого прокси</string>
+    <string name="search_sum_automation_token">Секрет, который другие приложения передают с каждой командой</string>
+    <string name="search_sum_log_level">Сколько демон пишет в лог: info, debug или trace</string>
+    <string name="search_sum_docs">Документация самого NetBird на docs.netbird.io</string>
+    <string name="search_sum_source">BirdSocks на GitHub: код, задачи, релизы</string>
+    <string name="search_sum_donate">Пожертвование автору</string>
+</resources>

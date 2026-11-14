@@ -69,4 +69,5 @@
     <string name="nb_tun_root_take_confirm_title">Забрать все приложения?</string>
     <string name="nb_tun_root_take_confirm_body">Пока BirdSocks работает, приложения другого VPN теряют его туннель и DNS — их трафик идёт в NetBird. Настройка только этого телефона, в резервные копии не попадает.</string>
     <string name="nb_tun_root_take_confirm">Забрать</string>
+    <string name="nb_tun_engine_title">Движок</string>
 </resources>

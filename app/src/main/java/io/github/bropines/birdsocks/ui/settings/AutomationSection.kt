@@ -1,5 +1,6 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -80,7 +81,7 @@ internal fun AutomationSection() {
                 trailingIcon = if (token.isNotEmpty()) {
                     { IconButton(onClick = { saveToken("") }) { Icon(Icons.Default.Clear, stringResource(R.string.automation_token_clear)) } }
                 } else null,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp).settingAnchor(stringResource(R.string.automation_token), outset = 4.dp)
             )
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { saveToken(Automation.generateToken()) }, modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.medium) {

@@ -12,6 +12,7 @@
 - The app language is picked from every translated language; on Android 13+ BirdSocks appears in the system's per-app language settings, and the two choices agree.
 - What's new opens once after an update, in Russian from CHANGELOG_RU.md.
 - An arrangeable main screen: hold it, or open Settings → Appearance → Main screen, to move, remove, add and widen tiles (Logs, accounts, VPN mode, the proxy address, settings pages) and pick the columns; hidden items stay reachable there, and backups carry the layout.
+- Settings search: a field over the sections finds any setting by its name or other words for it, in English or Russian, and opens its section on the row; `birdsocks://settings?q=` opens it with the words typed in.
 
 ### Fixed
 - A switch between redundant routing peers no longer raises a notification each time.
