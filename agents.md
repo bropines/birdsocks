@@ -197,14 +197,19 @@ Binding:
 ## Admin panel (`admin/`)
 
 An in-app client of NetBird's **management HTTP API** for the active account:
-overview, peers, setup keys, groups. Entered only through `AdminPanel.open()`
-(Settings → Account, `birdsocks://admin`, later a main-screen button).
+a home screen (what waits for an admin, the account, the areas) and one screen
+per area. Entered only through `AdminPanel.open()` (the main screen's shield,
+Settings → Account, `birdsocks://admin?page=<area id>`). The developer note for
+adding an area is [`admin/README.md`](app/src/main/java/io/github/bropines/birdsocks/admin/README.md).
 
 * **The API, not the dashboard.** Calling management's HTTP API is fine;
   NetBird's dashboard is **AGPLv3** and its Android app GPLv3: read them to
   learn behaviour, never copy code, strings or layouts. Models in
-  `admin/api/ApiModels.kt` are written by hand from
+  `admin/api/ApiModels*.kt` are written by hand from
   `shared/management/http/api/openapi.yml`; never import its generated Go types.
+  Optional request fields are nullable (left out of a PUT); a PUT that rebuilds
+  an object the model may not fully know goes through a fresh read
+  (`patchAccountSettings`).
 * **Base URL:** the profile's management URL with its port, plus `/api`
   (`AdminUrls.apiBase`). https only; plain http only to loopback; no user info.
 * **Route:** the control plane's own (`AdminSession.controlRoute`): the user's
@@ -219,15 +224,38 @@ overview, peers, setup keys, groups. Entered only through `AdminPanel.open()`
   exception message, a `toString()` or a URL. This device's sign-in (the
   daemon's `RequestJWTAuth`, experimental) lives in memory only and is dropped
   on the first 401.
-* **Writes.** Every change goes through `secure/AdminWriteGate` (biometric or
-  screen lock, Keystore-proven, fails closed). No screen lock, the per-account
-  **read-only** switch (on by default) or a role without the permission
-  (`users/current` → `permissions.modules`, narrowed by a 403) all mean the
-  control is not offered. Never delete this device's own peer. Destructive
-  changes confirm first; deleting a peer asks for its name to be typed.
+* **Areas.** `areas/AdminAreas.kt` is the registry: an area is one file
+  (`areas/<name>/<Name>Area.kt`, an `AdminArea` with id, title, icon, the
+  permission module that shows it, its screen) and one line there. Area
+  screens get an `AdminHost` (the AdminViewModel; `PreviewAdminHost` in
+  previews) and nothing else; area-only state goes in an `AreaState` holder
+  (`host.areaState`), so the ViewModel does not grow per area.
+* **Writes.** Every change is a `safety/PlannedChange` (title, effect sentence,
+  before → after, warnings, apply, verify, undo) built in an area's
+  `*Changes.kt` and proposed with `host.propose()`; screens never call a write
+  method, and `AdminPanelStructureTest` fails the build when one does.
+  `SafeChangeRunner` refuses before sending on: the per-account **read-only**
+  switch (on by default) or a role that cannot write, no screen lock, a role
+  without the permission (`users/current` → `permissions.modules`, narrowed by
+  a 403), this device's own peer, your own user, the token in use, a missing
+  confirm, a wrong typed name, a missing or used unlock. Classes: LOW (the
+  control was the confirm), MEDIUM (review), HIGH (review with the diff and the
+  name typed back), POLICY (HIGH plus the area's own checks); all ask for the
+  screen lock through `secure/AdminWriteGate` (a `WriteGrant`, one use within a
+  minute). Every attempt is recorded in a sealed local log
+  (`files/admin/audit.jsonl`).
+* **Data.** Shared lists are `state/AdminKeys` (`DataKey`s), read when an area
+  needs them, refreshed in place. The sealed per-account cache
+  (`files/admin/cache/`, out of backups and device transfer) opens the panel on
+  the last good lists; invites, tokens, event-streaming configs and audit
+  events are never cached, and secrets in cached objects are stripped.
 * **Decoding.** Lists decode element by element into `Listing<T>`; one bad
   element costs that element. Reads retry on 429/502–504/no answer; writes only
-  on 429. New strings go in `strings_admin.xml`.
+  on 429.
+* **UI.** The kit in `admin/ui` (list with search, AND-ed filter chips and
+  sort; detail sheet; member picker; confirm and type-back dialogs; error card;
+  JSON editor; line diff) re-provides the parent's locals inside its sheets and
+  dialogs. New strings go in `strings_admin.xml`, English and Russian together.
 
 ---
 

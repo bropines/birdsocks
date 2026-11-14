@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong
  * for previews.
  *
  * Writes go only through [propose]: [api] is there for reads (an area's own
- * per-object lists, a re-read), and AdminWritesTest fails the build when a
+ * per-object lists, a re-read), and AdminPanelStructureTest fails the build when a
  * write method is called anywhere but in a `*Changes.kt` file.
  */
 interface AdminHost {

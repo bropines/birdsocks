@@ -74,7 +74,7 @@ sealed interface ApiAuth {
  *
  * **Screens never call the write methods** (POST, PUT, DELETE): every write is
  * a [io.github.bropines.birdsocks.admin.safety.PlannedChange] built in an
- * area's `*Changes.kt` and run by the SafeChangeRunner. AdminWritesTest holds
+ * area's `*Changes.kt` and run by the SafeChangeRunner. AdminPanelStructureTest holds
  * the sources to that.
  */
 class NetbirdApi(
