@@ -9,4 +9,66 @@
     <string name="nb_networks_off_desc">«Использовать сети» выключено в Настройках → Аккаунт: устройство не видит ни сетей, ни выходных узлов, которые маршрутизируют другие узлы.</string>
     <string name="nb_expose_inbound_in_settings">Прокси достаёт до телефона через NetBird, поэтому узлам должен быть разрешён доступ к его сервисам. Включите это в Настройках.</string>
     <string name="main_cd_dashboard">Открыть панель управления</string>
+    <!-- The main screen's editor (ui/MainCanvas.kt, ui/MainLayoutEditor.kt) -->
+    <string name="main_layout_title">Настройка экрана</string>
+    <string name="main_layout_add">Добавить</string>
+    <string name="main_layout_done">Готово</string>
+    <string name="main_layout_reset">Сбросить</string>
+    <string name="main_layout_reset_title">Сбросить главный экран?</string>
+    <string name="main_layout_reset_text">Блоки и плитки встанут так, как после установки. Больше ничего не изменится.</string>
+    <string name="main_layout_columns">Колонки</string>
+    <string name="main_layout_columns_auto">Авто</string>
+    <string name="main_layout_columns_cd">Колонок: %1$d</string>
+    <string name="main_layout_remove_cd">Убрать: %1$s</string>
+    <string name="main_layout_wide_cd">%1$s: на всю строку</string>
+    <string name="main_layout_narrow_cd">%1$s: в одну ячейку</string>
+    <string name="main_layout_move_earlier">Выше</string>
+    <string name="main_layout_move_later">Ниже</string>
+    <string name="main_layout_when_connected">Виден при подключении</string>
+    <string name="main_layout_exit_when">Виден при подключении, когда кто-то из пиров предлагает выходной узел</string>
+    <string name="main_layout_palette_title">Добавить на главный экран</string>
+    <string name="main_layout_palette_empty">Всё уже на экране</string>
+    <string name="main_layout_group_blocks">Блоки</string>
+    <string name="main_layout_group_screens">Экраны</string>
+    <string name="main_layout_group_shortcuts">Быстрые действия</string>
+    <string name="main_layout_group_settings">Страницы настроек</string>
+
+    <!-- What the main screen can hold (ui/MainTiles.kt) -->
+    <string name="main_block_status">Карточка статуса</string>
+    <string name="main_block_status_desc">Главная кнопка: запускает и останавливает NetBird и говорит, как он</string>
+    <string name="main_block_exit_node_desc">Через какой узел идёт трафик; нажатие выбирает другой</string>
+    <string name="main_block_proxy_desc">Адрес SOCKS5-прокси, чтобы указать в приложениях; нажатие копирует его</string>
+    <string name="main_proxy_copy_cd">Скопировать адрес</string>
+    <string name="tile_peers_desc">Устройства вашей сети и это</string>
+    <string name="tile_networks_desc">Сети и маршруты, которые предлагают пиры, и выходные узлы</string>
+    <string name="tile_dns_desc">Имена NetBird и DNS-серверы, которыми он пользуется</string>
+    <string name="tile_publish_desc">Сервисы этого телефона, доступные пирам</string>
+    <string name="tile_diagnostics_desc">Подключение, события, логи и проверки</string>
+    <string name="tile_settings_desc">Все настройки приложения</string>
+    <string name="tile_logs_desc">Логи приложения и NetBird</string>
+    <string name="tile_accounts_desc">Переключить, добавить или переименовать аккаунты NetBird</string>
+    <string name="tile_vpn">Режим VPN</string>
+    <string name="tile_vpn_desc">Включает и выключает режим VPN, как Настройки → Режим туннеля</string>
+    <string name="tile_tunnel_desc">Прокси, VPN или Root и настройки туннеля</string>
+    <string name="tile_app_split_desc">Приложения в обход режима VPN</string>
+    <string name="tile_proxies_desc">Адреса и пароли SOCKS5- и DNS-прокси</string>
+    <string name="tile_dns_settings">Настройки DNS</string>
+    <string name="tile_dns_settings_desc">DNS-прокси и его вышестоящий сервер</string>
+    <string name="tile_permissions_desc">Уведомления, батарея и автозапуск</string>
+
+    <!-- Settings → Appearance → Main screen (ui/MainHiddenItems.kt) -->
+    <string name="settings_main_screen">Главный экран</string>
+    <string name="settings_main_layout_title">Раскладка главного экрана</string>
+    <string name="settings_main_layout_desc">Переставьте карточку статуса и плитки, добавьте или уберите их, выберите число колонок. Тот же редактор открывается долгим нажатием на главном экране.</string>
+    <string name="main_hidden_title">Скрытые с главного экрана</string>
+    <string name="main_hidden_none">Всё на главном экране</string>
+    <plurals name="main_hidden_count">
+        <item quantity="one">%1$d элемент</item>
+        <item quantity="few">%1$d элемента</item>
+        <item quantity="many">%1$d элементов</item>
+        <item quantity="other">%1$d элемента</item>
+    </plurals>
+    <string name="main_hidden_sheet_desc">Нажатие открывает раздел, как плитка. Кнопка возвращает его на главный экран.</string>
+    <string name="main_hidden_open">Открыть</string>
+    <string name="main_hidden_restore">Вернуть на главный экран</string>
 </resources>

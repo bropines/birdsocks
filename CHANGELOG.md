@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- An arrangeable main screen: hold it, or open Settings → Appearance → Main screen, to move, remove, add and widen tiles (Logs, accounts, VPN mode, the proxy address, settings pages) and pick the columns; hidden items stay reachable there, and backups carry the layout.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added
