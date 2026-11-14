@@ -23,7 +23,7 @@
   <tr>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases/latest"><img src="https://img.shields.io/github/v/release/bropines/birdsocks?style=for-the-badge&logo=github&logoColor=white&label=&color=2ea44f" alt="Релиз" /></a></td>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases"><img src="https://img.shields.io/github/downloads/bropines/birdsocks/total?style=for-the-badge&logo=android&logoColor=white&label=&color=3ddc84" alt="Загрузки" /></a></td>
-    <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.80.0"><img src="https://img.shields.io/badge/v0.80.0-F68330?style=for-the-badge" alt="Ядро NetBird" /></a></td>
+    <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.83.1"><img src="https://img.shields.io/badge/v0.83.1-F68330?style=for-the-badge" alt="Ядро NetBird" /></a></td>
     <td align="center"><img src="https://img.shields.io/badge/7.0%2B-3ddc84?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+" /></td>
     <td align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/BSD_3--Clause-orange?style=for-the-badge" alt="Лицензия" /></a></td>
   </tr>

@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- NetBird v0.83.1.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added

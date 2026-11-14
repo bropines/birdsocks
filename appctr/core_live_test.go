@@ -43,7 +43,7 @@ func TestDaemonLive(t *testing.T) {
 	if err := WaitReady(10000); err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range []string{"GetFeatures", "ListProfiles", "GetActiveProfile"} {
+	for _, m := range []string{"GetFeatures", "ListProfiles", "GetActiveProfile", "GetConfig"} {
 		out, err := Call(m, `{"username":"android"}`, 5000)
 		t.Logf("%s: %s %v", m, out, err)
 	}

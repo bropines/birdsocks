@@ -79,9 +79,11 @@ object Backup {
         val root = netbirdDir(context)
         val found = sortedMapOf<String, File>()
         root.listFiles()?.forEach { if (it.isFile && BackupFormat.isNetbirdFile(it.name)) found[it.name] = it }
-        File(root, BackupFormat.PROFILE_DIR).listFiles()?.forEach {
-            val path = "${BackupFormat.PROFILE_DIR}/${it.name}"
-            if (it.isFile && BackupFormat.isNetbirdFile(path)) found[path] = it
+        for (dir in BackupFormat.PROFILE_DIRS) {
+            File(root, dir).listFiles()?.forEach {
+                val path = "$dir/${it.name}"
+                if (it.isFile && BackupFormat.isNetbirdFile(path)) found[path] = it
+            }
         }
         return found
     }

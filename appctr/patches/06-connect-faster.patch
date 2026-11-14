@@ -1,6 +1,6 @@
 --- netbird_orig/client/internal/connect.go
 +++ netbird_src/client/internal/connect.go
-@@ -364,10 +364,14 @@
+@@ -401,10 +401,14 @@
  			c.clientMetrics.UpdatePushFromMgm(c.ctx, metricsConfig.GetEnabled())
  		}
  
@@ -49,7 +49,7 @@
  			Timeout: 10 * time.Second,
 --- netbird_orig/client/grpc/dialer_generic.go
 +++ netbird_src/client/grpc/dialer_generic.go
-@@ -44,7 +44,39 @@
+@@ -41,7 +41,39 @@
  	})
  }
  
@@ -86,9 +86,9 @@
 +}
 +
 +func dialDirect(ctx context.Context, addr string) (net.Conn, error) {
- 	if runtime.GOOS == "linux" {
- 		currentUser, err := user.Current()
- 		if err != nil {
+ 	// The custom dialer requires root permissions which are not required for
+ 	// use cases run as non-root. The effective UID is read directly: a passwd
+ 	// lookup fails without cgo for a UID that has no entry, as on OpenShift.
 --- netbird_orig/shared/signal/client/grpc.go
 +++ netbird_src/shared/signal/client/grpc.go
 @@ -5,6 +5,7 @@
@@ -99,20 +99,30 @@
  	"sync"
  	"sync/atomic"
  	"time"
-@@ -40,6 +41,12 @@
+@@ -39,7 +40,10 @@
+ 	// receiveWatchdogInterval is how often the watchdog evaluates the stream.
  	receiveWatchdogInterval = 10 * time.Second
- )
- 
-+// registrationTimeout is how long a new stream may wait for the server's
-+// registration header — a tenth of a second when the server is healthy.
-+// Fresh connections were seen to go unanswered until keepalive gave up
-+// on them 40 s later, while a redial registered at once.
-+var registrationTimeout = 6 * time.Second
-+
- // errReceiveStreamStalled is reported when the receive stream is transport-alive
+ 	// defaultRegistrationTimeout bounds the wait for a new stream's registration header.
+-	defaultRegistrationTimeout = 10 * time.Second
++	// BirdSocks: 6 s, not 10 — a tenth of a second when the server is
++	// healthy; fresh connections were seen to go unanswered while a redial
++	// registered at once, so the stream's transport is dropped (dropTransport).
++	defaultRegistrationTimeout = 6 * time.Second
+ 	// defaultRegistrationProbeInterval is how often a new stream sends a
+ 	// self-addressed heartbeat while it waits for its registration header.
+ 	// Proxies such as AWS ALB withhold gRPC response headers until the first
+@@ -53,6 +57,10 @@
  // but no longer delivering messages, so the stream is torn down to reconnect.
  var errReceiveStreamStalled = errors.New("signal receive stream stalled")
-@@ -72,6 +79,10 @@
+ 
++// errRegistrationTimeout is reported when a new stream got no registration
++// header in time; its transport is dropped so the next stream redials.
++var errRegistrationTimeout = errors.New("no registration header from the Signal server")
++
+ // ConnStateNotifier is a wrapper interface of the status recorder
+ type ConnStateNotifier interface {
+ 	MarkSignalDisconnected(error)
+@@ -82,6 +90,10 @@
  
  	onReconnectedListenerFn func()
  
@@ -123,7 +133,7 @@
  	decryptionWorker       *Worker
  	decryptionWorkerCancel context.CancelFunc
  	decryptionWg           sync.WaitGroup
-@@ -115,10 +126,11 @@
+@@ -131,10 +143,11 @@
  		opt(c)
  	}
  
@@ -137,41 +147,32 @@
  
  	var conn *grpc.ClientConn
  	operation := func() error {
-@@ -316,10 +328,26 @@
- 	if err != nil {
+@@ -339,6 +352,10 @@
+ 	stopProbes := c.probeUntilRegistered(ctx)
+ 	defer stopProbes()
+ 	if err := awaitRegistration(stream, c.registrationTimeout, cancel); err != nil {
++		if errors.Is(err, errRegistrationTimeout) {
++			// BirdSocks: a new stream on the same transport stays as unanswered.
++			c.dropTransport()
++		}
  		return nil, err
  	}
--	// blocks
--	header, err := c.stream.Header()
--	if err != nil {
--		return nil, err
-+	// blocks; gRPC reports a failed stream as no header, without the error
-+	type headerResult struct {
-+		md  metadata.MD
-+		err error
-+	}
-+	got := make(chan headerResult, 1)
-+	go func() {
-+		md, err := stream.Header()
-+		got <- headerResult{md, err}
-+	}()
-+	var header metadata.MD
-+	select {
-+	case r := <-got:
-+		if r.err != nil {
-+			return nil, r.err
-+		}
-+		header = r.md
-+	case <-time.After(registrationTimeout):
-+		c.dropTransport()
-+		return nil, fmt.Errorf("no registration header from the Signal server in %v, redialing", registrationTimeout)
- 	}
- 	registered := header.Get(proto.HeaderRegistered)
- 	if len(registered) == 0 {
-@@ -329,6 +357,15 @@
- 	return stream, nil
- }
  
+@@ -378,7 +395,7 @@
+ 	timer := time.AfterFunc(timeout, cancel)
+ 	header, err := stream.Header()
+ 	if !timer.Stop() {
+-		return fmt.Errorf("no registration header from the Signal server within %s", timeout)
++		return fmt.Errorf("%w within %s, redialing", errRegistrationTimeout, timeout)
+ 	}
+ 	if err != nil {
+ 		return err
+@@ -388,6 +405,15 @@
+ 		return fmt.Errorf("didn't receive a registration header from the Signal server whille connecting to the streams")
+ 	}
+ 	return nil
++}
++
 +// dropTransport closes the connection gRPC dialed last, so the next stream
 +// gets a new one instead of the transport that left this one unanswered.
 +func (c *GrpcClient) dropTransport() {
@@ -179,14 +180,12 @@
 +		log.Debugf("closing signal transport %s -> %s", (*conn).LocalAddr(), (*conn).RemoteAddr())
 +		_ = (*conn).Close()
 +	}
-+}
-+
+ }
+ 
  // Ready indicates whether the client is okay and Ready to be used
- // for now it just checks whether gRPC connection to the service is in state Ready
- func (c *GrpcClient) Ready() bool {
---- netbird_orig/shared/signal/client/registration_test.go
-+++ netbird_src/shared/signal/client/registration_test.go
-@@ -0,0 +1,93 @@
+--- netbird_orig/shared/signal/client/registration_redial_test.go
++++ netbird_src/shared/signal/client/registration_redial_test.go
+@@ -0,0 +1,98 @@
 +package client
 +
 +import (
@@ -234,11 +233,15 @@
 +	return nil
 +}
 +
-+func TestUnansweredStreamRedials(t *testing.T) {
-+	old := registrationTimeout
-+	registrationTimeout = 500 * time.Millisecond
-+	defer func() { registrationTimeout = old }()
++// Send acknowledges the registration heartbeats without delivering them.
++func (s *silentFirstServer) Send(context.Context, *proto.EncryptedMessage) (*proto.EncryptedMessage, error) {
++	return &proto.EncryptedMessage{}, nil
++}
 +
++// TestUnansweredStreamRedials: a stream left unanswered drops its transport
++// (BirdSocks), so the next one registers over a new connection instead of
++// retrying on the silent one.
++func TestUnansweredStreamRedials(t *testing.T) {
 +	lis, err := net.Listen("tcp", "127.0.0.1:0")
 +	if err != nil {
 +		t.Fatal(err)
@@ -257,6 +260,7 @@
 +	if err != nil {
 +		t.Fatal(err)
 +	}
++	c.registrationTimeout = 500 * time.Millisecond
 +	received := make(chan struct{})
 +	go func() {
 +		defer close(received)

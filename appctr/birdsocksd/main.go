@@ -134,6 +134,15 @@ func main() {
 	if creds := ipcauth.NewTransportCredentials(); creds != nil { //nolint:staticcheck
 		opts = append(opts, grpc.Creds(creds))
 	}
+	// The authorization gate, as the desktop daemon chains it: it resolves
+	// the profile a request names, which the handlers read from the context
+	// (they fail without it), and the app, of the daemon's own UID, passes
+	// it as privileged.
+	gate := ipcauth.NewAuthzGate()
+	opts = append(opts,
+		grpc.ChainUnaryInterceptor(gate.UnaryPolicyInterceptor()),
+		grpc.ChainStreamInterceptor(gate.StreamPolicyInterceptor()),
+	)
 	srv := grpc.NewServer(opts...)
 
 	// Packet capture (`netbird debug capture`) on: the socket is the app's
@@ -148,6 +157,7 @@ func main() {
 		}
 	}
 	s := server.New(ctx, serverLog, *config, false, false, true, false)
+	gate.SetState(s)
 	if err := s.Start(); err != nil {
 		log.Fatalf("start daemon: %v", err)
 	}

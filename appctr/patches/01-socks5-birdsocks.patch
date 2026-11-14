@@ -105,9 +105,9 @@
  	listenAddress string
  
 -	proxy  *Proxy
--	tundev tun.Device
+-	tundev wgbackend.TUN
 +	proxy    *Proxy
-+	tundev   tun.Device
++	tundev   wgbackend.TUN
 +	dnsProxy *dnsProxy
 +	// backend is what this engine lends the daemon's proxies (front.go).
 +	backend *backend
@@ -196,19 +196,19 @@
 +	"net/netip"
  
  	log "github.com/sirupsen/logrus"
- 	"golang.zx2c4.com/wireguard/tun/netstack"
-@@ -14,6 +15,10 @@
+ 
+@@ -15,6 +16,10 @@
  
  type NSDialer struct {
- 	net *netstack.Net
+ 	net *wgbackend.NetstackNet
 +	// resolver names a host the way the proxy does (NetBird's DNS first);
 +	// BirdSocks: a UDP ASSOCIATE datagram may carry a name, which the
 +	// SOCKS5 server hands to Dial unresolved.
 +	resolver *nsResolver
  }
  
- func NewNSDialer(net *netstack.Net) *NSDialer {
-@@ -22,9 +27,25 @@
+ func NewNSDialer(net *wgbackend.NetstackNet) *NSDialer {
+@@ -23,9 +28,25 @@
  	}
  }
  
@@ -254,8 +254,8 @@
 +	"time"
 +
 +	log "github.com/sirupsen/logrus"
-+	"golang.zx2c4.com/wireguard/tun/netstack"
 +
++	"github.com/netbirdio/netbird/client/iface/wgbackend"
 +	"github.com/netbirdio/netbird/client/internal/anet"
 +)
 +
@@ -438,9 +438,9 @@
 +// names and the account's zones are only there — and the host's resolver
 +// when that has no answer. Upstream asked the host only, so no peer name
 +// resolved through the proxy.
-+type nsResolver struct{ net *netstack.Net }
++type nsResolver struct{ net *wgbackend.NetstackNet }
 +
-+func newNSResolver(n *netstack.Net) *nsResolver { return &nsResolver{net: n} }
++func newNSResolver(n *wgbackend.NetstackNet) *nsResolver { return &nsResolver{net: n} }
 +
 +func (r *nsResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
 +	// A short name: NetBird's search domains first, as a system resolver would.
@@ -2438,7 +2438,7 @@
 +}
 --- netbird_orig/client/iface/netstack/front.go
 +++ netbird_src/client/iface/netstack/front.go
-@@ -0,0 +1,202 @@
+@@ -0,0 +1,203 @@
 +package netstack
 +
 +// front.go — BirdSocks: the SOCKS5 proxy and the DNS proxy belong to the
@@ -2459,7 +2459,8 @@
 +	"time"
 +
 +	log "github.com/sirupsen/logrus"
-+	"golang.zx2c4.com/wireguard/tun/netstack"
++
++	"github.com/netbirdio/netbird/client/iface/wgbackend"
 +)
 +
 +const (
@@ -2473,13 +2474,13 @@
 +
 +// backend is what a running engine lends the proxies.
 +type backend struct {
-+	tunNet   *netstack.Net
++	tunNet   *wgbackend.NetstackNet
 +	dialer   *NSDialer
 +	resolver *nsResolver
 +	nbDNS    netip.AddrPort
 +}
 +
-+func newBackend(tunNet *netstack.Net, dnsAddr netip.Addr) *backend {
++func newBackend(tunNet *wgbackend.NetstackNet, dnsAddr netip.Addr) *backend {
 +	dialer := NewNSDialer(tunNet)
 +	dialer.resolver = newNSResolver(tunNet)
 +	return &backend{tunNet: tunNet, dialer: dialer, resolver: dialer.resolver, nbDNS: netip.AddrPortFrom(dnsAddr, 53)}
@@ -2929,7 +2930,7 @@
 +}
 --- netbird_orig/client/iface/device/device_netstack.go
 +++ netbird_src/client/iface/device/device_netstack.go
-@@ -75,7 +75,8 @@
+@@ -73,7 +73,8 @@
  	if err != nil {
  		return nil, fmt.Errorf("error creating tun device: %s", err)
  	}
@@ -2938,9 +2939,9 @@
 +	t.filteredDevice = newDeviceFilter(nbnetstack.WrapForVPN(tunIface, addresses))
  	t.net = net
  
- 	t.device = device.NewDevice(
-@@ -84,6 +85,10 @@
- 		device.NewLogger(wgLogLevel(), "[netbird] "),
+ 	t.device = wgbackend.NewDevice(
+@@ -82,6 +83,10 @@
+ 		wgbackend.NewLogger(wgLogLevel(), "[netbird] "),
  	)
  
 +	// BirdSocks: the SOCKS5 proxy sends through the tunnel only what a peer
@@ -2950,7 +2951,7 @@
  	t.configurer = configurer.NewUSPConfigurerNoUAPI(t.device, t.name, t.bind.ActivityRecorder())
  	err = t.configurer.ConfigureInterface(t.key, t.port)
  	if err != nil {
-@@ -125,6 +130,11 @@
+@@ -123,6 +128,11 @@
  }
  
  func (t *TunNetstackDevice) Close() error {
