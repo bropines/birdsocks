@@ -13,7 +13,7 @@ roughly in order.
 - Wi-Fi ↔ mobile switches (see the network monitor below).
 - The server connection through a SOCKS5/HTTP proxy and through ByeDPI (patch 08).
 - The R8 release build on a device.
-- Root mode beside a real VPN app (the shared and yielded states), with Private DNS on, and on KernelSU.
+- Root mode with Private DNS on, on KernelSU and Magisk, and beside a VPN app other than our own sibling.
 - The admin panel against NetBird Cloud and a self-hosted server; signing in as this device.
 
 ## Next
