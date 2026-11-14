@@ -37,6 +37,15 @@ relay and signal connections must reach the real network.
   NAT space. A prefix inside it held by an interface that is not ours — a
   mobile carrier's address, another tunnel — gets a `throw` route in table
   25203, so its traffic stays on its own network.
+- **NetBird names in hosts.** Every peer's name, and this device's, by its full
+  name and its first label, goes into a copy of `/etc/hosts` bound over
+  `/system/etc/hosts` while Root mode runs (the copy lives in
+  `/data/adb/birdsocks/hosts`). Android reads hosts before any DNS server, so
+  the names resolve even when its resolver keeps to the router's IPv6 server —
+  which the redirect cannot reach on a kernel without IPv6 NAT — and while T3 is
+  yielded to another VPN. Only BirdSocks' own bind is ever taken off; another
+  module's hosts stays underneath. An app with a resolver of its own (Chrome's,
+  DoH) does not read hosts.
 - **The local network.** With **Keep the local network** on (the default), the
   networks this phone sits on go back to Android while the tunnel takes all
   traffic, even when a peer routes the same subnet. **Excluded ranges** are

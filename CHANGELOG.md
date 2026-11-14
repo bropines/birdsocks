@@ -9,6 +9,7 @@
 - Peers: a pull at the top of the list brings out the search; refresh moved to the top bar, beside a search button. The filter is remembered between visits.
 
 ### Added
+- Root mode puts NetBird's names into /etc/hosts, so they resolve whichever DNS server Android picks.
 - Root mode keeps the local network local and stays off carrier addresses inside NetBird's range.
 - Root mode waits for Android to validate the network before redirecting DNS, and steps aside while NetBird's resolver is silent.
 - The app language is picked from every translated language; on Android 13+ BirdSocks appears in the system's per-app language settings, and the two choices agree.

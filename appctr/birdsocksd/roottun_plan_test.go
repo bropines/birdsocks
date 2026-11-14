@@ -148,3 +148,16 @@ func TestFirstNetdRuleAndTable(t *testing.T) {
 		t.Errorf("table = %q", got)
 	}
 }
+
+func TestHostsLines(t *testing.T) {
+	got := hostsLines([]hostEntry{
+		{IP: "100.104.212.85", Names: []string{"MacBook-Air.netbird.selfhosted.", "macbook-air", "macbook-air"}},
+		{IP: "100.104.9.9", Names: []string{"localhost", "wpad", "bad name", "x;rm -rf"}},
+		{IP: "not-an-ip", Names: []string{"ghost.netbird.selfhosted"}},
+		{IP: "fd61::5", Names: []string{"v6.netbird.selfhosted"}},
+	})
+	want := []string{"100.104.212.85 macbook-air.netbird.selfhosted macbook-air", "fd61::5 v6.netbird.selfhosted"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("hostsLines = %q, want %q", got, want)
+	}
+}

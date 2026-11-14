@@ -106,8 +106,10 @@ type rootConfig struct {
 	// IPv6 server for half an hour after its IPv4 ones failed, so refusing
 	// port 53 over IPv6 can leave a phone with no DNS at all: it is redirected
 	// there instead, or left alone where the kernel has no IPv6 NAT.
-	DNS6   string `json:"dns6"`
-	Socket string `json:"socket"`
+	DNS6 string `json:"dns6"`
+	// Hosts: NetBird's names, published into /etc/hosts (roottun_hosts.go).
+	Hosts  []hostEntry `json:"hosts"`
+	Socket string      `json:"socket"`
 	// Chain names the iptables chains (<chain>_DNS); StateDir keeps what
 	// must outlive a killed helper (rp_filter's old value).
 	Chain    string `json:"chain"`
@@ -219,6 +221,8 @@ type rootTun struct {
 	dnsFailures int
 	dnsSick     bool // taken off by the health gate
 	lastState   string
+	hostsBound  bool   // our copy is bound over /system/etc/hosts
+	hostsSig    string // the lines it holds
 }
 
 // pipeGone is closed when stdout stops taking lines: the app that reads
@@ -604,6 +608,7 @@ func (r *rootTun) install() error {
 		r.restoreRPFilter(cfg)
 	}
 	r.hookDNS()
+	r.publishHosts(cfg)
 	return nil
 }
 
@@ -1031,6 +1036,7 @@ func releaseStale(cfg rootConfig) {
 
 // sweep removes what a helper killed outright left behind.
 func sweep(cfg rootConfig) {
+	unbindHosts(hostsFile(cfg))
 	removeDNS(cfg)
 	removeRules(cfg)
 	for _, t := range []string{strconv.Itoa(cfg.Table), strconv.Itoa(cfg.table2())} {
@@ -1073,6 +1079,7 @@ func (r *rootTun) teardownLocked(why string) {
 	r.cur = nil
 	r.dnsHooked, r.dnsSick, r.dnsFailures, r.rpLoosened = false, false, 0, false
 	r.lastState = ""
+	r.hostsBound, r.hostsSig = false, ""
 	say("down: %s", why)
 }
 

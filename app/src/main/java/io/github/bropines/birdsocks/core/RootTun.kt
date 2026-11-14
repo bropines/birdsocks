@@ -336,6 +336,30 @@ object RootTun {
         }
     }
 
+    /**
+     * NetBird's names for /etc/hosts (roottun_hosts.go): every peer and this device,
+     * by FQDN and by its first label, so they resolve whichever DNS server Android
+     * picks — the router's IPv6 one included, which the redirect cannot always reach.
+     */
+    private fun hostsEntries(): JsonArray {
+        val full = NetbirdState.status.value?.fullStatus ?: return JsonArray(emptyList())
+        val rows = buildList {
+            full.peers.forEach { add(Triple(it.ip, it.ipv6, it.fqdn)) }
+            full.localPeerState.let { add(Triple(it.ip, it.ipv6, it.fqdn)) }
+        }
+        return JsonArray(rows.flatMap { (ip4, ip6, fqdn) ->
+            val name = fqdn.trim().trimEnd('.')
+            if (name.isEmpty()) return@flatMap emptyList()
+            val names = listOf(name, name.substringBefore('.')).distinct()
+            listOf(ip4, ip6).map { it.substringBefore('/').trim() }.filter { it.isNotEmpty() }.map { ip ->
+                buildJsonObject {
+                    put("ip", ip)
+                    put("names", JsonArray(names.map { JsonPrimitive(it) }))
+                }
+            }
+        })
+    }
+
     /** "state: mode=shared dns=on capture=true (…)" → [State]. */
     internal fun parseState(line: String): State? {
         val words = line.removePrefix("state:").trim().split(' ')
@@ -408,6 +432,7 @@ object RootTun {
             put("table", if (dev) TABLE_DEV else TABLE)
             put("dns", TunRoutes.DNS_IP)
             put("dns6", TunRoutes.DNS_IP6)
+            put("hosts", hostsEntries())
             put("socket", File(context.filesDir, "vpn.sock").absolutePath)
             put("chain", if (dev) "BIRDSOCKSD" else "BIRDSOCKS")
             put("state_dir", if (dev) "/data/adb/birdsocks-dev" else "/data/adb/birdsocks")
