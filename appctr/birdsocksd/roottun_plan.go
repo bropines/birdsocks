@@ -313,7 +313,9 @@ func parseForeign(rules string, ifaces []string, self string, phys ...string) fo
 		if skip {
 			continue
 		}
-		sawForeignRule = true
+		if isTunnelName(table) {
+			sawForeignRule = true
+		}
 		if !tunnels[table] {
 			continue
 		}
