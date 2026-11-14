@@ -65,7 +65,17 @@ class NetbirdService : Service() {
             if (NetbirdState.daemonFlow.value == NetbirdState.Daemon.Stopped) {
                 NetbirdState.daemonFlow.value = NetbirdState.Daemon.Starting
             }
-            ContextCompat.startForegroundService(context, Intent(context, NetbirdService::class.java).setAction(ACTION_START))
+            try {
+                ContextCompat.startForegroundService(context, Intent(context, NetbirdService::class.java).setAction(ACTION_START))
+            } catch (e: Exception) {
+                // Refused (Android 12+ from the background): nothing is starting, so say so,
+                // or the screens and the tile wait on a start that never comes.
+                if (NetbirdState.daemonFlow.value == NetbirdState.Daemon.Starting) {
+                    NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopped
+                }
+                GlobalSettings.setWasRunning(context, false)
+                throw e
+            }
         }
 
         fun stop(context: Context) {

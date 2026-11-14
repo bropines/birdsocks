@@ -34,6 +34,8 @@ class BirdSocksApp : Application() {
         }, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED))
         // STATUS_CHANGED for the app automation named, when it named one.
         Automation.watch(this)
+        // The home-screen widgets follow the daemon from here.
+        io.github.bropines.birdsocks.ui.WidgetUpdates.watch(this)
         // The enabled launcher alias, back in line with the picked icon should
         // they disagree: a restore, an update that dropped an icon, a crash
         // between writing the preference and switching.

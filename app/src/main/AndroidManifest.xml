@@ -219,7 +219,9 @@
         <activity android:name=".ui.DiagnosticsActivity" android:exported="false" />
         <activity android:name=".ui.TraceActivity" android:exported="false" />
         <activity android:name=".ui.ExposeActivity" android:exported="false" />
-        <activity android:name=".ui.ToggleActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" />
+        <!-- A task of its own, so a tap on the shortcut or the switch widget does not bring the
+             app's task to the front behind it. -->
+        <activity android:name=".ui.ToggleActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" android:taskAffinity="" />
 
         <!-- The NetBird daemon's keeper (core/NetbirdService.kt). -->
         <service android:name=".core.NetbirdService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="specialUse">
@@ -241,6 +243,24 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <!-- Home-screen widgets (ui/Widgets.kt). The app refreshes them itself (WidgetUpdates);
+             the system's update covers placement, the 30-minute period and a change of the
+             system language. -->
+        <receiver android:name=".ui.ServiceToggleWidgetReceiver" android:exported="false" android:label="@string/widget_name_service">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_service" />
+        </receiver>
+        <receiver android:name=".ui.ExitNodeWidgetReceiver" android:exported="false" android:label="@string/widget_name_exit">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_exit_node" />
+        </receiver>
 
         <!-- Tasker, MacroDroid, adb (core/AutomationReceiver.kt). Open to every app by design:
              nothing is done without Settings → Automation on and its token in the intent. -->

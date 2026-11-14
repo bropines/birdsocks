@@ -5,6 +5,7 @@
 ### Changed
 - NetBird v0.83.1.
 - Root mode lives beside another VPN: it routes only NetBird's addresses then, or the apps that VPN bypasses; "Take the device" overrides.
+- Peers: a pull at the top of the list brings out the search; refresh moved to the top bar, beside a search button. The filter is remembered between visits.
 
 ### Added
 - Root mode keeps the local network local and stays off carrier addresses inside NetBird's range.
@@ -13,10 +14,14 @@
 - What's new opens once after an update, in Russian from CHANGELOG_RU.md.
 - An arrangeable main screen: hold it, or open Settings → Appearance → Main screen, to move, remove, add and widen tiles (Logs, accounts, VPN mode, the proxy address, settings pages) and pick the columns; hidden items stay reachable there, and backups carry the layout.
 - Settings search: a field over the sections finds any setting by its name or other words for it, in English or Russian, and opens its section on the row; `birdsocks://settings?q=` opens it with the words typed in.
+- Home-screen widgets: a switch that resizes from a 1×1 round toggle to a card with the state, exit node and address, and an exit-node list to pick from or go direct.
+- Exit-node sheet: a search by exit node or routing peer once it lists more than six.
+- Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
 
 ### Fixed
 - A switch between redundant routing peers no longer raises a notification each time.
 - Dialogs (About, What's new, logout, the VPN warning, debug bundle, packet capture) follow the app's language, not the system's.
+- Quick Settings tile: shows the state a tap asked for until the service catches up, says "Stopping…" while it stops, and no longer sticks at "Starting…" when Android refuses a start from the panel.
 
 ## [0.4.0] - 2026-10-31
 

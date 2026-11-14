@@ -185,6 +185,8 @@ Binding:
 * Chip selectors are `SlidingSegmentedChips` (draggable) or the scrollable
   variant; when they switch content they drive a `HorizontalPager` through
   `positionOffset`.
+* Peers has no pull-to-refresh: a pull at the top of its list brings out the
+  search, and reload is the top bar's button.
 * New strings of a screen group go in that group's own file (`strings_peers`,
   `strings_settings`, `strings_diagnostics`, `strings_main`, `strings_tun`, …).
 

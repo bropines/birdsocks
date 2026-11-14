@@ -209,7 +209,7 @@ private fun peerRowPath(context: Context, peer: NbPeer, nowMillis: Long): PeerRo
  * last status, so a row does not age between two of them.
  */
 @Composable
-internal fun PeerItem(peer: NbPeer, nowMillis: Long, onClick: () -> Unit) {
+internal fun PeerItem(peer: NbPeer, nowMillis: Long, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val context = LocalContext.current
     val path = remember(peer, nowMillis, context) { peerRowPath(context, peer, nowMillis) }
     PeerRow(
@@ -220,13 +220,14 @@ internal fun PeerItem(peer: NbPeer, nowMillis: Long, onClick: () -> Unit) {
         path = path,
         latency = peer.latencyMs?.takeIf { peer.connected }?.let(::latencyText),
         isSelf = false,
+        onLongClick = onLongClick,
         onClick = onClick
     )
 }
 
 /** This device's own row, first in the list: the name and the IPv4 address only. */
 @Composable
-internal fun SelfPeerItem(local: NbLocalPeer, conn: PeerConn, onClick: () -> Unit) {
+internal fun SelfPeerItem(local: NbLocalPeer, conn: PeerConn, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     PeerRow(
         name = local.shortName,
         address = local.address,
@@ -235,13 +236,15 @@ internal fun SelfPeerItem(local: NbLocalPeer, conn: PeerConn, onClick: () -> Uni
         path = PeerRowPath.None,
         latency = null,
         isSelf = true,
+        onLongClick = onLongClick,
         onClick = onClick
     )
 }
 
 /**
- * The row both kinds of list entry share. A long press copies the address — the one thing
- * a row is most often looked up for — without opening the sheet.
+ * The row both kinds of list entry share. A long press runs [onLongClick] — the list's
+ * "Copy as…" — or, without one, copies the address, the one thing a row is most often
+ * looked up for, without opening the sheet.
  */
 @Composable
 private fun PeerRow(
@@ -252,6 +255,7 @@ private fun PeerRow(
     path: PeerRowPath,
     latency: String?,
     isSelf: Boolean,
+    onLongClick: (() -> Unit)?,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -286,11 +290,21 @@ private fun PeerRow(
             modifier = Modifier
                 .combinedClickable(
                     onClick = onClick,
-                    onLongClick = if (address.isEmpty()) null else {
-                        {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            clipboard.copyText(scope, address)
-                            Toast.makeText(context, context.getString(R.string.copied_to_clipboard, address), Toast.LENGTH_SHORT).show()
+                    onLongClickLabel = onLongClick?.let { stringResource(R.string.peer_copy_as) },
+                    onLongClick = when {
+                        onLongClick != null -> {
+                            {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onLongClick()
+                            }
+                        }
+                        address.isEmpty() -> null
+                        else -> {
+                            {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                clipboard.copyText(scope, address)
+                                Toast.makeText(context, context.getString(R.string.copied_to_clipboard, address), Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 )
