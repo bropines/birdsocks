@@ -282,8 +282,10 @@ func (r *rootTun) apply(cfg rootConfig) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.cur == nil {
-		// A helper killed outright left its rules; take them first.
+		// A helper killed outright left its rules, and the daemon still holds
+		// its interface; take both first, or the name is busy.
 		sweep(cfg)
+		releaseStale(cfg)
 	}
 	if r.cur == nil || !r.cur.sameLink(cfg) {
 		if r.cur != nil {
@@ -922,6 +924,25 @@ func restoreRPFilter(cfg rootConfig) {
 		_ = os.WriteFile("/proc/sys/net/ipv4/conf/all/rp_filter", []byte(v), 0o644)
 	}
 	_ = os.Remove(orig)
+}
+
+// releaseStale asks the daemon to let go of an interface of ours a dead
+// helper handed it, and waits for it to vanish.
+func releaseStale(cfg rootConfig) {
+	if _, err := os.Stat("/sys/class/net/" + cfg.Name); err != nil {
+		return
+	}
+	say("info: %s is left from an earlier helper; the daemon lets go of it", cfg.Name)
+	if err := attach(cfg, -1); err != nil {
+		say("warn: detach: %v", err)
+	}
+	for i := 0; i < 20; i++ {
+		if _, err := os.Stat("/sys/class/net/" + cfg.Name); err != nil {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	_ = ip("link", "del", cfg.Name)
 }
 
 // sweep removes what a helper killed outright left behind.

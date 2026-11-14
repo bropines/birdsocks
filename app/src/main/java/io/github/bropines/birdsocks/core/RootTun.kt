@@ -67,6 +67,9 @@ object RootTun {
     private var networksAsked: String? = null
     @Volatile private var profileMtu = -1
     private var netCallback: ConnectivityManager.NetworkCallback? = null
+    @Volatile private var appContext: Context? = null
+    /** Unexpected helper exits in the last minute: a helper that keeps dying is not restarted forever. */
+    private val crashes = ArrayDeque<Long>()
     private var netManager: ConnectivityManager? = null
 
     /** What the helper claims now. */
@@ -92,6 +95,7 @@ object RootTun {
     fun start(context: Context) {
         val app = context.applicationContext
         wanted = true
+        appContext = app
         scope.launch { ensureWatcher(app); apply(app) }
     }
 
@@ -261,6 +265,23 @@ object RootTun {
         TunVpnService.reportRoot(false, null)
         stateFlow.value = null
         Appctr.logAndroid(if (code == 0) "INFO" else "WARN", "CORE", "Root VPN: helper exited ($code)")
+        // Died on its own while wanted (killed, crashed): its rules may be left
+        // unsupervised. A new helper sweeps them and takes over.
+        val context = appContext
+        if (wanted && context != null) {
+            val now = System.currentTimeMillis()
+            val again = synchronized(crashes) {
+                while (crashes.isNotEmpty() && now - crashes.first() > 60_000) crashes.removeFirst()
+                crashes.addLast(now)
+                crashes.size <= 3
+            }
+            if (again) {
+                Appctr.logAndroid("INFO", "CORE", "Root VPN: restarting the helper")
+                scope.launch { delay(2000); if (wanted) apply(context) }
+            } else {
+                Appctr.logAndroid("ERROR", "CORE", "Root VPN: the helper keeps exiting; not restarted until the next start")
+            }
+        }
     }
 
     /** "state: mode=shared dns=on capture=true (…)" → [State]. */
