@@ -71,4 +71,5 @@
     <string name="main_hidden_sheet_desc">A tap opens it as its tile would. The button puts it back on the main screen.</string>
     <string name="main_hidden_open">Open</string>
     <string name="main_hidden_restore">Put back on the main screen</string>
+    <string name="main_cd_admin_panel">Admin panel</string>
 </resources>

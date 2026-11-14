@@ -73,4 +73,5 @@
     <string name="main_hidden_sheet_desc">Нажатие открывает раздел, как плитка. Кнопка возвращает его на главный экран.</string>
     <string name="main_hidden_open">Открыть</string>
     <string name="main_hidden_restore">Вернуть на главный экран</string>
+    <string name="main_cd_admin_panel">Панель администратора</string>
 </resources>

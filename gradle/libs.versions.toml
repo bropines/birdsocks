@@ -21,6 +21,11 @@ ksp = "2.2.21-2.0.4"
 appfunctions = "1.0.0-alpha10"
 # Home-screen widgets (ui/Widgets.kt).
 glance = "1.1.1"
+# The admin panel (admin/): writes behind the screen lock, and the QR of a
+# new setup key's invite link. Nayuki's encoder is MIT, one plain Java class
+# with no reflection, so R8 needs no keep rule for it.
+biometric = "1.1.0"
+qrcodegen = "1.8.0"
 # Unit tests only (app/src/test); never in the APK.
 junit = "4.13.2"
 robolectric = "4.16.1"
@@ -46,6 +51,8 @@ androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidge
 androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 androidx-material3-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive", version.ref = "material3-adaptive" }
 screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+qrcodegen = { group = "io.nayuki", name = "qrcodegen", version.ref = "qrcodegen" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 

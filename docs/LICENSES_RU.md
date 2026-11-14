@@ -20,7 +20,8 @@ Copyright (c) 2026, Bropines. Компоненты, на которых он п�
 | [lwIP](https://savannah.nongnu.org/projects/lwip) | стек TCP/IP hev-socks5-tunnel | BSD-3-Clause |
 | [hev-task-system](https://github.com/heiher/hev-task-system) | задачи hev-socks5-tunnel | MIT |
 | [ByeDPI](https://github.com/hufrea/byedpi) | соединение с сервером в обход DPI | MIT |
-| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp) | приложение | Apache-2.0 |
+| [qrcodegen](https://github.com/nayuki/QR-Code-generator) (Project Nayuki) | QR-код ссылки-приглашения нового ключа установки в панели администратора | MIT |
+| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp), [AndroidX Biometric](https://developer.android.com/jetpack/androidx/releases/biometric) | приложение | Apache-2.0 |
 
 Всего демон собирает около 110 модулей Go (`go.mod` NetBird): Apache-2.0, MIT,
 BSD, ISC и CC0, и три неизменённых модуля HashiCorp под MPL-2.0 (`errwrap`,

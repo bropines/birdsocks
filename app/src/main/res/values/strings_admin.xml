@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The admin panel (admin/): the active account's network through NetBird's
+  management API — the credential, the overview, peers, setup keys, groups.
+-->
+<resources>
+    <string name="admin_title">Admin panel</string>
+    <string name="admin_settings_row">Admin panel</string>
+    <string name="admin_settings_row_setup">Manage this network\'s peers, setup keys and groups from the phone. Needs an access token.</string>
+    <string name="admin_settings_row_open">Peers, setup keys and groups of this network, through the server\'s API.</string>
+    <string name="admin_refresh">Refresh</string>
+    <string name="admin_retry">Try again</string>
+    <string name="admin_bad_url">The admin panel sends a token only over HTTPS. This account\'s server is %1$s.</string>
+
+    <string name="admin_tab_overview">Overview</string>
+    <string name="admin_tab_peers">Peers</string>
+    <string name="admin_tab_keys">Setup keys</string>
+    <string name="admin_tab_groups">Groups</string>
+
+    <!-- Credential -->
+    <string name="admin_credential_title">Access to the server</string>
+    <string name="admin_token_warning_title">A token can do what you can</string>
+    <string name="admin_token_warning">An access token acts with its user\'s full role: an owner\'s or admin\'s token can delete every peer and key. Prefer a service user with the role you need — User only reads — and a short expiry. The token is stored encrypted on this phone and is sent only to this account\'s management server.</string>
+    <string name="admin_token_card">Personal access token</string>
+    <string name="admin_token_label">Access token</string>
+    <string name="admin_token_show">Show the token</string>
+    <string name="admin_token_hide">Hide the token</string>
+    <string name="admin_token_docs">How to make a token</string>
+    <string name="admin_token_stored">A token is stored for this account. A new one replaces it.</string>
+    <string name="admin_test">Test connection</string>
+    <string name="admin_test_first">Test the token first; Save stores it once the server accepted it.</string>
+    <string name="admin_test_ok">Accepted: %1$s, role %2$s.</string>
+    <string name="admin_token_not_saved">The token could not be stored.</string>
+    <string name="admin_token_forget">Forget the token</string>
+    <string name="admin_token_forget_confirm">The panel stops working for this account until a new token is set. The token itself stays valid on the server: revoke it there if it is no longer needed.</string>
+    <string name="admin_token_forget_action">Forget</string>
+    <string name="admin_safety_card">Safety</string>
+    <string name="admin_read_only">Read-only</string>
+    <string name="admin_read_only_desc">Only look: no rename, delete or new keys. Every change also asks for the screen lock.</string>
+    <string name="admin_read_only_no_lock">This phone has no screen lock, so the panel only reads: nothing could prove who asks for a change. Set a PIN, pattern or password to make changes.</string>
+    <string name="admin_device_card">This device\'s sign-in (experimental)</string>
+    <string name="admin_device_desc">Instead of a token, sign in with the account this device uses, in the browser. The answer is kept in memory only and lapses within hours. Whether the server accepts it depends on its sign-in setup; if it does not, the stored token is used.</string>
+    <string name="admin_device_button">Use this device\'s sign-in</string>
+    <string name="admin_device_stop">Stop using this device\'s sign-in</string>
+    <string name="admin_setup_reason_rejected">The server rejected the stored token: it expired, was revoked or belongs to another account.</string>
+    <string name="admin_setup_reason_device_rejected">The server did not accept this device\'s sign-in. Use an access token.</string>
+    <string name="admin_setup_reason_unreadable">The stored token can no longer be opened (the phone\'s key store was reset). Set it again.</string>
+    <string name="admin_setup_reason_failed">The server could not be asked.</string>
+
+    <!-- Write gate -->
+    <string name="admin_unlock_title">Confirm the change</string>
+    <string name="admin_unlock_no_lock">Set a screen lock to make changes.</string>
+    <string name="admin_unlock_lockout">Too many attempts. Try again later.</string>
+    <string name="admin_unlock_failed">The unlock was not confirmed; nothing changed.</string>
+    <string name="admin_write_refused">The panel is read-only for this account, or your role may not do this.</string>
+    <string name="admin_done_saved">Saved</string>
+    <string name="admin_done_deleted">Deleted %1$s</string>
+    <string name="admin_done_revoked">Revoked %1$s</string>
+    <string name="admin_error_generic">The change failed</string>
+    <string name="admin_type_name">Type %1$s</string>
+
+    <!-- Errors -->
+    <string name="admin_err_unauthorized">The server did not accept the credential.</string>
+    <string name="admin_err_forbidden">Your role does not allow this.</string>
+    <string name="admin_err_not_found">Not found: it is gone, or this server does not have it.</string>
+    <string name="admin_err_conflict">Something else is in the way of this change.</string>
+    <string name="admin_err_bad_request">The server refused the request.</string>
+    <string name="admin_err_rate_limited">Too many requests. Wait a minute and try again.</string>
+    <string name="admin_err_server">The server failed (HTTP %1$d).</string>
+    <string name="admin_err_unexpected">Unexpected answer (HTTP %1$d).</string>
+    <string name="admin_err_decode">The server\'s answer could not be read (%1$s).</string>
+    <string name="admin_err_network">The server did not answer: %1$s</string>
+    <string name="admin_err_proxy_socks_auth">The server connection goes through a SOCKS5 proxy with a password, which the admin panel cannot use yet. Use an HTTP proxy or a SOCKS5 proxy without a password.</string>
+    <string name="admin_err_proxy_bad">The server connection\'s proxy address is not valid. Check Settings → Connection.</string>
+    <string name="admin_err_proxy_byedpi">The server connection goes through ByeDPI, which is not running. Start BirdSocks first.</string>
+
+    <!-- Overview -->
+    <string name="admin_overview_account">Account</string>
+    <string name="admin_overview_server">Management server</string>
+    <string name="admin_overview_domain">Domain</string>
+    <string name="admin_overview_dns_domain">DNS domain</string>
+    <string name="admin_overview_range">Network range</string>
+    <string name="admin_overview_created">Created</string>
+    <string name="admin_overview_you">You</string>
+    <string name="admin_overview_service_user">service user</string>
+    <string name="admin_overview_signed_in_with">Signed in with</string>
+    <string name="admin_overview_auth_token">an access token</string>
+    <string name="admin_overview_auth_device">this device\'s sign-in (experimental)</string>
+    <string name="admin_overview_counts">In this network</string>
+    <string name="admin_overview_peers_count">%1$d online of %2$d</string>
+    <string name="admin_overview_keys_count">%1$d valid of %2$d</string>
+    <string name="admin_overview_pending">Waiting for approval</string>
+    <string name="admin_overview_expired">Login expired</string>
+    <string name="admin_overview_nothing">Your role shows nothing here.</string>
+    <string name="admin_overview_ro_role">Your role can only read: the panel is read-only.</string>
+    <string name="admin_overview_ro_lock">This phone has no screen lock: the panel is read-only.</string>
+    <string name="admin_overview_ro_switch">Read-only is on for this account. Change it under Access to the server.</string>
+    <string name="admin_overview_restricted">Your role sees only your own peers.</string>
+
+    <!-- Peers -->
+    <string name="admin_peers_search">Name, address, OS</string>
+    <string name="admin_peers_empty">No peers</string>
+    <string name="admin_peers_no_match">No peer matches</string>
+    <string name="admin_peer_this_device">this device</string>
+    <string name="admin_peer_pending">approval</string>
+    <string name="admin_peer_expired">expired</string>
+    <string name="admin_peer_ephemeral">ephemeral</string>
+    <string name="admin_peer_address">Address</string>
+    <string name="admin_peer_dns">DNS name</string>
+    <string name="admin_peer_status">Status</string>
+    <string name="admin_peer_online">Online</string>
+    <string name="admin_peer_offline">Offline</string>
+    <string name="admin_peer_os">System</string>
+    <string name="admin_peer_public_ip">Connects from</string>
+    <string name="admin_peer_groups">Groups</string>
+    <string name="admin_peer_last_login">Last sign-in</string>
+    <string name="admin_peer_login_expiration">Login expiration</string>
+    <string name="admin_peer_login_expiration_desc">The peer has to sign in again when the account\'s login period runs out. Applies to peers added by a user\'s sign-in, not by a setup key.</string>
+    <string name="admin_peer_login_expired_desc">Its login has expired: it stays offline until someone signs in on it again.</string>
+    <string name="admin_peer_rename">Rename</string>
+    <string name="admin_peer_name">Name</string>
+    <string name="admin_peer_delete">Delete</string>
+    <string name="admin_peer_delete_title">Delete %1$s?</string>
+    <string name="admin_peer_delete_text">The peer leaves the network at once and has to be added again with a new sign-in or setup key.</string>
+    <string name="admin_peer_self_note">This is this device. It cannot be deleted from here; sign out in Settings instead.</string>
+    <string name="admin_peer_self_guard">This device cannot delete its own peer.</string>
+    <string name="admin_peer_read_only_note">Changes are off: read-only, no screen lock or your role.</string>
+    <string name="admin_peer_rename_unlock">Rename %1$s</string>
+    <string name="admin_peer_expiry_unlock">Login expiration of %1$s</string>
+    <string name="admin_peer_delete_unlock">Delete %1$s</string>
+
+    <!-- Setup keys -->
+    <string name="admin_keys_empty">No setup keys</string>
+    <string name="admin_key_one_off">One-off</string>
+    <string name="admin_key_reusable">Reusable</string>
+    <string name="admin_key_one_off_desc">Adds one peer, then stops working.</string>
+    <string name="admin_key_reusable_desc">Adds peers until it expires or reaches its usage limit.</string>
+    <string name="admin_key_used">used %1$s</string>
+    <string name="admin_key_expires">until %1$s</string>
+    <string name="admin_key_state_valid">valid</string>
+    <string name="admin_key_state_revoked">revoked</string>
+    <string name="admin_key_state_expired">expired</string>
+    <string name="admin_key_state_overused">used up</string>
+    <string name="admin_key_state_invalid">invalid</string>
+    <string name="admin_key_create">New setup key</string>
+    <string name="admin_key_create_action">Create</string>
+    <string name="admin_key_name">Name</string>
+    <string name="admin_key_days">Valid for, days</string>
+    <string name="admin_key_days_hint">From 1 to 365</string>
+    <string name="admin_key_limit">Usage limit</string>
+    <string name="admin_key_limit_hint">Empty or 0: no limit</string>
+    <string name="admin_key_ephemeral">Ephemeral peers</string>
+    <string name="admin_key_ephemeral_desc">Peers added with this key are removed after 10 minutes offline.</string>
+    <string name="admin_key_groups">Groups for new peers</string>
+    <string name="admin_key_create_unlock">Create setup key %1$s</string>
+    <string name="admin_key_new_title">Setup key %1$s</string>
+    <string name="admin_key_new_once">Shown only now: the server keeps no copy.</string>
+    <string name="admin_key_qr">QR code of the invite link</string>
+    <string name="admin_key_qr_desc">Scan it on another phone with BirdSocks to add this account there. Other NetBird clients take the key itself.</string>
+    <string name="admin_key_copy">Copy key</string>
+    <string name="admin_key_copy_link">Copy link</string>
+    <string name="admin_key_show_link">Show the link</string>
+    <string name="admin_key_new_done">Done</string>
+    <string name="admin_key_revoke">Revoke</string>
+    <string name="admin_key_revoke_title">Revoke %1$s?</string>
+    <string name="admin_key_revoke_text">No new peer can join with it. Peers it already added stay.</string>
+    <string name="admin_key_revoke_unlock">Revoke setup key %1$s</string>
+
+    <!-- Groups -->
+    <string name="admin_groups_empty">No groups</string>
+
+    <plurals name="admin_list_incomplete">
+        <item quantity="one">%1$d entry could not be read and is not shown.</item>
+        <item quantity="other">%1$d entries could not be read and are not shown.</item>
+    </plurals>
+    <plurals name="admin_group_peers">
+        <item quantity="one">%1$d peer</item>
+        <item quantity="other">%1$d peers</item>
+    </plurals>
+    <plurals name="admin_group_resources">
+        <item quantity="one">%1$d resource</item>
+        <item quantity="other">%1$d resources</item>
+    </plurals>
+</resources>

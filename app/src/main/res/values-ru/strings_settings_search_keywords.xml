@@ -112,4 +112,5 @@
     <string name="search_kw_main_hidden">скрытые плитки, убранные, вернуть, восстановить плитку</string>
     <string name="search_kw_tun_root_lan">локальная сеть, домашняя сеть, роутер, nas, принтер, root</string>
     <string name="search_kw_tun_root_take">другой vpn, соседство, конфликт, забрать, перехватить, root</string>
+    <string name="search_kw_admin_panel">админка, администрирование, управление узлами, ключ установки, приглашение, qr, группы, api, токен, управление сетью</string>
 </resources>

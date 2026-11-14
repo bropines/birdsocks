@@ -161,6 +161,7 @@ object SettingsCatalog {
         row("accounts", SettingsPage.ACCOUNT, R.string.nb_accounts_title, R.string.settings_account_hint, R.string.search_kw_accounts, account, suggested = true)
         row("device_name", SettingsPage.ACCOUNT, R.string.nb_settings_device_name, R.string.search_sum_device_name, R.string.search_kw_device_name, account, help = R.string.nb_settings_device_name_desc)
         row("management_server", SettingsPage.ACCOUNT, R.string.nb_settings_server, R.string.search_sum_management_server, R.string.search_kw_management_server, account, needs = Need.DAEMON)
+        row("admin_panel", SettingsPage.ACCOUNT, R.string.admin_settings_row, R.string.admin_settings_row_setup, R.string.search_kw_admin_panel, account, needs = Need.DAEMON)
         row("logout", SettingsPage.ACCOUNT, R.string.nb_settings_logout, R.string.nb_settings_logout_desc, R.string.search_kw_logout, account)
         val network = R.string.settings_card_network
         row("client_routes", SettingsPage.ACCOUNT, R.string.nb_settings_client_routes, R.string.nb_settings_client_routes_desc, R.string.search_kw_client_routes, network, needs = Need.DAEMON)

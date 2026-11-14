@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Панель администратора (admin/): сеть активного аккаунта через API сервера
+  управления NetBird — доступ, обзор, узлы, ключи установки, группы.
+-->
+<resources>
+    <string name="admin_title">Панель администратора</string>
+    <string name="admin_settings_row">Панель администратора</string>
+    <string name="admin_settings_row_setup">Узлы, ключи установки и группы этой сети прямо с телефона. Нужен токен доступа.</string>
+    <string name="admin_settings_row_open">Узлы, ключи установки и группы этой сети через API сервера.</string>
+    <string name="admin_refresh">Обновить</string>
+    <string name="admin_retry">Повторить</string>
+    <string name="admin_bad_url">Панель отправляет токен только по HTTPS. Сервер этого аккаунта: %1$s.</string>
+
+    <string name="admin_tab_overview">Обзор</string>
+    <string name="admin_tab_peers">Узлы</string>
+    <string name="admin_tab_keys">Ключи</string>
+    <string name="admin_tab_groups">Группы</string>
+
+    <!-- Доступ -->
+    <string name="admin_credential_title">Доступ к серверу</string>
+    <string name="admin_token_warning_title">Токен может всё, что можете вы</string>
+    <string name="admin_token_warning">Токен доступа действует со всеми правами роли своего пользователя: токен владельца или администратора может удалить любой узел и ключ. Лучше сервисный пользователь с нужной ролью — роль User только читает — и короткий срок действия. Токен хранится на телефоне в зашифрованном виде и отправляется только на сервер управления этого аккаунта.</string>
+    <string name="admin_token_card">Персональный токен доступа</string>
+    <string name="admin_token_label">Токен доступа</string>
+    <string name="admin_token_show">Показать токен</string>
+    <string name="admin_token_hide">Скрыть токен</string>
+    <string name="admin_token_docs">Как создать токен</string>
+    <string name="admin_token_stored">Для этого аккаунта токен уже сохранён. Новый заменит его.</string>
+    <string name="admin_test">Проверить</string>
+    <string name="admin_test_first">Сначала проверьте токен: «Сохранить» запишет его, когда сервер его примет.</string>
+    <string name="admin_test_ok">Принят: %1$s, роль %2$s.</string>
+    <string name="admin_token_not_saved">Не удалось сохранить токен.</string>
+    <string name="admin_token_forget">Забыть токен</string>
+    <string name="admin_token_forget_confirm">Панель перестанет работать для этого аккаунта, пока не будет задан новый токен. Сам токен на сервере остаётся действительным: отзовите его там, если он больше не нужен.</string>
+    <string name="admin_token_forget_action">Забыть</string>
+    <string name="admin_safety_card">Безопасность</string>
+    <string name="admin_read_only">Только чтение</string>
+    <string name="admin_read_only_desc">Только смотреть: без переименования, удаления и новых ключей. Каждое изменение к тому же спрашивает блокировку экрана.</string>
+    <string name="admin_read_only_no_lock">На телефоне нет блокировки экрана, поэтому панель только читает: нечем подтвердить, кто просит изменение. Задайте PIN, графический ключ или пароль, чтобы вносить изменения.</string>
+    <string name="admin_device_card">Вход этого устройства (эксперимент)</string>
+    <string name="admin_device_desc">Вместо токена — вход в браузере под аккаунтом, которым пользуется это устройство. Ответ хранится только в памяти и истекает за несколько часов. Примет ли его сервер, зависит от настройки входа на нём; если нет, используется сохранённый токен.</string>
+    <string name="admin_device_button">Войти как это устройство</string>
+    <string name="admin_device_stop">Не использовать вход устройства</string>
+    <string name="admin_setup_reason_rejected">Сервер отклонил сохранённый токен: он истёк, отозван или принадлежит другому аккаунту.</string>
+    <string name="admin_setup_reason_device_rejected">Сервер не принял вход этого устройства. Используйте токен доступа.</string>
+    <string name="admin_setup_reason_unreadable">Сохранённый токен больше не открыть (хранилище ключей телефона сброшено). Задайте его снова.</string>
+    <string name="admin_setup_reason_failed">Не удалось обратиться к серверу.</string>
+
+    <!-- Подтверждение изменений -->
+    <string name="admin_unlock_title">Подтвердите изменение</string>
+    <string name="admin_unlock_no_lock">Чтобы вносить изменения, задайте блокировку экрана.</string>
+    <string name="admin_unlock_lockout">Слишком много попыток. Повторите позже.</string>
+    <string name="admin_unlock_failed">Разблокировка не подтверждена; ничего не изменено.</string>
+    <string name="admin_write_refused">Для этого аккаунта панель только читает, или ваша роль этого не позволяет.</string>
+    <string name="admin_done_saved">Сохранено</string>
+    <string name="admin_done_deleted">%1$s удалён</string>
+    <string name="admin_done_revoked">%1$s отозван</string>
+    <string name="admin_error_generic">Изменение не удалось</string>
+    <string name="admin_type_name">Введите %1$s</string>
+
+    <!-- Ошибки -->
+    <string name="admin_err_unauthorized">Сервер не принял учётные данные.</string>
+    <string name="admin_err_forbidden">Ваша роль этого не позволяет.</string>
+    <string name="admin_err_not_found">Не найдено: удалено, или на этом сервере этого нет.</string>
+    <string name="admin_err_conflict">Этому изменению мешает что-то другое.</string>
+    <string name="admin_err_bad_request">Сервер отклонил запрос.</string>
+    <string name="admin_err_rate_limited">Слишком много запросов. Подождите минуту и повторите.</string>
+    <string name="admin_err_server">Ошибка сервера (HTTP %1$d).</string>
+    <string name="admin_err_unexpected">Неожиданный ответ (HTTP %1$d).</string>
+    <string name="admin_err_decode">Не удалось прочитать ответ сервера (%1$s).</string>
+    <string name="admin_err_network">Сервер не ответил: %1$s</string>
+    <string name="admin_err_proxy_socks_auth">Подключение к серверу идёт через SOCKS5-прокси с паролем, а панель пока так не умеет. Используйте HTTP-прокси или SOCKS5 без пароля.</string>
+    <string name="admin_err_proxy_bad">Адрес прокси для подключения к серверу неверен. Проверьте Настройки → Соединение.</string>
+    <string name="admin_err_proxy_byedpi">Подключение к серверу идёт через ByeDPI, а он не запущен. Сначала запустите BirdSocks.</string>
+
+    <!-- Обзор -->
+    <string name="admin_overview_account">Аккаунт</string>
+    <string name="admin_overview_server">Сервер управления</string>
+    <string name="admin_overview_domain">Домен</string>
+    <string name="admin_overview_dns_domain">DNS-домен</string>
+    <string name="admin_overview_range">Диапазон сети</string>
+    <string name="admin_overview_created">Создан</string>
+    <string name="admin_overview_you">Вы</string>
+    <string name="admin_overview_service_user">сервисный пользователь</string>
+    <string name="admin_overview_signed_in_with">Вход через</string>
+    <string name="admin_overview_auth_token">токен доступа</string>
+    <string name="admin_overview_auth_device">вход этого устройства (эксперимент)</string>
+    <string name="admin_overview_counts">В этой сети</string>
+    <string name="admin_overview_peers_count">%1$d в сети из %2$d</string>
+    <string name="admin_overview_keys_count">%1$d действующих из %2$d</string>
+    <string name="admin_overview_pending">Ждут одобрения</string>
+    <string name="admin_overview_expired">Вход истёк</string>
+    <string name="admin_overview_nothing">Вашей роли здесь ничего не видно.</string>
+    <string name="admin_overview_ro_role">Ваша роль может только читать: панель только для чтения.</string>
+    <string name="admin_overview_ro_lock">На телефоне нет блокировки экрана: панель только для чтения.</string>
+    <string name="admin_overview_ro_switch">Для этого аккаунта включено «Только чтение». Изменить можно в разделе «Доступ к серверу».</string>
+    <string name="admin_overview_restricted">Ваша роль видит только ваши собственные узлы.</string>
+
+    <!-- Узлы -->
+    <string name="admin_peers_search">Имя, адрес, ОС</string>
+    <string name="admin_peers_empty">Нет узлов</string>
+    <string name="admin_peers_no_match">Ни один узел не подходит</string>
+    <string name="admin_peer_this_device">это устройство</string>
+    <string name="admin_peer_pending">одобрение</string>
+    <string name="admin_peer_expired">истёк</string>
+    <string name="admin_peer_ephemeral">временный</string>
+    <string name="admin_peer_address">Адрес</string>
+    <string name="admin_peer_dns">DNS-имя</string>
+    <string name="admin_peer_status">Состояние</string>
+    <string name="admin_peer_online">В сети</string>
+    <string name="admin_peer_offline">Не в сети</string>
+    <string name="admin_peer_os">Система</string>
+    <string name="admin_peer_public_ip">Подключается с</string>
+    <string name="admin_peer_groups">Группы</string>
+    <string name="admin_peer_last_login">Последний вход</string>
+    <string name="admin_peer_login_expiration">Истечение входа</string>
+    <string name="admin_peer_login_expiration_desc">Узлу придётся войти снова, когда истечёт срок входа аккаунта. Касается узлов, добавленных входом пользователя, а не ключом установки.</string>
+    <string name="admin_peer_login_expired_desc">Его вход истёк: узел не в сети, пока на нём снова не войдут.</string>
+    <string name="admin_peer_rename">Переименовать</string>
+    <string name="admin_peer_name">Имя</string>
+    <string name="admin_peer_delete">Удалить</string>
+    <string name="admin_peer_delete_title">Удалить %1$s?</string>
+    <string name="admin_peer_delete_text">Узел сразу покинет сеть, и добавить его можно будет только новым входом или ключом установки.</string>
+    <string name="admin_peer_self_note">Это ваше устройство. Отсюда его не удалить; выйдите из аккаунта в Настройках.</string>
+    <string name="admin_peer_self_guard">Устройство не может удалить собственный узел.</string>
+    <string name="admin_peer_read_only_note">Изменения выключены: только чтение, нет блокировки экрана или не позволяет роль.</string>
+    <string name="admin_peer_rename_unlock">Переименовать %1$s</string>
+    <string name="admin_peer_expiry_unlock">Истечение входа %1$s</string>
+    <string name="admin_peer_delete_unlock">Удалить %1$s</string>
+
+    <!-- Ключи установки -->
+    <string name="admin_keys_empty">Нет ключей установки</string>
+    <string name="admin_key_one_off">Одноразовый</string>
+    <string name="admin_key_reusable">Многоразовый</string>
+    <string name="admin_key_one_off_desc">Добавляет один узел и перестаёт действовать.</string>
+    <string name="admin_key_reusable_desc">Добавляет узлы, пока не истечёт или не исчерпает лимит.</string>
+    <string name="admin_key_used">использован %1$s</string>
+    <string name="admin_key_expires">до %1$s</string>
+    <string name="admin_key_state_valid">действует</string>
+    <string name="admin_key_state_revoked">отозван</string>
+    <string name="admin_key_state_expired">истёк</string>
+    <string name="admin_key_state_overused">исчерпан</string>
+    <string name="admin_key_state_invalid">недействителен</string>
+    <string name="admin_key_create">Новый ключ установки</string>
+    <string name="admin_key_create_action">Создать</string>
+    <string name="admin_key_name">Название</string>
+    <string name="admin_key_days">Срок действия, дней</string>
+    <string name="admin_key_days_hint">От 1 до 365</string>
+    <string name="admin_key_limit">Лимит использований</string>
+    <string name="admin_key_limit_hint">Пусто или 0 — без лимита</string>
+    <string name="admin_key_ephemeral">Временные узлы</string>
+    <string name="admin_key_ephemeral_desc">Узлы, добавленные этим ключом, удаляются после 10 минут вне сети.</string>
+    <string name="admin_key_groups">Группы для новых узлов</string>
+    <string name="admin_key_create_unlock">Создать ключ установки %1$s</string>
+    <string name="admin_key_new_title">Ключ установки %1$s</string>
+    <string name="admin_key_new_once">Показывается только сейчас: сервер не хранит копию.</string>
+    <string name="admin_key_qr">QR-код ссылки-приглашения</string>
+    <string name="admin_key_qr_desc">Отсканируйте на другом телефоне с BirdSocks, чтобы добавить туда этот аккаунт. Другим клиентам NetBird нужен сам ключ.</string>
+    <string name="admin_key_copy">Копировать ключ</string>
+    <string name="admin_key_copy_link">Копировать ссылку</string>
+    <string name="admin_key_show_link">Показать ссылку</string>
+    <string name="admin_key_new_done">Готово</string>
+    <string name="admin_key_revoke">Отозвать</string>
+    <string name="admin_key_revoke_title">Отозвать %1$s?</string>
+    <string name="admin_key_revoke_text">С ним больше не сможет войти ни один новый узел. Уже добавленные узлы останутся.</string>
+    <string name="admin_key_revoke_unlock">Отозвать ключ установки %1$s</string>
+
+    <!-- Группы -->
+    <string name="admin_groups_empty">Нет групп</string>
+
+    <plurals name="admin_list_incomplete">
+        <item quantity="one">%1$d запись не удалось прочитать, она не показана.</item>
+        <item quantity="few">%1$d записи не удалось прочитать, они не показаны.</item>
+        <item quantity="many">%1$d записей не удалось прочитать, они не показаны.</item>
+        <item quantity="other">%1$d записи не удалось прочитать, они не показаны.</item>
+    </plurals>
+    <plurals name="admin_group_peers">
+        <item quantity="one">%1$d узел</item>
+        <item quantity="few">%1$d узла</item>
+        <item quantity="many">%1$d узлов</item>
+        <item quantity="other">%1$d узла</item>
+    </plurals>
+    <plurals name="admin_group_resources">
+        <item quantity="one">%1$d ресурс</item>
+        <item quantity="few">%1$d ресурса</item>
+        <item quantity="many">%1$d ресурсов</item>
+        <item quantity="other">%1$d ресурса</item>
+    </plurals>
+</resources>

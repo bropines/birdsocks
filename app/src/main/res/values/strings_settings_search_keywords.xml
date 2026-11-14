@@ -124,4 +124,5 @@
     <string name="search_kw_main_hidden">hidden tiles, removed, put back, restore tile</string>
     <string name="search_kw_tun_root_lan">lan, local network, home network, router, nas, printer, root</string>
     <string name="search_kw_tun_root_take">other vpn, coexistence, override, take over, conflict, root</string>
+    <string name="search_kw_admin_panel">admin, administration, manage peers, setup key, invite, qr, groups, api, token, pat, management</string>
 </resources>

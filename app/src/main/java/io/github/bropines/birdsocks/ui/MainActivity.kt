@@ -53,6 +53,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.admin.AdminPanel
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import io.github.bropines.birdsocks.core.Changelog
 import io.github.bropines.birdsocks.core.Automation
 import io.github.bropines.birdsocks.core.GlobalSettings
@@ -210,7 +214,7 @@ fun cardStateOf(daemon: NetbirdState.Daemon, status: NbStatus?, network: Boolean
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
@@ -258,12 +262,15 @@ fun MainScreen() {
     var showPalette by remember { mutableStateOf(false) }
     var confirmReset by remember { mutableStateOf(false) }
     var vpnEnabled by remember { mutableStateOf(GlobalSettings.isTunModeEnabled(context)) }
+    // Bumped on every return, for what other screens change (the admin token).
+    var resumes by remember { mutableStateOf(0) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 layout = MainLayoutStore.load(context)
                 vpnEnabled = GlobalSettings.isTunModeEnabled(context)
+                resumes++
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -318,8 +325,27 @@ fun MainScreen() {
                 onTitleClick = { showAccounts = true },
                 actions = {
                     if (dashboardUrl != null) {
-                        IconButton(onClick = { openUrl(context, dashboardUrl) }) {
-                            Icon(Icons.Default.AdminPanelSettings, contentDescription = stringResource(R.string.main_cd_dashboard))
+                        // With an admin token for this account the button opens the panel in the app,
+                        // a long press the web dashboard; without one, the other way round.
+                        val panel = remember(profile, config?.managementUrl, resumes) {
+                            demo == null && config != null &&
+                                AdminPanel.hasCredential(context, profile ?: "default", config!!.managementUrl)
+                        }
+                        val openPanel = { AdminPanel.open(context) }
+                        val openWeb = { openUrl(context, dashboardUrl) }
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .combinedClickable(
+                                    onClick = if (panel) openPanel else openWeb,
+                                    onLongClick = if (panel) openWeb else openPanel,
+                                    onClickLabel = stringResource(if (panel) R.string.main_cd_admin_panel else R.string.main_cd_dashboard),
+                                    onLongClickLabel = stringResource(if (panel) R.string.main_cd_dashboard else R.string.main_cd_admin_panel),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Default.AdminPanelSettings, contentDescription = stringResource(if (panel) R.string.main_cd_admin_panel else R.string.main_cd_dashboard))
                         }
                     }
                     IconButton(onClick = { showAbout = true }) {

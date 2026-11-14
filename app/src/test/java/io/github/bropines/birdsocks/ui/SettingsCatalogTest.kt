@@ -37,6 +37,9 @@ class SettingsCatalogTest {
         "ui/DnsActivity.kt",
         "ui/DiagnosticTools.kt",
         "ui/PermissionsActivity.kt",
+        // The admin panel's own screens and dialogs; Settings → Account links to it.
+        "admin/AdminDialogs.kt",
+        "admin/AdminSetupScreen.kt",
     )
 
     /**
