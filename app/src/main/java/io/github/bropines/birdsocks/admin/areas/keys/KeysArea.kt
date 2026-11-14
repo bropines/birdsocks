@@ -1,6 +1,17 @@
 package io.github.bropines.birdsocks.admin.areas.keys
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import io.github.bropines.birdsocks.admin.ui.AdminDetailSheet
+import io.github.bropines.birdsocks.admin.ui.DetailField
+import io.github.bropines.birdsocks.admin.ui.MemberField
+import io.github.bropines.birdsocks.admin.ui.MemberOptions
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -100,17 +111,24 @@ private fun KeysScreen(scope: AreaScope) {
                 text = { Text(stringResource(R.string.admin_key_create)) },
             )
         },
-    ) { KeysContent(host, creating, onCreatingChange = { creating = it }) }
+    ) { KeysContent(host, creating, onCreatingChange = { creating = it }, initialOpenId = scope.arg) }
 }
 
 @Composable
-internal fun KeysContent(host: AdminHost, creating: Boolean = false, onCreatingChange: (Boolean) -> Unit = {}) {
-    val ctx = LocalContext.current
+internal fun KeysContent(host: AdminHost, creating: Boolean = false, onCreatingChange: (Boolean) -> Unit = {}, initialOpenId: String? = null) {
     var created by remember { mutableStateOf<ApiSetupKey?>(null) }
-    val canRevoke = host.can(Capabilities.SETUP_KEYS, Op.UPDATE)
+    var openId by rememberSaveable { mutableStateOf(initialOpenId) }
     val groups = host.data.items(AdminKeys.GROUPS)
+    val now = remember { System.currentTimeMillis() }
 
     LoadableContent(host.data[AdminKeys.SETUP_KEYS], onRetry = { host.load(AdminKeys.SETUP_KEYS, force = true) }) { listing, stale ->
+        val labels = mapOf(
+            KeyQuery.VALID to stringResource(R.string.admin_key_state_valid),
+            KeyQuery.EXPIRED to stringResource(R.string.admin_key_state_expired),
+            KeyQuery.REVOKED to stringResource(R.string.admin_key_state_revoked),
+            KeyQuery.REUSABLE to stringResource(R.string.admin_key_reusable),
+        )
+        val valid: (ApiSetupKey) -> Boolean = { KeyQuery.state(it, now) == KeyQuery.State.VALID }
         AdminList(
             items = listing.items,
             key = { it.id },
@@ -119,20 +137,17 @@ internal fun KeysContent(host: AdminHost, creating: Boolean = false, onCreatingC
             emptyText = stringResource(R.string.admin_keys_empty),
             noMatchText = stringResource(R.string.admin_keys_no_match),
             emptyIcon = Icons.Default.Key,
-            filters = listOf(
-                ListFilter("valid", stringResource(R.string.admin_key_state_valid)) { it.valid },
-                ListFilter("reusable", stringResource(R.string.admin_key_reusable)) { it.isReusable },
-            ),
+            filters = KeyQuery.filters(now).map { (id, test) -> ListFilter(id, labels.getValue(id), test) },
             sorts = listOf(
-                ListSort("valid", stringResource(R.string.admin_sort_attention), compareByDescending<ApiSetupKey> { it.valid }.thenBy { it.name.lowercase() }),
+                ListSort("valid", stringResource(R.string.admin_sort_attention), compareByDescending<ApiSetupKey> { valid(it) }.thenBy { it.name.lowercase() }),
                 ListSort("name", stringResource(R.string.admin_sort_name), compareBy { it.name.lowercase() }),
-                ListSort("expires", stringResource(R.string.admin_sort_expires), compareBy<ApiSetupKey> { !it.valid }.thenBy { it.expires.orEmpty() }),
+                ListSort("expires", stringResource(R.string.admin_sort_expires), compareBy<ApiSetupKey> { !valid(it) }.thenBy { it.expires.orEmpty() }),
+                ListSort("used", stringResource(R.string.admin_keys_sort_used), compareByDescending { it.lastUsed.orEmpty() }),
             ),
             issues = listing.issues.size,
             header = { if (stale != null) item(key = "stale") { ErrorCard(stale, onRetry = { host.load(AdminKeys.SETUP_KEYS, force = true) }) } },
-        ) { key ->
-            KeyRow(key, groups, canRevoke = canRevoke && key.valid && !key.revoked && !host.changeBusy) { host.propose(KeyChanges.revoke(ctx, key)) }
-        }
+        ) { key -> KeyRow(key, groups, now) { openId = key.id } }
+        listing.items.firstOrNull { it.id == openId }?.let { key -> KeySheet(host, key, now, onDismiss = { openId = null }) }
     }
 
     if (creating) {
@@ -142,42 +157,96 @@ internal fun KeysContent(host: AdminHost, creating: Boolean = false, onCreatingC
 }
 
 @Composable
-private fun KeyRow(key: ApiSetupKey, groups: List<ApiGroup>, canRevoke: Boolean, onRevoke: () -> Unit) {
+private fun KeyRow(key: ApiSetupKey, groups: List<ApiGroup>, now: Long, onClick: () -> Unit) {
     val names = key.autoGroups.mapNotNull { id -> groups.firstOrNull { it.id == id }?.name }
+    val state = KeyQuery.state(key, now)
     ListItem(
-        leadingContent = { Icon(Icons.Default.Key, null, tint = if (key.valid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline) },
+        modifier = Modifier.clickable(onClick = onClick),
+        leadingContent = { Icon(Icons.Default.Key, null, tint = if (state == KeyQuery.State.VALID) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline) },
         supportingContent = {
-            val usage = if (key.usageLimit > 0) "${key.usedTimes}/${key.usageLimit}" else key.usedTimes.toString()
             val lines = listOfNotNull(
                 listOfNotNull(
                     stringResource(if (key.isReusable) R.string.admin_key_reusable else R.string.admin_key_one_off),
-                    stringResource(R.string.admin_key_used, usage),
+                    stringResource(R.string.admin_key_used, usage(key)),
                     formatApiDate(key.expires).takeIf { it.isNotEmpty() }?.let { stringResource(R.string.admin_key_expires, it) },
                 ).joinToString(" · "),
                 names.takeIf { it.isNotEmpty() }?.joinToString(", "),
             )
             Text(lines.joinToString("\n"), style = MaterialTheme.typography.bodySmall)
         },
-        trailingContent = {
-            Column(horizontalAlignment = Alignment.End) {
-                StatusBadge(keyState(key), if (key.valid) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
-                if (canRevoke) TextButton(onClick = onRevoke) { Text(stringResource(R.string.admin_key_revoke)) }
-            }
-        },
+        trailingContent = { StatusBadge(keyState(state), if (state == KeyQuery.State.VALID) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) },
         headlineContent = { Text(key.name.ifEmpty { key.id }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
     )
 }
 
+private fun usage(key: ApiSetupKey) = if (key.usageLimit > 0) "${key.usedTimes}/${key.usageLimit}" else key.usedTimes.toString()
+
 @Composable
-private fun keyState(key: ApiSetupKey): String = stringResource(
-    when {
-        key.revoked || key.state == "revoked" -> R.string.admin_key_state_revoked
-        key.state == "expired" -> R.string.admin_key_state_expired
-        key.state == "overused" -> R.string.admin_key_state_overused
-        key.valid -> R.string.admin_key_state_valid
-        else -> R.string.admin_key_state_invalid
+private fun keyState(state: KeyQuery.State): String = stringResource(
+    when (state) {
+        KeyQuery.State.REVOKED -> R.string.admin_key_state_revoked
+        KeyQuery.State.EXPIRED -> R.string.admin_key_state_expired
+        KeyQuery.State.OVERUSED -> R.string.admin_key_state_overused
+        KeyQuery.State.VALID -> R.string.admin_key_state_valid
+        KeyQuery.State.INVALID -> R.string.admin_key_state_invalid
     }
 )
+
+/**
+ * One key: what it is, the groups peers it adds join (editable), revoke and
+ * delete. The key itself is never shown again — the server keeps a hash.
+ */
+@Composable
+private fun KeySheet(host: AdminHost, key: ApiSetupKey, now: Long, onDismiss: () -> Unit) {
+    val state = KeyQuery.state(key, now)
+    AdminDetailSheet(
+        title = key.name.ifEmpty { key.id },
+        onDismiss = onDismiss,
+        badges = { StatusBadge(keyState(state), if (state == KeyQuery.State.VALID) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) },
+    ) { KeyDetails(host, key, state, onDeleted = onDismiss) }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun KeyDetails(host: AdminHost, key: ApiSetupKey, state: KeyQuery.State, onDeleted: () -> Unit) {
+    val ctx = LocalContext.current
+    val groups = host.data.items(AdminKeys.GROUPS)
+    val canUpdate = host.can(Capabilities.SETUP_KEYS, Op.UPDATE)
+    val canDelete = host.can(Capabilities.SETUP_KEYS, Op.DELETE)
+    val idle = !host.changeBusy
+    val on = stringResource(R.string.admin_value_on)
+    DetailField(stringResource(R.string.admin_key_type), stringResource(if (key.isReusable) R.string.admin_key_reusable else R.string.admin_key_one_off))
+    DetailField(stringResource(R.string.admin_key_usage), stringResource(R.string.admin_key_used, usage(key)))
+    DetailField(stringResource(R.string.admin_key_last_used), formatApiDate(key.lastUsed))
+    DetailField(stringResource(R.string.admin_key_expires_label), formatApiDate(key.expires))
+    DetailField(stringResource(R.string.admin_key_updated), formatApiDate(key.updatedAt))
+    DetailField(stringResource(R.string.admin_key_ephemeral), if (key.ephemeral) on else "")
+    DetailField(stringResource(R.string.admin_key_extra_dns), if (key.allowExtraDnsLabels) on else "")
+    DetailField(stringResource(R.string.admin_key_masked), key.key, mono = true)
+    MemberField(
+        label = stringResource(R.string.admin_key_groups),
+        options = MemberOptions.groups(groups, includeAll = false),
+        selected = key.autoGroups,
+        enabled = canUpdate && idle && state != KeyQuery.State.REVOKED,
+        emptyText = stringResource(R.string.admin_key_groups_none),
+        onChange = { after -> host.propose(KeyChanges.setAutoGroups(ctx, key, after, { id -> groups.firstOrNull { it.id == id }?.name ?: id })) },
+    )
+    HelpText(stringResource(R.string.admin_key_groups_desc), lines = 3)
+    Spacer(Modifier.height(12.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (canUpdate && state != KeyQuery.State.REVOKED) OutlinedButton(enabled = idle, onClick = { host.propose(KeyChanges.revoke(ctx, key)) }) {
+            Icon(Icons.Default.Block, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.admin_key_revoke))
+        }
+        if (canDelete) OutlinedButton(
+            enabled = idle,
+            onClick = { if (host.propose(KeyChanges.delete(ctx, key))) onDeleted() },
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        ) {
+            Icon(Icons.Default.Delete, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.admin_key_delete))
+        }
+    }
+    if (!host.writesAllowed) HelpText(stringResource(R.string.admin_peer_read_only_note), Modifier.padding(top = 8.dp))
+}
 
 /** A new setup key: name, one-off or reusable, days valid, groups, a usage limit for a reusable one, ephemeral peers. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -190,6 +259,7 @@ private fun CreateKeyDialog(host: AdminHost, onDismiss: () -> Unit, onCreated: (
     var days by remember { mutableStateOf("7") }
     var limit by remember { mutableStateOf("") }
     var ephemeral by remember { mutableStateOf(false) }
+    var extraDns by remember { mutableStateOf(false) }
     var chosen by remember { mutableStateOf(setOf<String>()) }
     val groups = host.data.items(AdminKeys.GROUPS).filter { !it.isAll }.sortedBy { it.name.lowercase() }
     val dayCount = days.toLongOrNull()
@@ -235,6 +305,11 @@ private fun CreateKeyDialog(host: AdminHost, onDismiss: () -> Unit, onCreated: (
                         Switch(ephemeral, { ephemeral = it })
                     }
                     HelpText(stringResource(R.string.admin_key_ephemeral_desc))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.admin_key_extra_dns), Modifier.weight(1f))
+                        Switch(extraDns, { extraDns = it })
+                    }
+                    HelpText(stringResource(R.string.admin_key_extra_dns_desc))
                     if (groups.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.admin_key_groups), style = MaterialTheme.typography.labelLarge)
@@ -256,6 +331,7 @@ private fun CreateKeyDialog(host: AdminHost, onDismiss: () -> Unit, onCreated: (
                     autoGroups = chosen.toList(),
                     usageLimit = limitValue,
                     ephemeral = ephemeral,
+                    allowExtraDnsLabels = extraDns.takeIf { it },
                 )
                 val names = groups.filter { it.id in chosen }.map { it.name }
                 host.propose(KeyChanges.create(ctx, request, names, onCreated))
