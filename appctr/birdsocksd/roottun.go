@@ -147,6 +147,20 @@ func (c rootConfig) validate() error {
 	return nil
 }
 
+// validateSweep: what a sweep needs — whose tables, chains and state these are.
+func (c rootConfig) validateSweep() error {
+	bad := func(t int) bool { return t < 1 || t >= 0x7fffffff || t == 253 || t == 254 || t == 255 }
+	switch {
+	case bad(c.Table) || bad(c.table2()):
+		return fmt.Errorf("table %d", c.Table)
+	case c.Chain == "" || len(c.Chain) > 20 || strings.ContainsAny(c.Chain, " \t\n-/"):
+		return fmt.Errorf("chain %q", c.Chain)
+	case c.StateDir != "" && (!filepath.IsAbs(c.StateDir) || !strings.HasPrefix(c.StateDir, "/data/adb/")):
+		return fmt.Errorf("state directory %q", c.StateDir)
+	}
+	return nil
+}
+
 // sameLink: two configs share the interface itself; only routes differ.
 func (c rootConfig) sameLink(o rootConfig) bool {
 	return c.Name == o.Name && c.MTU == o.MTU && strings.Join(c.Addrs, ",") == strings.Join(o.Addrs, ",") &&
@@ -197,7 +211,19 @@ type rootTun struct {
 	lastState   string
 }
 
-func say(format string, args ...any) { fmt.Fprintf(os.Stdout, format+"\n", args...) }
+// pipeGone is closed when stdout stops taking lines: the app that reads
+// them died. Without SIGPIPE handled, that first failed write would kill
+// the helper outright and leave every rule behind (seen on an APK reinstall).
+var (
+	pipeGone     = make(chan struct{})
+	pipeGoneOnce sync.Once
+)
+
+func say(format string, args ...any) {
+	if _, err := fmt.Fprintf(os.Stdout, format+"\n", args...); err != nil {
+		pipeGoneOnce.Do(func() { close(pipeGone) })
+	}
+}
 
 // runRootTun is the helper's main: it returns the process exit code.
 func runRootTun() int {
@@ -217,6 +243,9 @@ func runRootTun() int {
 	}()
 	sigs := make(chan os.Signal, 2)
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+	// Handled, SIGPIPE turns a write to the dead app's pipe into an EPIPE
+	// (say notices it) instead of ending the process before its teardown.
+	signal.Notify(make(chan os.Signal, 1), syscall.SIGPIPE)
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	lastProbe, lastHealth := time.Now(), time.Now()
@@ -239,6 +268,16 @@ func runRootTun() int {
 				r.teardown("stopped")
 				return 0
 			}
+			if cfg.Op == "sweep" {
+				// The app found a helper's marker with no helper: take what it left.
+				if err := cfg.validateSweep(); err != nil {
+					say("error: %v", err)
+					return 1
+				}
+				sweep(cfg)
+				say("down: swept what an earlier helper left")
+				return 0
+			}
 			if err := r.apply(cfg); err != nil {
 				say("error: %v", err)
 				r.teardown("setup failed")
@@ -247,6 +286,9 @@ func runRootTun() int {
 			lastProbe = time.Now()
 		case s := <-sigs:
 			r.teardown("signal " + s.String())
+			return 0
+		case <-pipeGone:
+			r.teardown("the app went away (its pipe closed)")
 			return 0
 		case <-tick.C:
 			if r.linkGone() {

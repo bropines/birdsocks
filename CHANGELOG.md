@@ -22,6 +22,7 @@
 - Open-source licenses as a screen of their own: every component in the APK with its license and full text, from About or `birdsocks://licenses`.
 
 ### Fixed
+- Root mode no longer leaves the device without DNS when BirdSocks is killed or updated while it runs; rules a helper left are swept on the next start.
 - A switch between redundant routing peers no longer raises a notification each time.
 - Dialogs (About, What's new, logout, the VPN warning, debug bundle, packet capture) follow the app's language, not the system's.
 - Quick Settings tile: shows the state a tap asked for until the service catches up, says "Stopping…" while it stops, and no longer sticks at "Starting…" when Android refuses a start from the panel.

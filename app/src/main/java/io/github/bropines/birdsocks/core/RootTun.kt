@@ -195,6 +195,7 @@ object RootTun {
     }
 
     private suspend fun apply(context: Context) {
+        sweepJob?.join()
         if (!GlobalSettings.isTunModeEnabled(context) || !GlobalSettings.isTunRoot(context) || !NetbirdState.isRunning) {
             stop(0)
             return
@@ -218,7 +219,12 @@ object RootTun {
     }
 
     /** Starts the helper through su; under [lock]. */
+    @Volatile private var markerContext: Context? = null
+    /** A sweep of an earlier helper's rules; a new helper waits for it, or the sweep would take the new rules. */
+    @Volatile private var sweepJob: Job? = null
+
     private fun spawn(context: Context): Boolean {
+        markerContext = context.applicationContext
         val bin = File(context.applicationInfo.nativeLibraryDir, "libnetbird.so").absolutePath
         return try {
             val p = Runtime.getRuntime().exec(arrayOf("su"))
@@ -250,9 +256,9 @@ object RootTun {
                 Log.i(TAG, line)
                 Appctr.logAndroid(level, "CORE", "Root VPN: $line")
                 when {
-                    line.startsWith("ready:") -> TunVpnService.reportRoot(true, lastRoutes)
+                    line.startsWith("ready:") -> { TunVpnService.reportRoot(true, lastRoutes); markerContext?.let { writeMarker(it) } }
                     line.startsWith("state:") -> parseState(line)?.let { stateFlow.value = it }
-                    line.startsWith("down:") -> { TunVpnService.reportRoot(false, null); stateFlow.value = null }
+                    line.startsWith("down:") -> { TunVpnService.reportRoot(false, null); stateFlow.value = null; markerContext?.let { marker(it).delete() } }
                 }
             }
         }
@@ -281,6 +287,52 @@ object RootTun {
             } else {
                 Appctr.logAndroid("ERROR", "CORE", "Root VPN: the helper keeps exiting; not restarted until the next start")
             }
+        }
+    }
+
+    /**
+     * A file that says a helper has rules on the device: written on its "ready", removed
+     * on its "down". A helper that died without its teardown (killed with the app, an
+     * old build's SIGPIPE) leaves it behind, and [sweepIfStale] then takes its rules.
+     */
+    private fun marker(context: Context) = File(context.filesDir, "root-helper")
+
+    private fun sweepConfig(context: Context): String {
+        val dev = context.packageName.endsWith(".dev")
+        return buildJsonObject {
+            put("op", "sweep")
+            put("table", if (dev) TABLE_DEV else TABLE)
+            put("chain", if (dev) "BIRDSOCKSD" else "BIRDSOCKS")
+            put("state_dir", if (dev) "/data/adb/birdsocks-dev" else "/data/adb/birdsocks")
+        }.toString()
+    }
+
+    private fun writeMarker(context: Context) {
+        runCatching { marker(context).writeText(sweepConfig(context)) }
+    }
+
+    /**
+     * On the app's start: rules a helper left with no helper to watch them — the
+     * interface gone with the daemon, the DNS redirect pointing nowhere — are taken
+     * away through su. Only when the marker says a helper had rules, so a phone that
+     * never used Root sees no su prompt.
+     */
+    fun sweepIfStale(context: Context) {
+        val app = context.applicationContext
+        if (!marker(app).exists()) return
+        sweepJob = scope.launch {
+            if (synchronized(lock) { process != null }) return@launch
+            val bin = File(app.applicationInfo.nativeLibraryDir, "libnetbird.so").absolutePath
+            runCatching {
+                val p = Runtime.getRuntime().exec(arrayOf("su"))
+                p.outputStream.bufferedWriter().use { w ->
+                    w.write("exec '" + bin.replace("'", "'\\''") + "' -root-tun 2>&1\n")
+                    w.write(sweepConfig(app)); w.write("\n")
+                }
+                val out = p.inputStream.bufferedReader().readText().trim()
+                if (p.waitUpTo(10_000)) marker(app).delete()
+                Appctr.logAndroid("INFO", "CORE", "Root VPN: rules left by an earlier helper: ${out.ifEmpty { "nothing said" }}")
+            }.onFailure { Appctr.logAndroid("WARN", "CORE", "Root VPN: could not sweep an earlier helper's rules: ${it.message}") }
         }
     }
 
