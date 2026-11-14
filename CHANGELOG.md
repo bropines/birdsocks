@@ -19,6 +19,7 @@
 - Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
 - An admin panel for the active account, from the shield on the main screen, a tile, Settings → Account or `birdsocks://admin`: overview, peers (search, rename, login expiration, delete), setup keys (create with an invite QR, revoke) and groups, through the server's API with an access token sealed on the phone; changes ask for the screen lock, read-only by default.
 - Admin panel: a home screen with what needs you (peers and users awaiting approval, setup keys about to expire) and its actions inline, and a grid of areas; every change shows what it does and what it changes before the screen lock, and a risky one asks for the name typed back. The panel opens on the last lists it saw while it refreshes.
+- Admin panel: networks (resources, routing peers, and which policies let whom reach each resource), routes with exit nodes marked, and DNS (nameserver groups, private zones and records where the server has them, groups with DNS management off); every object also opens as JSON, fields the app does not know kept. Removing a route or nameservers this device uses asks for the name typed back.
 - Open-source licenses as a screen of their own: every component in the APK with its license and full text, from About or `birdsocks://licenses`.
 
 ### Fixed
