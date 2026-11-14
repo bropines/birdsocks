@@ -2,4 +2,7 @@
 <resources>
 
     <string name="perm_unknown_note">Android не сообщает приложениям, разрешено ли это, — проверьте на системном экране.</string>
+
+    <!-- The exit-node sheet's search, shown once it lists more than a handful. -->
+    <string name="nb_exit_node_search">Выходной узел или пир</string>
 </resources>

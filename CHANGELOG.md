@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Exit-node sheet: a search by exit node or routing peer once it lists more than six.
 - Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
 
 ### Changed

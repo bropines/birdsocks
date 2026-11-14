@@ -140,7 +140,11 @@ fun ExitNodePicker(exitNodes: List<NbNetwork>, status: NbStatus?, onPick: (Strin
             exitNodes.map { PickerOption(it.id, it.id, Icons.Default.Public, supporting = routingPeerOf(it, status)) },
         selected = exitNodes.firstOrNull { it.selected }?.id ?: "",
         onPick = onPick,
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
+        // By the network's name or the peer that routes it. NetBird peers carry no location,
+        // so there are no countries to group by.
+        searchPlaceholder = stringResource(R.string.nb_exit_node_search),
+        nothingFound = stringResource(R.string.state_nothing_found)
     )
 }
 

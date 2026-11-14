@@ -27,7 +27,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +44,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.bropines.birdsocks.core.CompactSearchBar
 import kotlinx.coroutines.launch
 
 /**
@@ -70,6 +76,10 @@ data class PickerOption<T>(
  * No minimum height, unlike the exit-node picker: that one fills in after it
  * opens and was held at its final height so it would not jump, whereas every
  * list here is known before the sheet appears.
+ *
+ * With [searchPlaceholder] set and more than [SEARCH_FROM] options, a search field under
+ * the title narrows the rows by label and second line; [nothingFound] is what an empty
+ * result says.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,13 +90,15 @@ fun <T> PickerSheet(
     onDismiss: () -> Unit,
     selected: T? = null,
     monospace: Boolean = false,
+    searchPlaceholder: String? = null,
+    nothingFound: String = "",
 ) {
     // Opened half height, a sheet settles to its content a frame later and
     // reads as a jump.
     val sheetState = rememberFullSheetState()
     val scope = rememberCoroutineScope()
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        PickerSheetContent(title, options, selected, monospace) { value ->
+        PickerSheetContent(title, options, selected, monospace, searchPlaceholder, nothingFound) { value ->
             onPick(value)
             scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
         }
@@ -103,8 +115,17 @@ internal fun <T> PickerSheetContent(
     options: List<PickerOption<T>>,
     selected: T?,
     monospace: Boolean,
+    searchPlaceholder: String? = null,
+    nothingFound: String = "",
     onRowClick: (T) -> Unit
 ) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val searchable = searchPlaceholder != null && options.size > SEARCH_FROM
+    val shown = remember(options, query) {
+        val q = query.trim()
+        if (q.isEmpty()) options
+        else options.filter { it.label.contains(q, ignoreCase = true) || it.supporting?.contains(q, ignoreCase = true) == true }
+    }
     // Past this the list scrolls under a title that stays put; a dozen rows
     // reach it in landscape.
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.85f).dp
@@ -122,6 +143,22 @@ internal fun <T> PickerSheetContent(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
         )
+        if (searchable) {
+            CompactSearchBar(
+                value = query,
+                onValueChange = { query = it },
+                placeholderText = searchPlaceholder.orEmpty(),
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
+            )
+            if (shown.isEmpty()) {
+                Text(
+                    nothingFound,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                )
+            }
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,7 +167,7 @@ internal fun <T> PickerSheetContent(
                 .then(if (choosesOne) Modifier.selectableGroup() else Modifier),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            items(options) { option ->
+            items(shown) { option ->
                 PickerRow(
                     option = option,
                     isSelected = choosesOne && option.value == selected,
@@ -224,3 +261,6 @@ private fun <T> PickerRow(
         }
     }
 }
+
+/** Past this many options a [PickerSheet] that offers a search shows its field. */
+private const val SEARCH_FROM = 6

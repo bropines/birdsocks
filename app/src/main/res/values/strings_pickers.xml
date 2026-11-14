@@ -8,4 +8,7 @@
 
     <!-- Permissions: the folded note under a row whose state the system does not report. -->
     <string name="perm_unknown_note">Android does not tell apps whether this is allowed, so check it on the system screen.</string>
+
+    <!-- The exit-node sheet's search, shown once it lists more than a handful. -->
+    <string name="nb_exit_node_search">Exit node or peer</string>
 </resources>
