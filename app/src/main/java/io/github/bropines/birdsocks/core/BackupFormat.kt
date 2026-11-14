@@ -161,7 +161,8 @@ object BackupFormat {
      *  - `tun_ula` — the VPN's IPv6 address, made once per install at random;
      *  - `autostart_ask_never`, `autostart_ask_pending` — about this phone's
      *    own autostart permission prompt;
-     *  - `automation_status_to` — the app on this phone that asked for status.
+     *  - `automation_status_to` — the app on this phone that asked for status;
+     *  - `tun_root_take_device` — consent about this phone's other VPN app.
      * A new setting is backed up once it is added here.
      */
     private val KEYS: Map<String, KeySpec> = buildMap {
@@ -189,7 +190,7 @@ object BackupFormat {
         // Automation: the switch; its token is a secret, and the app status goes to is this phone's
         add(Scope.SETTING, Type.BOOLEAN, "automation_enabled")
         // VPN mode
-        add(Scope.SETTING, Type.BOOLEAN, "tun_mode_enabled", "tun_route_all", "tun_ipv6_enabled")
+        add(Scope.SETTING, Type.BOOLEAN, "tun_mode_enabled", "tun_route_all", "tun_ipv6_enabled", "tun_root_keep_lan")
         add(Scope.SETTING, Type.STRING, "tun_excluded_apps", "tun_excluded_cidrs", "tun_address", "tun_engine")
         // Secrets
         add(Scope.SECRET, Type.STRING, "socks_user", "socks_pass", "cp_user", "cp_pass", "automation_token")

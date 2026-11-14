@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.SettingsEthernet
+import androidx.compose.material.icons.filled.Lan
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +72,8 @@ fun ColumnScope.TunnelSettings() {
     val demo = LocalDemo.current
     var tunOn by remember { mutableStateOf(GlobalSettings.isTunModeEnabled(context)) }
     var askSlot by remember { mutableStateOf(false) }
+    var askTake by remember { mutableStateOf(false) }
+    val rootState by RootTun.state.collectAsState()
     val running by TunVpnService.running.collectAsStateOr { it.vpn }
     val routes by TunVpnService.routes.collectAsStateOr { it.vpnRoutes }
     val daemon by NetbirdState.daemon.collectAsStateOr { it.daemon }
@@ -183,6 +187,24 @@ fun ColumnScope.TunnelSettings() {
             style = MaterialTheme.typography.bodyMedium,
             color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
+        // Root says what it claims: beside another VPN it routes less, and says so.
+        val claim = rootState?.takeIf { rootMode && running }
+        if (claim != null) {
+            val text = when (claim.mode) {
+                RootTun.Mode.Own -> null
+                RootTun.Mode.Shared -> stringResource(R.string.nb_tun_root_shared)
+                RootTun.Mode.Yield -> stringResource(R.string.nb_tun_root_yield)
+                RootTun.Mode.Override -> stringResource(R.string.nb_tun_root_override)
+            }
+            val dns = when (claim.dns) {
+                "hold" -> stringResource(R.string.nb_tun_root_dns_hold)
+                "unhealthy" -> stringResource(R.string.nb_tun_root_dns_unhealthy)
+                else -> null
+            }
+            listOfNotNull(text, dns).forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
         if (!rootMode) {
             Spacer(Modifier.height(8.dp))
             SlidingSegmentedChips(
@@ -209,6 +231,33 @@ fun ColumnScope.TunnelSettings() {
             modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
         )
 
+        if (rootMode) {
+            var keepLan by remember { mutableStateOf(GlobalSettings.isTunRootKeepLan(context)) }
+            SettingsSwitchItem(stringResource(R.string.nb_tun_root_lan_title), stringResource(R.string.nb_tun_root_lan_desc), Icons.Default.Lan, keepLan) {
+                GlobalSettings.setTunRootKeepLan(context, it); keepLan = it
+                TunVpnService.start(context)
+            }
+            var take by remember { mutableStateOf(GlobalSettings.isTunRootTakeDevice(context)) }
+            SettingsSwitchItem(stringResource(R.string.nb_tun_root_take_title), stringResource(R.string.nb_tun_root_take_desc), Icons.Default.PriorityHigh, take) {
+                if (it) askTake = true else {
+                    GlobalSettings.setTunRootTakeDevice(context, false); take = false
+                    TunVpnService.start(context)
+                }
+            }
+            if (askTake) AlertDialog(
+                onDismissRequest = { askTake = false },
+                title = { Text(stringResource(R.string.nb_tun_root_take_confirm_title)) },
+                text = { Text(stringResource(R.string.nb_tun_root_take_confirm_body)) },
+                confirmButton = {
+                    Button(onClick = {
+                        askTake = false
+                        GlobalSettings.setTunRootTakeDevice(context, true); take = true
+                        TunVpnService.start(context)
+                    }) { Text(stringResource(R.string.nb_tun_root_take_confirm)) }
+                },
+                dismissButton = { TextButton(onClick = { askTake = false }) { Text(stringResource(R.string.action_cancel)) } }
+            )
+        }
         var routeAll by remember { mutableStateOf(GlobalSettings.isTunRouteAll(context)) }
         SettingsSwitchItem(stringResource(R.string.nb_tun_route_all_title), stringResource(R.string.nb_tun_route_all_desc), Icons.Default.Route, routeAll) {
             GlobalSettings.setTunRouteAll(context, it); routeAll = it

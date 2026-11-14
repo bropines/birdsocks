@@ -57,4 +57,16 @@
     <string name="nb_tun_tile_active">Активно · VPN</string>
     <string name="nb_tun_notif_text_root">%1$s · Root</string>
     <string name="nb_tun_tile_active_root">Активно · Root</string>
+    <string name="nb_tun_root_shared">Устройство держит другой VPN: приложения, которые он пропускает мимо себя, идут через выходной узел и сети NetBird; его приложения остаются в своём туннеле и со своим DNS.</string>
+    <string name="nb_tun_root_yield">Другой VPN забирает все приложения: здесь маршрутизируются только адреса NetBird. Выходной узел, сети и DNS для всего устройства ждут его остановки — или используйте SOCKS5-прокси.</string>
+    <string name="nb_tun_root_override">Работает другой VPN, и его приложения забраны по выбору на этом устройстве.</string>
+    <string name="nb_tun_root_dns_hold">Перенаправление DNS ждёт, пока Android проверит сеть.</string>
+    <string name="nb_tun_root_dns_unhealthy">Резолвер NetBird не отвечает: телефон разрешает имена сам, пока он не вернётся.</string>
+    <string name="nb_tun_root_lan_title">Оставить локальную сеть</string>
+    <string name="nb_tun_root_lan_desc">Сети, в которых находится телефон, остаются локальными, когда туннель берёт весь трафик, даже если их маршрутизирует пир.</string>
+    <string name="nb_tun_root_take_title">Забрать устройство у другого VPN</string>
+    <string name="nb_tun_root_take_desc">Выкл.: рядом с другим VPN BirdSocks маршрутизирует только адреса NetBird и приложения, которые тот VPN пропускает. Вкл.: выходной узел и DNS для всех приложений.</string>
+    <string name="nb_tun_root_take_confirm_title">Забрать все приложения?</string>
+    <string name="nb_tun_root_take_confirm_body">Пока BirdSocks работает, приложения другого VPN теряют его туннель и DNS — их трафик идёт в NetBird. Настройка только этого телефона, в резервные копии не попадает.</string>
+    <string name="nb_tun_root_take_confirm">Забрать</string>
 </resources>

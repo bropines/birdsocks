@@ -252,6 +252,16 @@ object GlobalSettings {
     fun setTunEngine(context: Context, engine: String) = setString(context, "tun_engine", engine)
     fun isTunNative(context: Context): Boolean = getTunEngine(context) == TUN_ENGINE_NATIVE
     fun isTunRoot(context: Context): Boolean = getTunEngine(context) == TUN_ENGINE_ROOT
+    /** Root: the networks this device sits on stay local while the tunnel takes the default route. */
+    fun isTunRootKeepLan(context: Context): Boolean = getBoolean(context, "tun_root_keep_lan", true)
+    fun setTunRootKeepLan(context: Context, on: Boolean) = setBoolean(context, "tun_root_keep_lan", on)
+    /**
+     * Root: the default route and DNS device-wide even while another VPN holds
+     * the slot, taking its apps from it. Consent about this phone's other VPN,
+     * so never in a backup.
+     */
+    fun isTunRootTakeDevice(context: Context): Boolean = getBoolean(context, "tun_root_take_device", false)
+    fun setTunRootTakeDevice(context: Context, on: Boolean) = setBoolean(context, "tun_root_take_device", on)
     /** The device's NetBird addresses last seen under [profile], "ip,ipv6": the native VPN comes up on them before the first status. */
     fun getTunSelf(context: Context, profile: String): String = getString(context, "tun_self_$profile", "")
     fun setTunSelf(context: Context, profile: String, addrs: String) = setString(context, "tun_self_$profile", addrs)

@@ -9,4 +9,6 @@
     <string name="nb_networks_off_desc">\"Use networks\" is off in Settings → Account: this device reaches none of the networks and exit nodes that peers route for.</string>
     <string name="nb_expose_inbound_in_settings">The proxy reaches the phone through NetBird, so peers must be allowed to reach its services. Turn it on in Settings.</string>
     <string name="main_cd_dashboard">Open dashboard</string>
+    <string name="nb_main_root_shared">Root · shared</string>
+    <string name="nb_main_root_yield">Root · NetBird only</string>
 </resources>

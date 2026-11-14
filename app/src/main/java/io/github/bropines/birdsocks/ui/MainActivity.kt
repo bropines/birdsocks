@@ -411,7 +411,14 @@ fun StatusCard(
             // The VPN mode says itself, as the notification and the tile do.
             val vpn by io.github.bropines.birdsocks.core.TunVpnService.running.collectAsStateOr { it.vpn }
             // Root says so: it takes no VPN slot, which is why one would pick it.
-            val how = if (vpn && io.github.bropines.birdsocks.core.GlobalSettings.isTunRoot(LocalContext.current)) "Root" else "VPN"
+            val rootState by io.github.bropines.birdsocks.core.RootTun.state.collectAsState()
+            val how = if (vpn && io.github.bropines.birdsocks.core.GlobalSettings.isTunRoot(LocalContext.current)) {
+                when (rootState?.mode) {
+                    io.github.bropines.birdsocks.core.RootTun.Mode.Shared -> stringResource(R.string.nb_main_root_shared)
+                    io.github.bropines.birdsocks.core.RootTun.Mode.Yield -> stringResource(R.string.nb_main_root_yield)
+                    else -> "Root"
+                }
+            } else "VPN"
             val line = if (vpn && state == CardState.Connected) "$subtitle · $how" else subtitle
             Text(line, textAlign = TextAlign.Center, color = content, modifier = Modifier.alpha(0.8f))
             if (state == CardState.Idle) {

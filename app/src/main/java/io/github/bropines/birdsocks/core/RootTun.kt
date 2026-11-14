@@ -1,7 +1,11 @@
 package io.github.bropines.birdsocks.core
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.util.Log
 import appctr.Appctr
 import io.github.bropines.birdsocks.models.NbConnState
@@ -12,6 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
@@ -33,12 +40,15 @@ import java.io.File
  *   (the daemon died).
  * - **Follows the daemon**, like the VpnService engines: started through
  *   [TunVpnService.start] once the daemon answers, stopped before it stops.
+ * - **A guest on the device**: the helper claims NetBird's ranges always, the
+ *   default route and DNS only while no other VPN holds the slot (or for the
+ *   apps it bypasses); [mode] says which (roottun_plan.go).
  */
 object RootTun {
     private const val TAG = "RootTun"
-    /** Its own routing table and rule priority: clear of netd (10000+) and of TailSocks (52/53, 100-200). */
+    /** Its own routing tables, this and the next: clear of netd's (1000 + ifindex) and of other root apps'. */
     const val TABLE = 25203
-    const val PREF = 90
+    private const val TABLE_DEV = 25213
     private const val SELF_PREFIX = "io.github.bropines.birdsocks"
     private const val REBUILD_DEBOUNCE_MS = 1500L
 
@@ -56,6 +66,16 @@ object RootTun {
     @Volatile private var networksLoaded = false
     private var networksAsked: String? = null
     @Volatile private var profileMtu = -1
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
+    private var netManager: ConnectivityManager? = null
+
+    /** What the helper claims now. */
+    enum class Mode { Own, Shared, Yield, Override }
+    data class State(val mode: Mode, val dns: String)
+
+    private val stateFlow = MutableStateFlow<State?>(null)
+    /** The helper's last word on what it claims; null while it is not up. */
+    val state: StateFlow<State?> = stateFlow.asStateFlow()
 
     /** Whether `su` grants root to this app; blocks for up to ten seconds, so off the main thread. */
     fun isRootAvailable(): Boolean = try {
@@ -89,6 +109,8 @@ object RootTun {
             watcher?.cancel(); watcher = null
             pending?.cancel(); pending = null
         }
+        unwatchNetwork()
+        stateFlow.value = null
         if (p != null) {
             if (waitMs <= 0 || !p.waitUpTo(waitMs)) p.destroy()
         }
@@ -102,6 +124,49 @@ object RootTun {
             if (watcher?.isActive == true) return
             watcher = scope.launch { NetbirdState.status.collect { onStatus(context, it) } }
         }
+        watchNetwork(context)
+    }
+
+    /**
+     * Networks coming, going and being validated reach the helper's config:
+     * the DNS redirect waits for Android's validation (its probe resolves
+     * through the system resolver, which the redirect would send into a
+     * tunnel that is not up yet), and a VPN this app can see is a reason to
+     * yield.
+     */
+    private fun watchNetwork(context: Context) {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return
+        synchronized(lock) {
+            if (netCallback != null) return
+            val cb = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = schedule(context)
+                override fun onLost(network: Network) = schedule(context)
+                override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = schedule(context)
+            }
+            runCatching { cm.registerNetworkCallback(android.net.NetworkRequest.Builder().removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build(), cb) }
+                .onSuccess { netCallback = cb; netManager = cm }
+        }
+    }
+
+    private fun unwatchNetwork() {
+        val (cm, cb) = synchronized(lock) {
+            (netManager to netCallback).also { netCallback = null; netManager = null }
+        }
+        if (cm != null && cb != null) runCatching { cm.unregisterNetworkCallback(cb) }
+    }
+
+    /** Whether some real (non-VPN) network has been validated by Android; true when it cannot tell. */
+    private fun networkValidated(context: Context): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        return runCatching {
+            @Suppress("DEPRECATION")
+            cm.allNetworks.any { n ->
+                val c = cm.getNetworkCapabilities(n) ?: return@any false
+                !c.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                    c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    c.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            }
+        }.getOrDefault(true)
     }
 
     private fun onStatus(context: Context, status: NbStatus?) {
@@ -182,7 +247,8 @@ object RootTun {
                 Appctr.logAndroid(level, "CORE", "Root VPN: $line")
                 when {
                     line.startsWith("ready:") -> TunVpnService.reportRoot(true, lastRoutes)
-                    line.startsWith("down:") -> TunVpnService.reportRoot(false, null)
+                    line.startsWith("state:") -> parseState(line)?.let { stateFlow.value = it }
+                    line.startsWith("down:") -> { TunVpnService.reportRoot(false, null); stateFlow.value = null }
                 }
             }
         }
@@ -193,7 +259,22 @@ object RootTun {
             }
         }
         TunVpnService.reportRoot(false, null)
+        stateFlow.value = null
         Appctr.logAndroid(if (code == 0) "INFO" else "WARN", "CORE", "Root VPN: helper exited ($code)")
+    }
+
+    /** "state: mode=shared dns=on capture=true (…)" → [State]. */
+    internal fun parseState(line: String): State? {
+        val words = line.removePrefix("state:").trim().split(' ')
+        fun value(key: String) = words.firstOrNull { it.startsWith("$key=") }?.substringAfter('=')
+        val mode = when (value("mode")) {
+            "own" -> Mode.Own
+            "shared" -> Mode.Shared
+            "yield" -> Mode.Yield
+            "override" -> Mode.Override
+            else -> return null
+        }
+        return State(mode, value("dns") ?: "off")
     }
 
     @Volatile private var lastRoutes: TunRoutes.RouteSet? = null
@@ -209,31 +290,53 @@ object RootTun {
             GlobalSettings.isTunRouteAll(context), GlobalSettings.isTunIpv6Enabled(context)
         )
         lastRoutes = routes
+        // NetBird's own ranges are the overlay (T1); everything else selected is a network (T2).
+        val overlay = TunRoutes.overlayPrefixes(local?.ip.orEmpty(), local?.ipv6.orEmpty())
+            .ifEmpty { cached.mapNotNull(TunRoutes::normalize) }
+            .let { o -> if (o.none { ':' !in it }) o + TunRoutes.FALLBACK_OVERLAY else o }
+        val dnsRoute = "${TunRoutes.DNS_IP}/32"
+        val networkRoutes = (routes.v4 + routes.v6).filter { it != dnsRoute && it !in overlay }
         val pm = context.packageManager
-        val ownUids = runCatching {
-            pm.getInstalledApplications(0).filter { it.packageName.startsWith(SELF_PREFIX) }.map { it.uid }
-        }.getOrDefault(emptyList())
+        val installed = runCatching { pm.getInstalledApplications(0) }.getOrDefault(emptyList())
+        val ownUids = installed.filter { it.packageName.startsWith(SELF_PREFIX) }.map { it.uid }.distinct()
         val excludedUids = GlobalSettings.getTunExcludedApps(context).mapNotNull { pkg ->
             try { pm.getApplicationInfo(pkg, 0).uid } catch (_: PackageManager.NameNotFoundException) { null }
-        }
+        }.distinct()
+        val vpnUids = runCatching {
+            pm.queryIntentServices(Intent("android.net.VpnService"), PackageManager.MATCH_ALL)
+                .mapNotNull { it.serviceInfo?.applicationInfo?.uid }
+        }.getOrDefault(emptyList()).distinct()
+        val carryUids = installed.map { it.uid }.distinct().filter { it !in ownUids && it !in vpnUids }
         val cidrs = GlobalSettings.getTunExcludedCIDRs(context).split(',').mapNotNull { TunRoutes.normalize(it.trim()) }
         val domain = runCatching { File("/proc/self/attr/current").readText().trimEnd('\u0000', '\n') }.getOrDefault("")
         val mtu = profileMtu.takeIf { it in 576..TunVpnService.NATIVE_MTU } ?: TunVpnService.NATIVE_MTU
+        val dev = context.packageName.endsWith(".dev")
+        fun ints(xs: List<Int>) = JsonArray(xs.map { JsonPrimitive(it) })
+        fun strs(xs: List<String>) = JsonArray(xs.map { JsonPrimitive(it) })
         return buildJsonObject {
-            put("name", if (context.packageName.endsWith(".dev")) "birdsocksd0" else "birdsocks0")
+            put("name", if (dev) "birdsocksd0" else "birdsocks0")
             put("mtu", mtu)
-            put("addrs", JsonArray(listOfNotNull(self.first, self.second).map { JsonPrimitive(it) }))
-            put("routes", JsonArray((routes.v4 + routes.v6).map { JsonPrimitive(it) }))
+            put("addrs", strs(listOfNotNull(self.first, self.second)))
+            put("overlay", strs(overlay))
+            put("routes", strs(networkRoutes))
             put("default4", routes.defaultV4)
             put("default6", routes.defaultV6)
-            put("exclude_uids", JsonArray((ownUids + excludedUids).distinct().map { JsonPrimitive(it) }))
-            put("exclude_cidrs", JsonArray(cidrs.map { JsonPrimitive(it) }))
+            put("own_uids", ints(ownUids))
+            put("exclude_uids", ints(excludedUids))
+            put("exclude_cidrs", strs(cidrs))
+            put("carry_uids", ints(carryUids))
+            put("vpn_uids", ints(vpnUids))
+            put("keep_lan", GlobalSettings.isTunRootKeepLan(context))
+            put("take_device", GlobalSettings.isTunRootTakeDevice(context))
+            put("foreign_seen", TunVpnService.otherVpnActive(context))
+            put("dns_hold", !networkValidated(context))
             put("app_uid", android.os.Process.myUid())
             put("app_domain", domain)
-            put("table", TABLE)
-            put("pref", PREF)
+            put("table", if (dev) TABLE_DEV else TABLE)
             put("dns", TunRoutes.DNS_IP)
             put("socket", File(context.filesDir, "vpn.sock").absolutePath)
+            put("chain", if (dev) "BIRDSOCKSD" else "BIRDSOCKS")
+            put("state_dir", if (dev) "/data/adb/birdsocks-dev" else "/data/adb/birdsocks")
         }.toString()
     }
 }
