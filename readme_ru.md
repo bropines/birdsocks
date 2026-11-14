@@ -19,6 +19,7 @@
     <th>Ядро NetBird</th>
     <th>Android</th>
     <th>Лицензия</th>
+    <th>Перевод</th>
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases/latest"><img src="https://img.shields.io/github/v/release/bropines/birdsocks?style=for-the-badge&logo=github&logoColor=white&label=&color=2ea44f" alt="Релиз" /></a></td>
@@ -26,6 +27,7 @@
     <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.83.1"><img src="https://img.shields.io/badge/v0.83.1-F68330?style=for-the-badge" alt="Ядро NetBird" /></a></td>
     <td align="center"><img src="https://img.shields.io/badge/7.0%2B-3ddc84?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+" /></td>
     <td align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/BSD_3--Clause-orange?style=for-the-badge" alt="Лицензия" /></a></td>
+    <td align="center"><a href="https://hosted.weblate.org/engage/birdsocks/"><img src="https://img.shields.io/weblate/progress/birdsocks?server=https%3A%2F%2Fhosted.weblate.org&style=for-the-badge&logo=weblate&logoColor=white&label=" alt="Перевод" /></a></td>
   </tr>
 </table>
 
@@ -109,7 +111,7 @@ BirdSocks запускает на телефоне настоящий клиен
 | **Ссылки** | `birdsocks://` открывает любой экран. Ссылки-действия спрашивают подтверждение, ссылки-приглашения открывают заполненный новый аккаунт. |
 | **Резервные копии** | Файл настроек или полная копия с аккаунтами NetBird и ключами под паролем. |
 | **40 иконок** | Выбираются в «Настройки → Оформление и язык», в цветах BirdSocks или NetBird. |
-| **И ещё** | Плитка быстрых настроек, запуск при загрузке, ярлыки на иконке, Material 3 с динамическими цветами, две панели на планшетах, английский и русский. |
+| **И ещё** | Плитка быстрых настроек, запуск при загрузке, ярлыки на иконке, Material 3 с динамическими цветами, две панели на планшетах, английский и русский; другие языки — на [Hosted Weblate](https://hosted.weblate.org/engage/birdsocks/) (проект готовится). |
 
 ---
 
@@ -239,7 +241,7 @@ export ANDROID_HOME=~/android-sdk ANDROID_NDK_HOME=~/android-sdk/ndk/28.2.136763
 | [Сборка](docs/BUILDING_RU.md) | Демон NetBird, мост и APK |
 | [Выпуск](docs/RELEASING_RU.md) | От тега до подписанных APK; секреты подписи |
 | [Лицензии](docs/LICENSES_RU.md) | Лицензия BirdSocks и всех компонентов в приложении |
-| [Перевод](docs/TRANSLATING_RU.md) | Как добавить язык |
+| [Перевод](docs/TRANSLATING_RU.md) | Как добавить язык; проект на Hosted Weblate |
 | [Дорожная карта](docs/ROADMAP_RU.md) | Что дальше |
 | [Как помочь](CONTRIBUTING_RU.md) | Как прислать изменение |
 | [`agents.md`](agents.md) | Архитектура и правила для разработчиков — людей и ИИ |

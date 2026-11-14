@@ -227,6 +227,10 @@ object GlobalSettings {
             getBoolean(context, "update_check_on_launch", io.github.bropines.birdsocks.BuildConfig.UPDATE_CHECK_DEFAULT)
     fun setUpdateCheckOnLaunch(context: Context, enabled: Boolean) = setBoolean(context, "update_check_on_launch", enabled)
 
+    /** The version whose "What's new" was last shown or skipped (Changelog.seenKey). */
+    fun getLastSeenChangelogVersion(context: Context): String = getString(context, "last_seen_changelog_version", "")
+    fun setLastSeenChangelogVersion(context: Context, version: String) = setString(context, "last_seen_changelog_version", version)
+
     // --- VPN (TUN) mode: Android's VPN fed into the SOCKS5 proxy (TunVpnService) ---
     /** The VPN comes up with the daemon and goes down with it. */
     fun isTunModeEnabled(context: Context): Boolean = getBoolean(context, "tun_mode_enabled", false)

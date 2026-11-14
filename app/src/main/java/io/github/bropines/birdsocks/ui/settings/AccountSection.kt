@@ -111,15 +111,15 @@ internal fun AccountSection(env: SettingsEnv) {
     if (confirmLogout) {
         AlertDialog(
             onDismissRequest = { confirmLogout = false },
-            title = { Text(stringResource(R.string.nb_settings_logout)) },
-            text = { Text(stringResource(R.string.nb_settings_logout_confirm)) },
+            title = { Text(context.getString(R.string.nb_settings_logout)) },
+            text = { Text(context.getString(R.string.nb_settings_logout_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmLogout = false
                     scope.launch { runCatching { Netbird.logout() }.onFailure { Toast.makeText(context, it.message, Toast.LENGTH_LONG).show() } }
-                }) { Text(stringResource(R.string.nb_settings_logout)) }
+                }) { Text(context.getString(R.string.nb_settings_logout)) }
             },
-            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text(stringResource(R.string.action_cancel)) } }
+            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text(context.getString(R.string.action_cancel)) } }
         )
     }
 }

@@ -9,9 +9,12 @@
 ### Added
 - Root mode keeps the local network local and stays off carrier addresses inside NetBird's range.
 - Root mode waits for Android to validate the network before redirecting DNS, and steps aside while NetBird's resolver is silent.
+- The app language is picked from every translated language; on Android 13+ BirdSocks appears in the system's per-app language settings, and the two choices agree.
+- What's new opens once after an update, in Russian from CHANGELOG_RU.md.
 
 ### Fixed
 - A switch between redundant routing peers no longer raises a notification each time.
+- Dialogs (About, What's new, logout, the VPN warning, debug bundle, packet capture) follow the app's language, not the system's.
 
 ## [0.4.0] - 2026-10-31
 

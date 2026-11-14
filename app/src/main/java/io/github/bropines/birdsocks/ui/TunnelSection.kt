@@ -311,8 +311,8 @@ fun ColumnScope.TunnelSettings() {
         val busy = remember { TunVpnService.otherVpnActive(context) }
         AlertDialog(
             onDismissRequest = { askSlot = false },
-            title = { Text(stringResource(R.string.nb_tun_warning_title)) },
-            text = { Text(stringResource(if (busy) R.string.nb_tun_warning_body_busy else R.string.nb_tun_warning_body)) },
+            title = { Text(context.getString(R.string.nb_tun_warning_title)) },
+            text = { Text(context.getString(if (busy) R.string.nb_tun_warning_body_busy else R.string.nb_tun_warning_body)) },
             confirmButton = {
                 Button(onClick = {
                     askSlot = false
@@ -320,9 +320,9 @@ fun ColumnScope.TunnelSettings() {
                     if (ask == null) enableVpn() else runCatching { consent.launch(ask) }.onFailure {
                         Toast.makeText(context, context.getString(R.string.nb_tun_denied), Toast.LENGTH_SHORT).show()
                     }
-                }) { Text(stringResource(R.string.nb_tun_warning_confirm)) }
+                }) { Text(context.getString(R.string.nb_tun_warning_confirm)) }
             },
-            dismissButton = { TextButton(onClick = { askSlot = false }) { Text(stringResource(R.string.action_cancel)) } }
+            dismissButton = { TextButton(onClick = { askSlot = false }) { Text(context.getString(R.string.action_cancel)) } }
         )
     }
 }

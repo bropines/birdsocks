@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.core.Changelog
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.LoginFlow
 import io.github.bropines.birdsocks.core.Netbird
@@ -76,6 +77,9 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    /** "What's new" for this launch: once after an update (see [checkWhatsNew]). */
+    private val showChangelog = mutableStateOf(false)
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(wrapContextWithLocale(newBase))
     }
@@ -96,6 +100,8 @@ class MainActivity : ComponentActivity() {
             NetbirdService.start(this)
         }
         handleIntent(intent)
+        // Every creation: one recreated before the dialog was closed (a rotation) shows it again.
+        checkWhatsNew()
         // A newer release on GitHub, once per launch: said in a toast and by a
         // badge on the Info button; nothing is downloaded until asked.
         if (savedInstanceState == null && GlobalSettings.isUpdateCheckOnLaunch(this)) {
@@ -113,7 +119,32 @@ class MainActivity : ComponentActivity() {
             BirdSocksTheme {
                 MainScreen()
                 ActionLinkDialogs()
+                if (showChangelog.value) ChangelogDialog(onDismiss = {
+                    showChangelog.value = false
+                    GlobalSettings.setLastSeenChangelogVersion(this, Changelog.currentVersion())
+                })
             }
+        }
+    }
+
+    /**
+     * Whether this launch shows "What's new": the first one after an update. A fresh
+     * install only records the version — it has nothing to compare with — and so does
+     * an install of the same version again (a debug rebuild). An update from a build
+     * older than this check has no version stored; Android's own install and update
+     * times tell it from a fresh install.
+     */
+    private fun checkWhatsNew() {
+        val current = Changelog.currentVersion()
+        val seen = GlobalSettings.getLastSeenChangelogVersion(this)
+        val updated = runCatching {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            info.lastUpdateTime != info.firstInstallTime
+        }.getOrDefault(false)
+        when {
+            seen == current -> Unit
+            seen.isEmpty() && !updated -> GlobalSettings.setLastSeenChangelogVersion(this, current)
+            else -> showChangelog.value = true
         }
     }
 

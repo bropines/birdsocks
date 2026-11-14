@@ -5,7 +5,6 @@ import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -26,12 +25,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.core.os.LocaleListCompat
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.Backup
 import io.github.bropines.birdsocks.core.BackupFormat
 import io.github.bropines.birdsocks.core.BackupRefused
 import io.github.bropines.birdsocks.core.BirdSocksApp
+import io.github.bropines.birdsocks.core.AppLanguages
+import io.github.bropines.birdsocks.core.AppLocale
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.ui.SettingsCard
 import io.github.bropines.birdsocks.ui.SettingsClickableItem
@@ -117,10 +117,7 @@ internal fun BackupSection(env: SettingsEnv) {
                     // Settings the daemon reads when it starts: offer the restart, as a change by hand does.
                     if (banner) currentEnv.startSetting {}
                     if (r.localeChanged) {
-                        val lang = GlobalSettings.getString(context, "app_locale", "sys")
-                        AppCompatDelegate.setApplicationLocales(
-                            if (lang == "sys") LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(lang)
-                        )
+                        AppLocale.set(context, GlobalSettings.getString(context, "app_locale", AppLanguages.SYSTEM))
                     }
                     // The theme and the language this screen was opened with; the open section survives it.
                     if (r.appearanceChanged || r.localeChanged) {

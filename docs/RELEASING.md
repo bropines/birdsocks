@@ -77,6 +77,8 @@ git clone --recursive https://github.com/bropines/birdsocks.git && cd birdsocks
   major·1000000 + minor·10000 + patch·100 (0.1.0 → 10000).
 - `CHANGELOG.md`: `## [0.1.0] - Unreleased` becomes `## [0.1.0] - YYYY-MM-DD`,
   the day of the release. The workflow refuses an undated section.
+- `CHANGELOG_RU.md`: the same heading change; its section must have the same
+  groups and bullets (`ChangelogTest`).
 - `fastlane/metadata/android/{en-US,ru}/changelogs/<VERSION_CODE>.txt`: a two-
   or three-line digest of that section, at most 500 characters.
 - `readme.md`, `readme_ru.md`: drop the "not released" note.

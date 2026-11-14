@@ -155,7 +155,18 @@ Binding:
 * Every screen uses `AppTopBar`. Explanations fold through `HelpText` (two lines,
   ⓘ, unfold on tap or long press); long text belongs in dialogs. No ⋮ menus on
   cards.
-* Every new string goes in English to `values/` and in Russian to `values-ru/`.
+* Every new string goes in English to `values/` and in Russian to `values-ru/`;
+  Russian is kept by hand, every other language comes from Hosted Weblate
+  (`docs/TRANSLATING.md`). A language is offered once its tag is in
+  `core/AppLanguages.kt` `TAGS` and `res/xml/locales_config.xml`;
+  `AppLanguagesTest` fails until both match `res/values-*`.
+* **Dialogs resolve their strings in the parent composition.** A dialog or sheet
+  is a window of its own where `stringResource()` can follow the system language,
+  not the app's: read strings before the call, or through the parent's
+  `LocalContext.current` (`context.getString`) inside it — also in the blocks a
+  dialog calls. See `wrapContextWithLocale()`. The app's language is read and
+  set through `core/AppLocale`, which keeps it in step with Android 13+'s
+  per-app language.
 * Never block the main thread on the bridge: `Netbird.*` calls are suspend
   functions on `Dispatchers.IO`.
 * The structure: the main screen is the status card, banners
@@ -180,7 +191,11 @@ Binding:
   anything.
 * Code, comments, commits and docs in English; the author is answered in his
   language (Russian). Documentation is bilingual (`X.md` / `X_RU.md`).
-* `CHANGELOG.md`: one terse line per change; the why goes in commit bodies.
+* `CHANGELOG.md` and `CHANGELOG_RU.md` are extended together: one terse line per
+  change in each, the same groups and as many bullets (`ChangelogTest` checks
+  `[Unreleased]` and the newest release); the why goes in commit bodies. A release
+  renames `[Unreleased]` in both. "What's new" shows the Russian file in a Russian
+  interface and opens by itself once after an update.
 * **Never `adb uninstall` without explicit permission**, and then with `-k`.
 * HyperOS asks on screen before an `adb install`: a locked phone means the author
   has to be there.

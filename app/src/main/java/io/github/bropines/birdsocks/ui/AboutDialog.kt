@@ -41,6 +41,9 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
+    // The screen's context: everything below draws in the dialog's own window, where a
+    // stringResource() follows the system language. Its strings, and those of the blocks
+    // it calls, are read through this one instead — see wrapContextWithLocale().
     val context = LocalContext.current
     val selfUpdate = remember { UpdateChannel.selfUpdate(context) }
     val core = remember { runCatching { Appctr.coreVersion() }.getOrDefault("?") }
@@ -50,7 +53,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { AppIconImage(remember { AppIcons.current(context) }, 56.dp) },
-        title = { Text(stringResource(R.string.app_name)) },
+        title = { Text(context.getString(R.string.app_name)) },
         text = {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -59,42 +62,42 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 // Identity and update state, one block a step above the dialog's own ground.
                 Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHighest, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.about_version, "${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_HASH})"), style = MaterialTheme.typography.bodyMedium)
-                        Text(stringResource(R.string.about_core_version, core), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(context.getString(R.string.about_version, "${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_HASH})"), style = MaterialTheme.typography.bodyMedium)
+                        Text(context.getString(R.string.about_core_version, core), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         // A copy a store keeps up to date has no GitHub check to offer.
                         if (selfUpdate) {
                             Spacer(Modifier.height(12.dp))
-                            UpdateBlock()
+                            UpdateBlock(context)
                         }
                     }
                 }
 
                 ButtonPair(
-                    Triple(stringResource(R.string.about_whats_new), Icons.Default.NewReleases) { showChangelog = true },
-                    Triple(stringResource(R.string.about_releases), Icons.AutoMirrored.Filled.OpenInNew) { openUrl(context, Updater.RELEASES_URL) }
+                    Triple(context.getString(R.string.about_whats_new), Icons.Default.NewReleases) { showChangelog = true },
+                    Triple(context.getString(R.string.about_releases), Icons.AutoMirrored.Filled.OpenInNew) { openUrl(context, Updater.RELEASES_URL) }
                 )
                 ButtonPair(
-                    Triple(stringResource(R.string.nb_about_source), Icons.Default.Code) { openUrl(context, Updater.REPO_URL) },
-                    Triple(stringResource(R.string.about_docs), Icons.AutoMirrored.Filled.MenuBook) { openUrl(context, "https://docs.netbird.io/") }
+                    Triple(context.getString(R.string.nb_about_source), Icons.Default.Code) { openUrl(context, Updater.REPO_URL) },
+                    Triple(context.getString(R.string.about_docs), Icons.AutoMirrored.Filled.MenuBook) { openUrl(context, "https://docs.netbird.io/") }
                 )
 
-                Credits()
+                Credits(context)
 
                 FilledTonalButton(onClick = { openUrl(context, Updater.DONATE_URL) }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Favorite, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.about_donate))
+                    Text(context.getString(R.string.about_donate))
                 }
 
                 OutlinedButton(onClick = { showLicenses = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Gavel, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.nb_about_licenses))
+                    Text(context.getString(R.string.nb_about_licenses))
                 }
-                Text(stringResource(R.string.about_license_line), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(context.getString(R.string.about_license_line), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(context.getString(R.string.action_close)) } }
     )
 
     if (showChangelog) ChangelogDialog(onDismiss = { showChangelog = false })
@@ -124,8 +127,7 @@ private fun ButtonPair(vararg buttons: Triple<String, ImageVector, () -> Unit>) 
 
 /** Who made this and what it stands on, each a tap from their page. */
 @Composable
-private fun Credits() {
-    val context = LocalContext.current
+private fun Credits(context: android.content.Context) {
     val credits = listOf(
         Triple(R.string.about_credit_claude, "https://www.anthropic.com/claude", Icons.Default.AutoAwesome),
         Triple(R.string.about_credit_bropines, "https://github.com/bropines", Icons.Default.Person),
@@ -136,7 +138,7 @@ private fun Credits() {
     )
     Column {
         Text(
-            stringResource(R.string.about_credits),
+            context.getString(R.string.about_credits),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
@@ -155,7 +157,7 @@ private fun Credits() {
                     ) {
                         Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text(stringResource(label), style = MaterialTheme.typography.bodyMedium)
+                        Text(context.getString(label), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -169,48 +171,47 @@ private fun Credits() {
  * this device are sent to the release page instead.
  */
 @Composable
-private fun UpdateBlock() {
-    val context = LocalContext.current
+private fun UpdateBlock(context: android.content.Context) {
     val state by Updater.state.collectAsStateOr { Updater.State.Idle }
     val check: () -> Unit = { BirdSocksApp.scope.launch { Updater.check(context) } }
 
     when (val s = state) {
         Updater.State.Idle -> FilledTonalButton(onClick = check, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.update_check_now))
+            Text(context.getString(R.string.update_check_now))
         }
         Updater.State.Checking -> FilledTonalButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.update_checking))
+            Text(context.getString(R.string.update_checking))
         }
         is Updater.State.UpToDate -> {
-            StatusLine(Icons.Default.CheckCircle, stringResource(R.string.update_up_to_date))
-            FilledTonalButton(onClick = check, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.update_check_now)) }
+            StatusLine(Icons.Default.CheckCircle, context.getString(R.string.update_up_to_date))
+            FilledTonalButton(onClick = check, modifier = Modifier.fillMaxWidth()) { Text(context.getString(R.string.update_check_now)) }
         }
         is Updater.State.Failed -> {
-            StatusLine(Icons.Default.ErrorOutline, stringResource(s.reason), MaterialTheme.colorScheme.error)
+            StatusLine(Icons.Default.ErrorOutline, context.getString(s.reason), MaterialTheme.colorScheme.error)
             s.detail?.takeIf { it.isNotBlank() }?.let { HelpText(it) }
             Spacer(Modifier.height(8.dp))
             FilledTonalButton(
                 onClick = { if (s.release != null) download(context) else check() },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(stringResource(R.string.update_retry)) }
+            ) { Text(context.getString(R.string.update_retry)) }
         }
         is Updater.State.Available, is Updater.State.Downloading, is Updater.State.Ready -> {
             val release = (s as? Updater.State.Available)?.release
                 ?: (s as? Updater.State.Downloading)?.release
                 ?: (s as Updater.State.Ready).release
-            StatusLine(Icons.Default.Download, stringResource(R.string.update_new_version, release.version))
-            ReleaseNotes(release)
+            StatusLine(Icons.Default.Download, context.getString(R.string.update_new_version, release.version))
+            ReleaseNotes(release, context)
             Spacer(Modifier.height(8.dp))
             when {
                 !Updater.canInstall || release.apkUrl == null -> {
-                    HelpText(stringResource(if (!Updater.canInstall) R.string.update_dev_build else R.string.update_no_apk))
+                    HelpText(context.getString(if (!Updater.canInstall) R.string.update_dev_build else R.string.update_no_apk))
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(onClick = { openUrl(context, release.pageUrl) }, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.update_open_page))
+                        Text(context.getString(R.string.update_open_page))
                     }
                 }
                 s is Updater.State.Downloading -> {
@@ -219,7 +220,7 @@ private fun UpdateBlock() {
                         modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape)
                     )
                     Spacer(Modifier.height(6.dp))
-                    Text(stringResource(R.string.update_downloading, s.percent), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(context.getString(R.string.update_downloading, s.percent), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 else -> {
                     Button(
@@ -230,10 +231,10 @@ private fun UpdateBlock() {
                     ) {
                         Icon(if (s is Updater.State.Ready) Icons.Default.SystemUpdate else Icons.Default.Download, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(if (s is Updater.State.Ready) R.string.update_install else R.string.update_download))
+                        Text(context.getString(if (s is Updater.State.Ready) R.string.update_install else R.string.update_download))
                     }
                     Spacer(Modifier.height(4.dp))
-                    HelpText(stringResource(R.string.update_verify_desc))
+                    HelpText(context.getString(R.string.update_verify_desc))
                 }
             }
         }
@@ -256,13 +257,13 @@ private fun StatusLine(icon: ImageVector, text: String, color: androidx.compose.
 
 /** The release's notes, folded behind a button: the dialog stays short until they are wanted. */
 @Composable
-private fun ReleaseNotes(release: Updater.Release) {
+private fun ReleaseNotes(release: Updater.Release, context: android.content.Context) {
     val section = remember(release) { Changelog.releaseSection(release.version, release.notes) } ?: return
     var open by rememberSaveable(release.version) { mutableStateOf(false) }
     TextButton(onClick = { open = !open }, contentPadding = PaddingValues(horizontal = 0.dp)) {
         Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(stringResource(R.string.update_notes))
+        Text(context.getString(R.string.update_notes))
     }
     if (open) {
         Column(Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState())) {
@@ -283,21 +284,21 @@ fun LicensesDialog(onDismiss: () -> Unit) {
     if (full == null) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text(stringResource(R.string.nb_about_licenses)) },
-            text = { Text(stringResource(R.string.nb_about_licenses_text), style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
-            confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
+            title = { Text(context.getString(R.string.nb_about_licenses)) },
+            text = { Text(context.getString(R.string.nb_about_licenses_text), style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
+            confirmButton = { TextButton(onClick = onDismiss) { Text(context.getString(R.string.action_close)) } },
             dismissButton = {
                 TextButton(onClick = {
                     fullTexts = runCatching { context.assets.open("third_party_licenses.txt").bufferedReader().use { it.readText() } }.getOrDefault("")
-                }) { Text(stringResource(R.string.nb_about_licenses_full)) }
+                }) { Text(context.getString(R.string.nb_about_licenses_full)) }
             }
         )
     } else {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text(stringResource(R.string.nb_about_licenses)) },
+            title = { Text(context.getString(R.string.nb_about_licenses)) },
             text = { Text(full, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.verticalScroll(rememberScrollState())) },
-            confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } }
+            confirmButton = { TextButton(onClick = onDismiss) { Text(context.getString(R.string.action_close)) } }
         )
     }
 }

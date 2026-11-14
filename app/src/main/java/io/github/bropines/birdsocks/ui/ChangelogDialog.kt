@@ -11,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.bropines.birdsocks.R
@@ -21,7 +20,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * "What's new": the newest released section of the CHANGELOG.md bundled with
- * this build (an [Unreleased] block is skipped). Opened from the About dialog.
+ * this build (an [Unreleased] block is skipped), in Russian from CHANGELOG_RU.md
+ * when the app is and that file has the version. Shown once after an update from
+ * MainActivity, and on demand from the About dialog.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -29,12 +30,17 @@ fun ChangelogDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     var section by remember { mutableStateOf<Changelog.Section?>(null) }
     var loaded by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        section = withContext(Dispatchers.IO) { Changelog.latest(context) }
+    val configuration = LocalConfiguration.current
+    // The app's language, which the theme's configuration carries (see wrapContextWithLocale).
+    val language = configuration.locales[0].language
+    LaunchedEffect(language) {
+        section = withContext(Dispatchers.IO) { Changelog.latest(context, language) }
         loaded = true
     }
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
+    val maxHeight = (configuration.screenHeightDp * 0.6f).dp
 
+    // Strings come from the parent context, not stringResource(): the dialog is a window
+    // of its own, where that follows the system language — see wrapContextWithLocale().
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -43,7 +49,7 @@ fun ChangelogDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     val s = section
-                    Text(if (s != null) stringResource(R.string.whats_new_title, s.version) else stringResource(R.string.about_whats_new))
+                    Text(if (s != null) context.getString(R.string.whats_new_title, s.version) else context.getString(R.string.about_whats_new))
                     s?.date?.takeIf { it.isNotEmpty() }?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                     }
@@ -57,19 +63,19 @@ fun ChangelogDialog(onDismiss: () -> Unit) {
                     !loaded -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                         LoadingIndicator(modifier = Modifier.size(24.dp))
                     }
-                    s == null -> Text(stringResource(R.string.whats_new_unavailable), color = MaterialTheme.colorScheme.outline)
+                    s == null -> Text(context.getString(R.string.whats_new_unavailable), color = MaterialTheme.colorScheme.outline)
                     else -> ChangelogSectionBody(s)
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                openUrl(context, Changelog.FULL_CHANGELOG_URL)
+                openUrl(context, if (language == "ru") Changelog.FULL_CHANGELOG_URL_RU else Changelog.FULL_CHANGELOG_URL)
                 onDismiss()
-            }) { Text(stringResource(R.string.whats_new_full)) }
+            }) { Text(context.getString(R.string.whats_new_full)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+            TextButton(onClick = onDismiss) { Text(context.getString(R.string.action_close)) }
         }
     )
 }

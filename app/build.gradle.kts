@@ -264,16 +264,16 @@ dependencies {
     testImplementation(libs.robolectric)
 }
 
-// Bundle the repository's CHANGELOG.md into the APK as assets/CHANGELOG.md so the
-// app can show "What's new" after an update. The file is copied at build time
+// Bundle the repository's CHANGELOG.md and its Russian twin CHANGELOG_RU.md into the
+// APK as assets/ so the app can show "What's new" after an update. The file is copied at build time
 // into a generated assets directory; nothing is committed under src/. Assets are
 // not touched by resource shrinking, so R8/shrinkResources cannot drop it.
 val changelogAssetsDir = layout.buildDirectory.dir("generated/changelog/assets")
 // Sync, not Copy: if CHANGELOG.md is ever renamed, a stale copy must not keep shipping.
 val copyChangelogAsset by tasks.registering(Sync::class) {
     group = "build"
-    description = "Copies ../CHANGELOG.md into the generated assets directory"
-    from(layout.projectDirectory.file("../CHANGELOG.md"))
+    description = "Copies ../CHANGELOG.md and ../CHANGELOG_RU.md into the generated assets directory"
+    from(layout.projectDirectory.file("../CHANGELOG.md"), layout.projectDirectory.file("../CHANGELOG_RU.md"))
     into(changelogAssetsDir)
 }
 android.sourceSets["main"].assets.srcDir(changelogAssetsDir)
