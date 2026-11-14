@@ -33,6 +33,8 @@ enum class MainItem(
     DIAGNOSTICS("tile_diagnostics", Group.SCREEN),
     SETTINGS("tile_settings", Group.SCREEN, removable = false),
     LOGS("tile_logs", Group.SCREEN),
+    /** The admin panel (admin/): this network's peers, keys and groups over the API. */
+    ADMIN("tile_admin", Group.SCREEN),
 
     ACCOUNTS("tile_accounts", Group.SHORTCUT),
     /** VPN mode on or off, as Settings → Tunnel mode turns it. */

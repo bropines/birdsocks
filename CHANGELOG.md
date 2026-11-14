@@ -17,7 +17,7 @@
 - Home-screen widgets: a switch that resizes from a 1×1 round toggle to a card with the state, exit node and address, and an exit-node list to pick from or go direct.
 - Exit-node sheet: a search by exit node or routing peer once it lists more than six.
 - Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
-- An admin panel for the active account, from Settings → Account or `birdsocks://admin`: overview, peers (search, rename, login expiration, delete), setup keys (create with an invite QR, revoke) and groups, through the server's API with an access token sealed on the phone; changes ask for the screen lock, read-only by default.
+- An admin panel for the active account, from the shield on the main screen, a tile, Settings → Account or `birdsocks://admin`: overview, peers (search, rename, login expiration, delete), setup keys (create with an invite QR, revoke) and groups, through the server's API with an access token sealed on the phone; changes ask for the screen lock, read-only by default.
 - Open-source licenses as a screen of their own: every component in the APK with its license and full text, from About or `birdsocks://licenses`.
 
 ### Fixed

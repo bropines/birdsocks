@@ -26,6 +26,8 @@ data class AdminAccount(
     val id: String,
     /** Null when the panel will not send a credential there (plain http to a remote host). */
     val apiBase: String?,
+    /** NetBird's web dashboard for this server, for what the API does not offer; null when unknown. */
+    val dashboardUrl: String? = null,
 ) {
     val host: String get() = runCatching { java.net.URI(managementUrl).host }.getOrNull() ?: managementUrl
     val isCloud: Boolean get() = AdminUrls.isCloud(managementUrl)
@@ -48,8 +50,10 @@ object AdminSession {
     /** The active profile and its server; needs the daemon running. */
     suspend fun activeAccount(context: Context): AdminAccount {
         val profile = Netbird.activeProfile()
-        val url = Netbird.config(profile).managementUrl.ifEmpty { GlobalSettings.CLOUD_MANAGEMENT_URL }
-        return AdminAccount(profile, url, vault(context).accountId(profile, url), AdminUrls.apiBase(url))
+        val config = Netbird.config(profile)
+        val url = config.managementUrl.ifEmpty { GlobalSettings.CLOUD_MANAGEMENT_URL }
+        val dashboard = runCatching { config.dashboardUrl }.getOrNull()?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+        return AdminAccount(profile, url, vault(context).accountId(profile, url), AdminUrls.apiBase(url), dashboard)
     }
 
     /**

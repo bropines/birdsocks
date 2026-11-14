@@ -187,4 +187,5 @@
         <item quantity="many">%1$d ресурсов</item>
         <item quantity="other">%1$d ресурса</item>
     </plurals>
+    <string name="admin_open_dashboard">Открыть веб-панель</string>
 </resources>

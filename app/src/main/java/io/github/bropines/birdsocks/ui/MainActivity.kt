@@ -56,7 +56,6 @@ import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.admin.AdminPanel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import io.github.bropines.birdsocks.core.Changelog
 import io.github.bropines.birdsocks.core.Automation
 import io.github.bropines.birdsocks.core.GlobalSettings
@@ -242,15 +241,7 @@ fun MainScreen() {
     val accountLabel = accounts.firstOrNull { it.profile.name == profile }?.label
         ?: profile?.takeIf { it != "default" }
 
-    // The active account's dashboard, from its profile's config — the address the
-    // management server row in Settings opens. Unknown while the daemon is down.
     val running = daemon == NetbirdState.Daemon.Running
-    var config by remember { mutableStateOf(demo?.config) }
-    LaunchedEffect(running, profile, card == CardState.Connected) {
-        if (demo != null) return@LaunchedEffect
-        config = if (running) runCatching { Netbird.config() }.getOrNull() else null
-    }
-    val dashboardUrl = config?.dashboardUrl?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
     var showAbout by remember { mutableStateOf(false) }
     val update by Updater.state.collectAsStateOr { Updater.State.Idle }
     val updateWaiting = update is Updater.State.Available || update is Updater.State.Ready
@@ -262,15 +253,12 @@ fun MainScreen() {
     var showPalette by remember { mutableStateOf(false) }
     var confirmReset by remember { mutableStateOf(false) }
     var vpnEnabled by remember { mutableStateOf(GlobalSettings.isTunModeEnabled(context)) }
-    // Bumped on every return, for what other screens change (the admin token).
-    var resumes by remember { mutableStateOf(0) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 layout = MainLayoutStore.load(context)
                 vpnEnabled = GlobalSettings.isTunModeEnabled(context)
-                resumes++
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -324,29 +312,9 @@ fun MainScreen() {
                 // Stopped too: the sheet starts the daemon for what it does.
                 onTitleClick = { showAccounts = true },
                 actions = {
-                    if (dashboardUrl != null) {
-                        // With an admin token for this account the button opens the panel in the app,
-                        // a long press the web dashboard; without one, the other way round.
-                        val panel = remember(profile, config?.managementUrl, resumes) {
-                            demo == null && config != null &&
-                                AdminPanel.hasCredential(context, profile ?: "default", config!!.managementUrl)
-                        }
-                        val openPanel = { AdminPanel.open(context) }
-                        val openWeb = { openUrl(context, dashboardUrl) }
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .combinedClickable(
-                                    onClick = if (panel) openPanel else openWeb,
-                                    onLongClick = if (panel) openWeb else openPanel,
-                                    onClickLabel = stringResource(if (panel) R.string.main_cd_admin_panel else R.string.main_cd_dashboard),
-                                    onLongClickLabel = stringResource(if (panel) R.string.main_cd_dashboard else R.string.main_cd_admin_panel),
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Default.AdminPanelSettings, contentDescription = stringResource(if (panel) R.string.main_cd_admin_panel else R.string.main_cd_dashboard))
-                        }
+                    // The admin panel shows its own token setup until the account has one.
+                    IconButton(onClick = { AdminPanel.open(context) }) {
+                        Icon(Icons.Default.AdminPanelSettings, contentDescription = stringResource(R.string.main_cd_admin_panel))
                     }
                     IconButton(onClick = { showAbout = true }) {
                         BadgedBox(badge = { if (updateWaiting) Badge() }) {

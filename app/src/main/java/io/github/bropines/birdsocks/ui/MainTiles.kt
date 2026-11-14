@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Devices
@@ -43,6 +44,7 @@ internal fun MainItem.spec(): MainItemSpec = when (this) {
     MainItem.DIAGNOSTICS -> MainItemSpec(R.string.nb_menu_diagnostics, R.string.tile_diagnostics_desc, Icons.Default.MonitorHeart)
     MainItem.SETTINGS -> MainItemSpec(R.string.menu_settings, R.string.tile_settings_desc, Icons.Default.Settings)
     MainItem.LOGS -> MainItemSpec(R.string.logs_title, R.string.tile_logs_desc, Icons.AutoMirrored.Filled.List)
+    MainItem.ADMIN -> MainItemSpec(R.string.tile_admin, R.string.tile_admin_desc, Icons.Default.AdminPanelSettings)
 
     MainItem.ACCOUNTS -> MainItemSpec(R.string.nb_accounts_title, R.string.tile_accounts_desc, Icons.Default.SwitchAccount)
     MainItem.VPN -> MainItemSpec(R.string.tile_vpn, R.string.tile_vpn_desc, Icons.Default.VpnKey)
@@ -74,6 +76,7 @@ internal fun MainItem.screen(context: Context): Intent? = when (this) {
     MainItem.DIAGNOSTICS -> DiagnosticsActivity.intent(context)
     MainItem.SETTINGS -> Intent(context, SettingsActivity::class.java)
     MainItem.LOGS -> Intent(context, LogsActivity::class.java)
+    MainItem.ADMIN -> io.github.bropines.birdsocks.admin.AdminPanel.intent(context)
     MainItem.TUNNEL -> SettingsSections.intent(context, SettingsSections.TUNNEL)
     MainItem.APP_SPLIT -> Intent(context, TunExcludedAppsActivity::class.java)
     MainItem.PROXIES -> SettingsSections.intent(context, SettingsSections.PROXIES)

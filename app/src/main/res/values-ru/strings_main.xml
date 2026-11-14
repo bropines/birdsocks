@@ -74,4 +74,6 @@
     <string name="main_hidden_open">Открыть</string>
     <string name="main_hidden_restore">Вернуть на главный экран</string>
     <string name="main_cd_admin_panel">Панель администратора</string>
+    <string name="tile_admin">Панель администратора</string>
+    <string name="tile_admin_desc">Узлы, ключи установки и группы этой сети</string>
 </resources>

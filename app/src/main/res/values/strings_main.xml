@@ -72,4 +72,6 @@
     <string name="main_hidden_open">Open</string>
     <string name="main_hidden_restore">Put back on the main screen</string>
     <string name="main_cd_admin_panel">Admin panel</string>
+    <string name="tile_admin">Admin panel</string>
+    <string name="tile_admin_desc">Peers, setup keys and groups of this network</string>
 </resources>

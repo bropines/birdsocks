@@ -20,6 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.ui.openUrl
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import io.github.bropines.birdsocks.admin.api.Capabilities
 import io.github.bropines.birdsocks.admin.api.Capabilities.Op
 import io.github.bropines.birdsocks.core.NetbirdState
@@ -107,6 +109,12 @@ private fun AdminScreen(model: AdminViewModel, initialPage: String?, onBack: () 
                     },
                     onBack = onBack,
                     actions = {
+                        // What the API does not offer is on NetBird's web dashboard.
+                        model.account?.dashboardUrl?.let { url ->
+                            IconButton(onClick = { openUrl(context, url) }) {
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.admin_open_dashboard))
+                            }
+                        }
                         if (model.phase == AdminViewModel.Phase.READY) {
                             IconButton(onClick = { model.refreshAll() }, enabled = !model.refreshing) {
                                 Icon(Icons.Default.Refresh, stringResource(R.string.admin_refresh))

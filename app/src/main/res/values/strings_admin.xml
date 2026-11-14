@@ -181,4 +181,5 @@
         <item quantity="one">%1$d resource</item>
         <item quantity="other">%1$d resources</item>
     </plurals>
+    <string name="admin_open_dashboard">Open the web dashboard</string>
 </resources>
