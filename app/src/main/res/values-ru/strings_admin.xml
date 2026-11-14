@@ -11,8 +11,6 @@
     <string name="admin_refresh">Обновить</string>
     <string name="admin_retry">Повторить</string>
     <string name="admin_bad_url">Панель отправляет токен только по HTTPS. Сервер этого аккаунта: %1$s.</string>
-
-
     <!-- Доступ -->
     <string name="admin_credential_title">Доступ к серверу</string>
     <string name="admin_token_warning_title">Токен может всё, что можете вы</string>
@@ -42,7 +40,6 @@
     <string name="admin_setup_reason_device_rejected">Сервер не принял вход этого устройства. Используйте токен доступа.</string>
     <string name="admin_setup_reason_unreadable">Сохранённый токен больше не открыть (хранилище ключей телефона сброшено). Задайте его снова.</string>
     <string name="admin_setup_reason_failed">Не удалось обратиться к серверу.</string>
-
     <!-- Подтверждение изменений -->
     <string name="admin_unlock_title">Подтвердите изменение</string>
     <string name="admin_unlock_no_lock">Чтобы вносить изменения, задайте блокировку экрана.</string>
@@ -50,7 +47,6 @@
     <string name="admin_unlock_failed">Разблокировка не подтверждена; ничего не изменено.</string>
     <string name="admin_done_deleted">%1$s удалён</string>
     <string name="admin_done_revoked">%1$s отозван</string>
-
     <!-- Ошибки -->
     <string name="admin_err_unauthorized">Сервер не принял учётные данные.</string>
     <string name="admin_err_forbidden">Ваша роль этого не позволяет.</string>
@@ -65,7 +61,6 @@
     <string name="admin_err_proxy_socks_auth">Подключение к серверу идёт через SOCKS5-прокси с паролем, а панель пока так не умеет. Используйте HTTP-прокси или SOCKS5 без пароля.</string>
     <string name="admin_err_proxy_bad">Адрес прокси для подключения к серверу неверен. Проверьте Настройки → Соединение.</string>
     <string name="admin_err_proxy_byedpi">Подключение к серверу идёт через ByeDPI, а он не запущен. Сначала запустите BirdSocks.</string>
-
     <!-- Обзор -->
     <string name="admin_overview_account">Аккаунт</string>
     <string name="admin_overview_server">Сервер управления</string>
@@ -85,7 +80,6 @@
     <string name="admin_overview_ro_lock">На телефоне нет блокировки экрана: панель только для чтения.</string>
     <string name="admin_overview_ro_switch">Для этого аккаунта включено «Только чтение». Изменить можно в разделе «Доступ к серверу».</string>
     <string name="admin_overview_restricted">Ваша роль видит только ваши собственные узлы.</string>
-
     <!-- Узлы -->
     <string name="admin_peers_search">Имя, адрес, ОС</string>
     <string name="admin_peers_empty">Нет узлов</string>
@@ -115,7 +109,6 @@
     <string name="admin_peer_read_only_note">Изменения выключены: только чтение, нет блокировки экрана или не позволяет роль.</string>
     <string name="admin_peer_rename_unlock">Переименовать %1$s</string>
     <string name="admin_peer_expiry_unlock">Истечение входа %1$s</string>
-
     <!-- Ключи установки -->
     <string name="admin_keys_empty">Нет ключей установки</string>
     <string name="admin_key_one_off">Одноразовый</string>
@@ -151,10 +144,8 @@
     <string name="admin_key_revoke">Отозвать</string>
     <string name="admin_key_revoke_title">Отозвать %1$s?</string>
     <string name="admin_key_revoke_text">С ним больше не сможет войти ни один новый узел. Уже добавленные узлы останутся.</string>
-
     <!-- Группы -->
     <string name="admin_groups_empty">Нет групп</string>
-
     <plurals name="admin_list_incomplete">
         <item quantity="one">%1$d запись не удалось прочитать, она не показана.</item>
         <item quantity="few">%1$d записи не удалось прочитать, они не показаны.</item>
@@ -174,7 +165,6 @@
         <item quantity="other">%1$d ресурса</item>
     </plurals>
     <string name="admin_open_dashboard">Открыть веб-панель</string>
-
     <!-- Home -->
     <string name="admin_home_attention">Ждёт вас</string>
     <string name="admin_home_attention_none">Ничего не ждёт вашего решения.</string>
@@ -190,7 +180,6 @@
         <item quantity="many">Осталось %1$d дней</item>
         <item quantity="other">Осталось %1$d дня</item>
     </plurals>
-
     <!-- Areas -->
     <string name="admin_area_coming">Появится в одной из следующих версий.</string>
     <string name="admin_area_coming_badge">скоро</string>
@@ -224,7 +213,6 @@
     <string name="admin_area_identity_providers_summary">Откуда люди входят в аккаунт.</string>
     <string name="admin_area_reverse_proxy">Обратный прокси</string>
     <string name="admin_area_reverse_proxy_summary">Сервисы, опубликованные в интернете, и их домены.</string>
-
     <!-- Lists -->
     <string name="admin_sort_attention">Сначала требующие внимания</string>
     <string name="admin_sort_name">По имени</string>
@@ -237,7 +225,6 @@
     <string name="admin_groups_no_match">Таких групп нет</string>
     <string name="admin_value_on">Вкл.</string>
     <string name="admin_value_off">Выкл.</string>
-
     <!-- Picker -->
     <string name="admin_picker_search">Поиск</string>
     <string name="admin_picker_done">Готово (%1$d)</string>
@@ -246,7 +233,6 @@
     <string name="admin_picker_kind_groups">Группы</string>
     <string name="admin_picker_kind_users">Пользователи</string>
     <string name="admin_picker_kind_other">Другое</string>
-
     <!-- Change gates -->
     <string name="admin_change_class_low">Низкий риск</string>
     <string name="admin_change_class_medium">Нужна разблокировка</string>
@@ -285,7 +271,6 @@
     <string name="admin_refused_not_unlocked">Не отправлено: разблокировки нет или она устарела.</string>
     <string name="admin_refused_checks">Не отправлено: проверки не пройдены.</string>
     <string name="admin_refused_no_session">Не отправлено: панель вышла из аккаунта.</string>
-
     <!-- Peers, keys, users: changes -->
     <string name="admin_peer_rename_effect">Узел будет называться %1$s; его DNS-имя изменится вместе с ним.</string>
     <string name="admin_peer_expiry_on_effect">Узлу придётся войти снова, когда истечёт срок входа, заданный для аккаунта.</string>
@@ -305,7 +290,6 @@
     <string name="admin_user_reject_title">Отклонить %1$s?</string>
     <string name="admin_user_reject_effect">Регистрация будет отклонена, пользователь удалён.</string>
     <string name="admin_user_rejected">%1$s отклонён</string>
-
     <!-- JSON editor -->
     <string name="admin_json_search">Поиск</string>
     <string name="admin_json_no_matches">Совпадений нет</string>
@@ -320,7 +304,6 @@
     <string name="admin_json_discard_title">Отбросить изменения?</string>
     <string name="admin_json_discard_text">То, что вы здесь изменили, нигде не сохранено.</string>
     <string name="admin_json_discard">Отбросить</string>
-
     <!-- Peers, groups, setup keys: full areas -->
     <string name="admin_cutoff_warning">Это изменение может отрезать это устройство: оно перестанет подпадать под %1$s.</string>
     <string name="admin_peers_filter_expiration">срок входа включён</string>
@@ -676,6 +659,29 @@
         <item quantity="other">%1$d маршрутизатора</item>
     </plurals>
     <plurals name="admin_net_policies">
+        <item quantity="one">%1$d политика</item>
+        <item quantity="few">%1$d политики</item>
+        <item quantity="many">%1$d политик</item>
+        <item quantity="other">%1$d политики</item>
+    </plurals>
+    <plurals name="admin_net_resource_delete_grants">
+        <item quantity="one">К нему даёт доступ %1$d активное правило; оно перестанет куда-либо вести.</item>
+        <item quantity="few">К нему дают доступ %1$d активных правила; они перестанут куда-либо вести.</item>
+        <item quantity="many">К нему дают доступ %1$d активных правил; они перестанут куда-либо вести.</item>
+        <item quantity="other">К нему дают доступ %1$d активного правила; они перестанут куда-либо вести.</item>
+    </plurals>
+    <plurals name="admin_dns_records">
+        <item quantity="one">%1$d запись</item>
+        <item quantity="few">%1$d записи</item>
+        <item quantity="many">%1$d записей</item>
+        <item quantity="other">%1$d записи</item>
+    </plurals>
+    <plurals name="admin_dns_zone_delete_effect">
+        <item quantity="one">Удаляет зону вместе с %1$d записью; её имена перестают разрешаться.</item>
+        <item quantity="few">Удаляет зону вместе с %1$d записями; её имена перестают разрешаться.</item>
+        <item quantity="many">Удаляет зону вместе с %1$d записями; её имена перестают разрешаться.</item>
+        <item quantity="other">Удаляет зону вместе с %1$d записями; её имена перестают разрешаться.</item>
+    </plurals>
     <!-- Policies -->
     <string name="admin_policy_search">Поиск политик, групп</string>
     <string name="admin_policy_empty">Политик нет. Без них узлы не видят друг друга.</string>
@@ -756,25 +762,6 @@
         <item quantity="many">%1$d политик</item>
         <item quantity="other">%1$d политики</item>
     </plurals>
-    <plurals name="admin_net_resource_delete_grants">
-        <item quantity="one">К нему даёт доступ %1$d активное правило; оно перестанет куда-либо вести.</item>
-        <item quantity="few">К нему дают доступ %1$d активных правила; они перестанут куда-либо вести.</item>
-        <item quantity="many">К нему дают доступ %1$d активных правил; они перестанут куда-либо вести.</item>
-        <item quantity="other">К нему дают доступ %1$d активного правила; они перестанут куда-либо вести.</item>
-    </plurals>
-    <plurals name="admin_dns_records">
-        <item quantity="one">%1$d запись</item>
-        <item quantity="few">%1$d записи</item>
-        <item quantity="many">%1$d записей</item>
-        <item quantity="other">%1$d записи</item>
-    </plurals>
-    <plurals name="admin_dns_zone_delete_effect">
-        <item quantity="one">Удаляет зону вместе с %1$d записью; её имена перестают разрешаться.</item>
-        <item quantity="few">Удаляет зону вместе с %1$d записями; её имена перестают разрешаться.</item>
-        <item quantity="many">Удаляет зону вместе с %1$d записями; её имена перестают разрешаться.</item>
-        <item quantity="other">Удаляет зону вместе с %1$d записями; её имена перестают разрешаться.</item>
-    </plurals>
-
     <string name="admin_policy_err_in_rule">Правило %1$d: %2$s</string>
     <string name="admin_policy_err_no_name">Нужно название.</string>
     <string name="admin_policy_err_no_rules">В политике должно быть хотя бы одно правило.</string>
@@ -788,13 +775,11 @@
     <string name="admin_policy_err_unknown_check">Проверки состояния не существует: %1$s</string>
     <string name="admin_policy_err_ssh_users">не указаны локальные пользователи для %1$s</string>
     <string name="admin_policy_err_resource">у ресурса нет id или типа</string>
-
     <string name="admin_policy_risk_all_to_all">%1$s пускает любой узел к любому.</string>
     <string name="admin_policy_risk_all_source">%1$s пускает любой узел, в том числе добавленные позже.</string>
     <string name="admin_policy_risk_all_protocol">%1$s разрешает весь трафик, а не одну службу.</string>
     <string name="admin_policy_risk_wide_ports">%1$s открывает широкий диапазон портов: %2$s.</string>
     <string name="admin_policy_risk_ssh_any">%1$s разрешает SSH NetBird под любым локальным пользователем, включая root.</string>
-
     <string name="admin_policy_review_title">Проверка перед сохранением</string>
     <string name="admin_policy_review_continue">Продолжить</string>
     <string name="admin_policy_step_local">Проверка</string>
@@ -825,7 +810,6 @@
     </plurals>
     <string name="admin_policy_grant_out">%1$s (%2$s): с этого устройства</string>
     <string name="admin_policy_grant_in">%1$s (%2$s): к этому устройству</string>
-
     <string name="admin_policy_ev_local">Проверено на телефоне (у сервера нет вызова проверки)</string>
     <string name="admin_policy_ev_fresh">Копия на сервере перечитана и совпала</string>
     <string name="admin_policy_ev_diff">Строк добавлено: %1$d, удалено: %2$d</string>
@@ -845,7 +829,6 @@
         <item quantity="many">Устройство теряет %1$d правил, остальные остаются</item>
         <item quantity="other">Устройство теряет %1$d правила, остальные остаются</item>
     </plurals>
-
     <string name="admin_policy_stale">Политика изменилась на сервере после проверки. Ничего не записано; откройте её заново.</string>
     <string name="admin_policy_create_title">Создать политику %1$s?</string>
     <string name="admin_policy_save_title">Сохранить политику %1$s?</string>
@@ -857,7 +840,6 @@
     <string name="admin_policy_off_effect">Её правила перестают действовать; узлы теряют то, что разрешала только она.</string>
     <string name="admin_policy_delete_title">Удалить политику %1$s?</string>
     <string name="admin_policy_delete_effect">Её правила перестают действовать насовсем. Отмена создаст её заново с новыми id.</string>
-
     <string name="admin_policy_set_open">Все политики как JSON</string>
     <string name="admin_policy_set_title_screen">Все политики</string>
     <string name="admin_policy_set_title">Применить документ политик?</string>
@@ -873,7 +855,6 @@
     <string name="admin_policy_set_err_duplicate">Элемент %1$d повторяет id %2$s.</string>
     <string name="admin_policy_set_err_unknown">У элемента %1$d id %2$s, которого нет на сервере. Уберите id, чтобы создать новую политику.</string>
     <string name="admin_policy_set_err_invalid">Элемент %1$d (%2$s): %3$s</string>
-
     <string name="admin_policy_templates">Шаблоны</string>
     <string name="admin_policy_template_preview">Что будет создано</string>
     <string name="admin_policy_template_missing">Ещё нужно: %1$s</string>
@@ -901,7 +882,6 @@
     <string name="admin_policy_tf_group">Группа</string>
     <string name="admin_policy_tf_from">Эти группы</string>
     <string name="admin_policy_tf_to">…и эти</string>
-
     <string name="admin_policy_reach">Кто может достучаться…</string>
     <string name="admin_policy_reach_target">Цель</string>
     <string name="admin_policy_reach_pick">Выберите узел или группу</string>
@@ -915,7 +895,6 @@
     <string name="admin_policy_reach_row">%1$s · %2$s</string>
     <string name="admin_policy_reach_row_block">Запрещено: %1$s · %2$s</string>
     <string name="admin_policy_reach_reverse">(правило работает в обе стороны)</string>
-
     <!-- Posture checks -->
     <string name="admin_posture_search">Поиск проверок состояния</string>
     <string name="admin_posture_empty">Проверок состояния нет</string>
@@ -978,4 +957,368 @@
     <string name="admin_posture_delete_effect">Проверка удаляется. Отмена создаст её заново с новым id.</string>
     <string name="admin_posture_delete_blocked_title">Ещё используется</string>
     <string name="admin_posture_delete_blocked_text">Сервер не удаляет проверку, которую использует политика. Сначала уберите её из этих политик: %1$s.</string>
+    <!-- Users, service users, events, account settings, event streaming, identity providers, reverse proxy -->
+    <string name="admin_secret_done">Я сохранил</string>
+    <string name="admin_users_tab_people">Люди</string>
+    <string name="admin_users_tab_invites">Приглашения</string>
+    <string name="admin_users_search">Поиск по имени, e-mail, роли или группе</string>
+    <string name="admin_users_empty">Нет пользователей</string>
+    <string name="admin_users_no_match">Ни один пользователь не подходит</string>
+    <string name="admin_users_filter_admins">Владельцы и админы</string>
+    <string name="admin_users_sort_login">Последний вход</string>
+    <string name="admin_user_status_active">активен</string>
+    <string name="admin_user_status_blocked">заблокирован</string>
+    <string name="admin_user_status_invited">приглашён</string>
+    <string name="admin_user_status_pending">ждёт одобрения</string>
+    <string name="admin_user_you">вы</string>
+    <string name="admin_user_last_login_short">вход %1$s</string>
+    <string name="admin_user_last_login">Последний вход</string>
+    <string name="admin_user_issued">Создан через</string>
+    <string name="admin_user_idp">Провайдер входа</string>
+    <string name="admin_user_id">ID</string>
+    <string name="admin_user_name">Имя</string>
+    <string name="admin_user_email">E-mail</string>
+    <string name="admin_user_role">Роль</string>
+    <string name="admin_user_blocked">Заблокирован</string>
+    <string name="admin_user_blocked_desc">Заблокированный пользователь не может войти, а его пиры отключены от сети до разблокировки.</string>
+    <string name="admin_user_auto_groups">Автогруппы</string>
+    <string name="admin_user_auto_groups_none">Нет</string>
+    <string name="admin_user_auto_groups_desc">Пиры, которые добавит этот пользователь, попадут в эти группы.</string>
+    <string name="admin_user_delete">Удалить пользователя</string>
+    <string name="admin_user_lock_own">Это пользователь, от имени которого работает панель. Меняйте его из учётной записи другого администратора.</string>
+    <string name="admin_user_lock_last_owner">Единственный владелец: его нельзя понизить, заблокировать или удалить. Сначала сделайте владельцем кого-то другого.</string>
+    <string name="admin_user_role_title">Сменить роль: %1$s</string>
+    <string name="admin_user_role_effect">Пользователь станет %1$s и получит ровно то, что разрешает эта роль.</string>
+    <string name="admin_user_role_owner_effect">Пользователь станет %1$s: учётная запись перейдёт к нему, а нынешний владелец станет админом.</string>
+    <string name="admin_user_owner_transfer_warning">Владение перейдёт к этому человеку. Вернуть его сможет только новый владелец.</string>
+    <string name="admin_user_block_title">Заблокировать %1$s</string>
+    <string name="admin_user_unblock_title">Разблокировать %1$s</string>
+    <string name="admin_user_block_effect">Пользователь будет выведен из системы, а его пиры потеряют сеть до разблокировки.</string>
+    <string name="admin_user_unblock_effect">Пользователь снова сможет войти, а его пиры вернутся в сеть.</string>
+    <string name="admin_user_groups_title">Автогруппы: %1$s</string>
+    <string name="admin_user_groups_effect">Пиры, которые пользователь добавит с этого момента, попадут в эти группы; у существующих группы не изменятся.</string>
+    <string name="admin_user_delete_title">Удалить %1$s</string>
+    <string name="admin_user_delete_effect">Пользователь будет удалён и больше не сможет войти; его пиры удаляются вместе с ним.</string>
+    <string name="admin_invites_search">Поиск приглашений</string>
+    <string name="admin_invites_empty">Нет ожидающих приглашений</string>
+    <string name="admin_invites_no_match">Ни одно приглашение не подходит</string>
+    <string name="admin_invites_unavailable">На этом сервере нет приглашений по ссылке: для них нужен встроенный провайдер входа.</string>
+    <string name="admin_invite_expired">истекло</string>
+    <string name="admin_invite_expires">истекает %1$s</string>
+    <string name="admin_invite_create">Пригласить</string>
+    <string name="admin_invite_create_action">Создать ссылку</string>
+    <string name="admin_invite_hours">Действует, часов</string>
+    <string name="admin_invite_regenerate">Новая ссылка</string>
+    <string name="admin_invite_delete">Удалить приглашение</string>
+    <string name="admin_invite_bearer_warning">Любой, у кого есть ссылка, сможет войти как этот человек. Отправляйте её только ему и по закрытому каналу.</string>
+    <string name="admin_invite_create_title">Пригласить %1$s</string>
+    <string name="admin_invite_create_effect">Ссылка, по которой один человек сможет войти как %1$s; действует %2$d ч.</string>
+    <string name="admin_invite_regenerate_title">Новая ссылка для %1$s</string>
+    <string name="admin_invite_regenerate_effect">Старая ссылка перестанет работать; новая будет показана один раз.</string>
+    <string name="admin_invite_delete_title">Удалить приглашение для %1$s</string>
+    <string name="admin_invite_delete_effect">Ссылка перестанет работать; по ней никто не войдёт.</string>
+    <string name="admin_invite_new_title">Приглашение для %1$s</string>
+    <string name="admin_invite_new_once">Ссылка показывается один раз и нигде не хранится. Скопируйте её сейчас: войти по ней может любой.</string>
+    <string name="admin_svc_create">Новый сервисный пользователь</string>
+    <string name="admin_svc_create_action">Создать</string>
+    <string name="admin_svc_search">Поиск сервисных пользователей</string>
+    <string name="admin_svc_empty">Нет сервисных пользователей</string>
+    <string name="admin_svc_no_match">Ни один сервисный пользователь не подходит</string>
+    <string name="admin_svc_subtitle">Сервисный пользователь</string>
+    <string name="admin_svc_desc">У сервисного пользователя нет своего входа: скрипты и интеграции пользуются его персональными токенами с правами его роли.</string>
+    <string name="admin_svc_create_title">Создать сервисного пользователя %1$s</string>
+    <string name="admin_svc_create_effect">Учётная запись для скриптов с ролью %1$s; ничего не делает, пока у неё нет токена.</string>
+    <string name="admin_svc_delete_effect">Сервисный пользователь и все его токены будут удалены: скрипты, которые ими пользуются, перестанут работать.</string>
+    <string name="admin_pat_title">Персональные токены</string>
+    <string name="admin_pat_create">Новый токен</string>
+    <string name="admin_pat_create_action">Создать</string>
+    <string name="admin_pat_empty">Токенов нет</string>
+    <string name="admin_pat_name">Имя токена</string>
+    <string name="admin_pat_days">Действует, дней</string>
+    <string name="admin_pat_days_hint">От 1 до 365</string>
+    <string name="admin_pat_never">бессрочный</string>
+    <string name="admin_pat_expired">истёк</string>
+    <string name="admin_pat_expires_today">истекает сегодня</string>
+    <string name="admin_pat_soon">скоро истечёт</string>
+    <string name="admin_pat_in_use">эта панель</string>
+    <string name="admin_pat_maybe_in_use">возможно, эта панель</string>
+    <string name="admin_pat_last_used">использован %1$s</string>
+    <string name="admin_pat_never_used">не использовался</string>
+    <string name="admin_pat_created">создан %1$s</string>
+    <string name="admin_pat_delete">Удалить токен</string>
+    <string name="admin_pat_soon_note">Токены с отметкой «скоро истечёт» перестанут работать в течение %1$d дн.: создайте новые заранее.</string>
+    <string name="admin_pat_create_title">Создать токен %1$s для %2$s</string>
+    <string name="admin_pat_create_effect">Владелец токена действует как %1$s (%2$s) через API в течение %3$d дн.</string>
+    <string name="admin_pat_delete_title">Удалить токен %1$s пользователя %2$s</string>
+    <string name="admin_pat_delete_effect">Всё, что входит с этим токеном, с этого момента получит отказ.</string>
+    <string name="admin_pat_own_warning">Возможно, это токен, с которым входит эта панель. После удаления панель выйдет, и для возврата понадобится другой токен.</string>
+    <string name="admin_pat_new_title">Токен %1$s</string>
+    <string name="admin_pat_new_once">Сервер хранит только хеш: токен показывается один раз и нигде не сохраняется. Скопируйте его сейчас.</string>
+    <string name="admin_pat_own_expiring">Токен, с которым входит эта панель (%1$s), — %2$s. Создайте новый и войдите с ним.</string>
+    <string name="admin_ev_tab_audit">Журнал аудита</string>
+    <string name="admin_ev_tab_traffic">Трафик</string>
+    <string name="admin_ev_search">Поиск событий</string>
+    <string name="admin_ev_empty">Нет событий</string>
+    <string name="admin_ev_no_match">Ни одно событие не подходит</string>
+    <string name="admin_ev_filter_activity">Действие</string>
+    <string name="admin_ev_filter_activity_n">Действия: %1$d</string>
+    <string name="admin_ev_filter_initiator">Кто</string>
+    <string name="admin_ev_filter_clear">Сбросить фильтры</string>
+    <string name="admin_ev_today">Сегодня</string>
+    <string name="admin_ev_yesterday">Вчера</string>
+    <string name="admin_ev_undated">Без даты</string>
+    <string name="admin_ev_code">Код действия</string>
+    <string name="admin_ev_initiator">Кто</string>
+    <string name="admin_ev_initiator_id">ID инициатора</string>
+    <string name="admin_ev_target">ID объекта</string>
+    <string name="admin_ev_meta">Подробности</string>
+    <string name="admin_ev_value">Значение</string>
+    <string name="admin_ev_traffic_unavailable">Этот сервер не хранит события сетевого трафика (нужен NetBird Cloud с включённым журналом трафика).</string>
+    <string name="admin_ev_traffic_empty">Нет событий трафика</string>
+    <string name="admin_ev_prev">Новее</string>
+    <string name="admin_ev_next">Старше</string>
+    <string name="admin_ev_page">Страница %1$d из %2$d · всего %3$d</string>
+    <string name="admin_ev_bytes">↑%1$d Б ↓%2$d Б</string>
+    <string name="admin_ev_dropped">отброшено</string>
+    <string name="admin_acct_on">вкл.</string>
+    <string name="admin_acct_off">выкл.</string>
+    <string name="admin_acct_none">нет</string>
+    <string name="admin_acct_none_readable">С этими данными не удалось прочитать ни одной учётной записи.</string>
+    <string name="admin_acct_id">ID учётной записи</string>
+    <string name="admin_acct_embedded_idp">Встроенный провайдер входа</string>
+    <string name="admin_acct_change_title">Изменить: %1$s</string>
+    <string name="admin_acct_unit_hours">Часы</string>
+    <string name="admin_acct_unit_days">Дни</string>
+    <string name="admin_acct_bad_cidr4">Сеть IPv4 вида 100.64.0.0/10 (префикс от 8 до 30)</string>
+    <string name="admin_acct_bad_cidr6">Сеть IPv6 вида fd00:1234::/64</string>
+    <string name="admin_acct_bad_domain">Домен вида netbird.cloud</string>
+    <string name="admin_acct_bad_duration">От 1 часа до 180 дней</string>
+    <string name="admin_acct_section_account">Учётная запись</string>
+    <string name="admin_acct_section_peers">Пиры</string>
+    <string name="admin_acct_section_users">Пользователи и вход</string>
+    <string name="admin_acct_section_groups">Группы и JWT</string>
+    <string name="admin_acct_section_network">Сеть и DNS</string>
+    <string name="admin_acct_section_traffic">Журнал трафика</string>
+    <string name="admin_acct_section_updates">Обновления и метрики</string>
+    <string name="admin_acct_login_exp">Истечение входа пиров</string>
+    <string name="admin_acct_login_exp_help">Пиры, добавленные пользователями, должны снова входить по истечении срока. Пиров с ключами настройки это не касается.</string>
+    <string name="admin_acct_login_exp_on">Пиры, добавленные пользователями, должны будут снова входить, когда истечёт вход.</string>
+    <string name="admin_acct_login_exp_off">Пиры останутся в сети навсегда, что бы ни случилось с теми, кто их добавил.</string>
+    <string name="admin_acct_login_exp_time">Вход истекает через</string>
+    <string name="admin_acct_login_exp_time_help">Сколько пир, добавленный пользователем, остаётся в сети без повторного входа.</string>
+    <string name="admin_acct_login_exp_time_set">Пирам придётся снова входить через %1$s.</string>
+    <string name="admin_acct_inact_exp">Истечение по неактивности</string>
+    <string name="admin_acct_inact_exp_help">Пир, остававшийся отключённым заданное время, должен будет войти снова.</string>
+    <string name="admin_acct_inact_exp_on">Пирам, долго бывшим офлайн, придётся снова входить.</string>
+    <string name="admin_acct_inact_exp_off">Пиры сохранят вход, сколько бы ни были офлайн.</string>
+    <string name="admin_acct_inact_exp_time">Неактивен дольше</string>
+    <string name="admin_acct_inact_exp_time_help">Сколько пир может быть офлайн, прежде чем ему придётся войти снова.</string>
+    <string name="admin_acct_inact_exp_time_set">Пирам, бывшим офлайн %1$s, придётся снова входить.</string>
+    <string name="admin_acct_peer_approval">Одобрение пиров</string>
+    <string name="admin_acct_peer_approval_help">Новые пиры ждут администратора, прежде чем войти в сеть.</string>
+    <string name="admin_acct_peer_approval_on">Новые пиры будут ждать одобрения администратора.</string>
+    <string name="admin_acct_peer_approval_off">Новые пиры будут входить сразу, без проверки.</string>
+    <string name="admin_acct_peer_approval_warning">Ожидающие пиры будут впущены, и любой новый пир войдёт без проверки.</string>
+    <string name="admin_acct_user_approval">Одобрение пользователей</string>
+    <string name="admin_acct_user_approval_help">Зарегистрировавшиеся люди ждут администратора, прежде чем смогут пользоваться учётной записью.</string>
+    <string name="admin_acct_user_approval_on">Новые пользователи будут ждать одобрения администратора.</string>
+    <string name="admin_acct_user_approval_off">Любой зарегистрировавшийся сразу получит доступ.</string>
+    <string name="admin_acct_hostname">Запрещать одинаковые имена</string>
+    <string name="admin_acct_hostname_help">Пир с именем, которое уже есть у другого пира, получит отказ вместо переименования.</string>
+    <string name="admin_acct_hostname_on">Пир с уже занятым именем получит отказ.</string>
+    <string name="admin_acct_hostname_off">Пир с уже занятым именем получит имя с номером.</string>
+    <string name="admin_acct_lazy">Ленивые соединения</string>
+    <string name="admin_acct_lazy_help">Пиры соединяются друг с другом, только когда нужен трафик, и закрывают простаивающие соединения.</string>
+    <string name="admin_acct_lazy_on">Пиры будут открывать соединения только по необходимости и закрывать простаивающие.</string>
+    <string name="admin_acct_lazy_off">Пиры будут держать соединение со всеми доступными пирами.</string>
+    <string name="admin_acct_expose">Пиры могут публиковать сервисы</string>
+    <string name="admin_acct_expose_help">Пиры из выбранных групп могут выставлять свои порты в интернет через обратный прокси.</string>
+    <string name="admin_acct_expose_on">Пиры из выбранных групп смогут публиковать свои порты в интернете.</string>
+    <string name="admin_acct_expose_off">Ни один пир больше не сможет публиковать свои порты; уже опубликованные остановятся.</string>
+    <string name="admin_acct_expose_groups">Группы, которым можно публиковать</string>
+    <string name="admin_acct_expose_groups_help">Публиковать порты могут только пиры из этих групп.</string>
+    <string name="admin_acct_expose_groups_set">Публиковать порты смогут пиры из: %1$s.</string>
+    <string name="admin_acct_view_blocked">Скрывать сеть от обычных пользователей</string>
+    <string name="admin_acct_view_blocked_help">Обычные пользователи видят в панели только свои пиры, а не всю сеть.</string>
+    <string name="admin_acct_view_blocked_on">Обычные пользователи будут видеть только свои пиры.</string>
+    <string name="admin_acct_view_blocked_off">Обычные пользователи смогут видеть все пиры, группы и маршруты учётной записи.</string>
+    <string name="admin_acct_local_auth_off">Отключить локальный вход</string>
+    <string name="admin_acct_local_auth_off_help">Пользователи смогут входить только через провайдера входа, без локального пароля.</string>
+    <string name="admin_acct_local_auth_off_on">Локальные пароли перестанут работать: все будут входить через провайдера.</string>
+    <string name="admin_acct_local_auth_off_off">Пользователи снова смогут входить с локальным паролем.</string>
+    <string name="admin_acct_local_auth_off_warning">Те, у кого нет рабочего провайдера входа (возможно, и вы), больше не смогут войти.</string>
+    <string name="admin_acct_mfa">Двухфакторный локальный вход</string>
+    <string name="admin_acct_mfa_help">Локальный вход запрашивает второй фактор.</string>
+    <string name="admin_acct_mfa_on">Локальный вход будет запрашивать второй фактор.</string>
+    <string name="admin_acct_mfa_off">Для входа будет достаточно одного локального пароля.</string>
+    <string name="admin_acct_propagation">Передавать группы пирам</string>
+    <string name="admin_acct_propagation_help">Когда меняются автогруппы пользователя, его существующие пиры тоже входят в эти группы или выходят из них.</string>
+    <string name="admin_acct_propagation_on">Смена автогрупп пользователя будет переносить и его существующие пиры.</string>
+    <string name="admin_acct_propagation_off">Смена автогрупп пользователя затронет только пиры, добавленные позже.</string>
+    <string name="admin_acct_jwt">Группы из JWT</string>
+    <string name="admin_acct_jwt_help">Пользователи получают группы из поля токена провайдера входа.</string>
+    <string name="admin_acct_jwt_on">Группы пользователей будут браться из поля токена провайдера.</string>
+    <string name="admin_acct_jwt_off">Группы будут задаваться только здесь.</string>
+    <string name="admin_acct_jwt_claim">Поле групп в JWT</string>
+    <string name="admin_acct_jwt_claim_help">Поле токена со списком групп пользователя, например groups.</string>
+    <string name="admin_acct_jwt_claim_set">Группы будут читаться из поля %1$s.</string>
+    <string name="admin_acct_jwt_allow">Разрешённые группы JWT</string>
+    <string name="admin_acct_jwt_allow_help">Пользоваться учётной записью могут только пользователи из этих групп (имена через запятую); пусто — пускать всех.</string>
+    <string name="admin_acct_jwt_allow_set">Пользоваться учётной записью смогут только участники: %1$s.</string>
+    <string name="admin_acct_range">Диапазон сети (IPv4)</string>
+    <string name="admin_acct_range_help">Адреса, которые получают пиры. Смена диапазона даст каждому пиру новый адрес.</string>
+    <string name="admin_acct_range_set">Каждый пир получит новый адрес из %1$s.</string>
+    <string name="admin_acct_range_warning">Соединения оборвутся, пока пиры переходят, и всё, что завязано на старые адреса, сломается.</string>
+    <string name="admin_acct_range6">Диапазон сети (IPv6)</string>
+    <string name="admin_acct_range6_help">IPv6-адреса пиров в группах с включённым IPv6.</string>
+    <string name="admin_acct_range6_set">Пиры получат новые IPv6-адреса из %1$s.</string>
+    <string name="admin_acct_ipv6_groups">Группы с IPv6</string>
+    <string name="admin_acct_ipv6_groups_help">Пиры из этих групп получают ещё и IPv6-адрес.</string>
+    <string name="admin_acct_ipv6_groups_set">IPv6-адреса получат пиры из: %1$s.</string>
+    <string name="admin_acct_dns_domain">DNS-домен</string>
+    <string name="admin_acct_dns_domain_help">Домен, которым заканчивается имя каждого пира, например laptop.netbird.cloud.</string>
+    <string name="admin_acct_dns_domain_set">Имя каждого пира будет заканчиваться на %1$s.</string>
+    <string name="admin_acct_dns_domain_warning">Изменятся имена всех пиров: закладки, скрипты и сертификаты со старыми именами перестанут совпадать.</string>
+    <string name="admin_acct_routing_dns">DNS через маршрутизирующие пиры</string>
+    <string name="admin_acct_routing_dns_help">Маршрутизирующие пиры разрешают доменные маршруты для пиров за ними.</string>
+    <string name="admin_acct_routing_dns_on">Маршрутизирующие пиры будут разрешать имена доменных маршрутов.</string>
+    <string name="admin_acct_routing_dns_off">Каждый пир будет сам разрешать доменные маршруты.</string>
+    <string name="admin_acct_traffic">Журнал сетевого трафика</string>
+    <string name="admin_acct_traffic_help">Пиры сообщают о своих соединениях; их показывает раздел «События».</string>
+    <string name="admin_acct_traffic_on">Пиры будут сообщать серверу о своих соединениях.</string>
+    <string name="admin_acct_traffic_off">Пиры перестанут сообщать о соединениях.</string>
+    <string name="admin_acct_counters">Счётчики пакетов</string>
+    <string name="admin_acct_counters_help">Журнал трафика ещё и считает байты и пакеты.</string>
+    <string name="admin_acct_counters_on">Журнал трафика будет считать байты и пакеты.</string>
+    <string name="admin_acct_counters_off">Журнал трафика будет записывать соединения без подсчёта.</string>
+    <string name="admin_acct_traffic_groups">Группы в журнале</string>
+    <string name="admin_acct_traffic_groups_help">О трафике сообщают только пиры из этих групп; пусто — все пиры.</string>
+    <string name="admin_acct_traffic_groups_set">Трафик будет записываться для: %1$s.</string>
+    <string name="admin_acct_update_version">Версия автообновления клиентов</string>
+    <string name="admin_acct_update_version_help">Версия, до которой обновляются клиенты: номер, latest или пусто — не обновлять.</string>
+    <string name="admin_acct_update_version_set">Клиенты будут обновляться до %1$s.</string>
+    <string name="admin_acct_update_always">Обновлять без вопросов</string>
+    <string name="admin_acct_update_always_help">Клиенты ставят обновление сразу, не спрашивая пользователя.</string>
+    <string name="admin_acct_update_always_on">Клиенты будут ставить обновления без вопросов.</string>
+    <string name="admin_acct_update_always_off">Клиенты будут спрашивать пользователя перед обновлением.</string>
+    <string name="admin_acct_metrics">Отправка метрик</string>
+    <string name="admin_acct_metrics_help">Клиенты отправляют серверу метрики производительности.</string>
+    <string name="admin_acct_metrics_on">Клиенты будут отправлять метрики.</string>
+    <string name="admin_acct_metrics_off">Клиенты перестанут отправлять метрики.</string>
+    <string name="admin_stream_create">Новый поток</string>
+    <string name="admin_stream_create_for">Новый поток %1$s</string>
+    <string name="admin_stream_pick_platform">Куда копировать журнал аудита?</string>
+    <string name="admin_stream_search">Поиск потоков</string>
+    <string name="admin_stream_empty">Нет потоков событий</string>
+    <string name="admin_stream_no_match">Ни один поток не подходит</string>
+    <string name="admin_stream_platform">Платформа</string>
+    <string name="admin_stream_enabled">Включён</string>
+    <string name="admin_stream_config">Настройки</string>
+    <string name="admin_stream_config_empty">Сервер не показал настройки.</string>
+    <string name="admin_stream_secret_note">Значения, похожие на учётные данные, скрыты. На телефоне ничего не сохраняется.</string>
+    <string name="admin_stream_edit">Изменить настройки</string>
+    <string name="admin_stream_edit_note">Заполняйте только то, что меняется: пустое значение оставит то, что на сервере.</string>
+    <string name="admin_stream_delete">Удалить</string>
+    <string name="admin_stream_key">Ключ</string>
+    <string name="admin_stream_value">Значение</string>
+    <string name="admin_stream_unchanged">без изменений</string>
+    <string name="admin_stream_add_key">Добавить ключ</string>
+    <string name="admin_stream_create_title">Отправлять журнал аудита в %1$s</string>
+    <string name="admin_stream_create_effect">Каждое событие аудита учётной записи будет копироваться в %1$s.</string>
+    <string name="admin_stream_on_title">Включить %1$s</string>
+    <string name="admin_stream_off_title">Выключить %1$s</string>
+    <string name="admin_stream_on_effect">События аудита снова будут копироваться в назначение.</string>
+    <string name="admin_stream_off_effect">События аудита перестанут попадать в назначение, пока поток снова не включат.</string>
+    <string name="admin_stream_config_title">Изменить настройки %1$s</string>
+    <string name="admin_stream_config_effect">Изменятся ключи: %1$s.</string>
+    <string name="admin_stream_delete_title">Удалить %1$s</string>
+    <string name="admin_stream_delete_effect">Назначение перестанет получать события аудита, а его настройки будут удалены.</string>
+    <string name="admin_idp_create">Новый провайдер</string>
+    <string name="admin_idp_edit">Изменить</string>
+    <string name="admin_idp_delete">Удалить</string>
+    <string name="admin_idp_search">Поиск провайдеров</string>
+    <string name="admin_idp_empty">Нет провайдеров входа</string>
+    <string name="admin_idp_no_match">Ни один провайдер не подходит</string>
+    <string name="admin_idp_type">Тип</string>
+    <string name="admin_idp_name">Название</string>
+    <string name="admin_idp_issuer">URL издателя</string>
+    <string name="admin_idp_client_id">Client ID</string>
+    <string name="admin_idp_client_secret">Client secret</string>
+    <string name="admin_idp_id">ID</string>
+    <string name="admin_idp_secret_hidden">хранится на сервере и не показывается</string>
+    <string name="admin_idp_secret_note">Секрет уходит на сервер и не сохраняется на телефоне.</string>
+    <string name="admin_idp_secret_again">Сервер никогда не возвращает секрет: введите его снова, чтобы сохранить изменения.</string>
+    <string name="admin_idp_secret_replaced">заменён</string>
+    <string name="admin_idp_signin_warning">Это затронет всех, кто входит через этого провайдера; ошибка может лишить их входа.</string>
+    <string name="admin_idp_create_title">Добавить провайдера %1$s</string>
+    <string name="admin_idp_create_effect">Люди смогут входить через этого провайдера (%1$s).</string>
+    <string name="admin_idp_update_title">Изменить провайдера %1$s</string>
+    <string name="admin_idp_update_effect">Вход через этого провайдера с этого момента пойдёт по новым настройкам.</string>
+    <string name="admin_idp_delete_title">Удалить провайдера %1$s</string>
+    <string name="admin_idp_delete_effect">Через этого провайдера больше никто не сможет войти.</string>
+    <string name="admin_rp_tab_services">Сервисы</string>
+    <string name="admin_rp_tab_domains">Домены</string>
+    <string name="admin_rp_publish_title">Опубликовать порт этого телефона</string>
+    <string name="admin_rp_publish_desc">Экран «Публикация» выставляет локальный порт в интернет, пока работает BirdSocks.</string>
+    <string name="admin_rp_search_services">Поиск сервисов</string>
+    <string name="admin_rp_search_domains">Поиск доменов</string>
+    <string name="admin_rp_services_empty">Нет опубликованных сервисов</string>
+    <string name="admin_rp_domains_empty">Нет доменов</string>
+    <string name="admin_rp_no_match">Ничего не подходит</string>
+    <string name="admin_rp_enabled">Включён</string>
+    <string name="admin_rp_filter_problem">Требует внимания</string>
+    <string name="admin_rp_status_active">работает</string>
+    <string name="admin_rp_status_pending">ожидает</string>
+    <string name="admin_rp_mode">Режим</string>
+    <string name="admin_rp_cluster">Кластер прокси</string>
+    <string name="admin_rp_targets">Цели</string>
+    <string name="admin_rp_auth">Вход посетителей</string>
+    <string name="admin_rp_auth_none">нет: открыто всем</string>
+    <string name="admin_rp_certificate">Сертификат выпущен</string>
+    <string name="admin_rp_json">JSON</string>
+    <string name="admin_rp_json_note">Сервис в том виде, как он на сервере; сохранение заменит его.</string>
+    <string name="admin_rp_delete">Удалить</string>
+    <string name="admin_rp_service_create">Новый сервис</string>
+    <string name="admin_rp_domain_add">Добавить домен</string>
+    <string name="admin_rp_domain">Домен</string>
+    <string name="admin_rp_domain_help">Направьте CNAME домена на кластер, затем проверьте его здесь.</string>
+    <string name="admin_rp_validated">проверен</string>
+    <string name="admin_rp_unvalidated">не проверен</string>
+    <string name="admin_rp_validate">Проверить</string>
+    <string name="admin_rp_validate_ok">%1$s прошёл проверку</string>
+    <string name="admin_rp_validate_fail">%1$s пока не прошёл проверку: CNAME уже настроен?</string>
+    <string name="admin_rp_public_warning">Сервис отвечает любому в интернете, кто дойдёт до его адреса, в рамках правил входа.</string>
+    <string name="admin_rp_service_create_title">Опубликовать сервис %1$s</string>
+    <string name="admin_rp_service_create_effect">%1$s начнёт отвечать в интернете.</string>
+    <string name="admin_rp_service_on_title">Включить %1$s</string>
+    <string name="admin_rp_service_off_title">Выключить %1$s</string>
+    <string name="admin_rp_service_on_effect">%1$s снова будет отвечать в интернете.</string>
+    <string name="admin_rp_service_off_effect">%1$s перестанет отвечать, пока его снова не включат.</string>
+    <string name="admin_rp_service_edit_title">Изменить сервис %1$s</string>
+    <string name="admin_rp_service_edit_effect">%1$s с этого момента работает так, как задано в изменённом JSON.</string>
+    <string name="admin_rp_service_delete_title">Удалить сервис %1$s</string>
+    <string name="admin_rp_service_delete_effect">%1$s перестанет отвечать, а его настройки будут удалены.</string>
+    <string name="admin_rp_domain_add_title">Добавить домен %1$s</string>
+    <string name="admin_rp_domain_add_effect">Сервисы смогут использовать %1$s, когда его CNAME будет указывать на %2$s и проверка пройдёт.</string>
+    <string name="admin_rp_domain_delete_title">Удалить домен %1$s</string>
+    <string name="admin_rp_domain_delete_effect">Сервисы на этом домене перестанут отвечать.</string>
+    <string name="admin_rp_domain_in_use">Используется: %1$s</string>
+    <plurals name="admin_pat_days_left">
+        <item quantity="one">истекает через %d день</item>
+        <item quantity="few">истекает через %d дня</item>
+        <item quantity="many">истекает через %d дней</item>
+        <item quantity="other">истекает через %d дня</item>
+    </plurals>
+    <plurals name="admin_acct_dur_days">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дня</item>
+    </plurals>
+    <plurals name="admin_acct_dur_hours">
+        <item quantity="one">%d час</item>
+        <item quantity="few">%d часа</item>
+        <item quantity="many">%d часов</item>
+        <item quantity="other">%d часа</item>
+    </plurals>
 </resources>

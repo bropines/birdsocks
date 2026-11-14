@@ -11,8 +11,6 @@
     <string name="admin_refresh">Refresh</string>
     <string name="admin_retry">Try again</string>
     <string name="admin_bad_url">The admin panel sends a token only over HTTPS. This account\'s server is %1$s.</string>
-
-
     <!-- Credential -->
     <string name="admin_credential_title">Access to the server</string>
     <string name="admin_token_warning_title">A token can do what you can</string>
@@ -42,7 +40,6 @@
     <string name="admin_setup_reason_device_rejected">The server did not accept this device\'s sign-in. Use an access token.</string>
     <string name="admin_setup_reason_unreadable">The stored token can no longer be opened (the phone\'s key store was reset). Set it again.</string>
     <string name="admin_setup_reason_failed">The server could not be asked.</string>
-
     <!-- Write gate -->
     <string name="admin_unlock_title">Confirm the change</string>
     <string name="admin_unlock_no_lock">Set a screen lock to make changes.</string>
@@ -50,7 +47,6 @@
     <string name="admin_unlock_failed">The unlock was not confirmed; nothing changed.</string>
     <string name="admin_done_deleted">Deleted %1$s</string>
     <string name="admin_done_revoked">Revoked %1$s</string>
-
     <!-- Errors -->
     <string name="admin_err_unauthorized">The server did not accept the credential.</string>
     <string name="admin_err_forbidden">Your role does not allow this.</string>
@@ -65,7 +61,6 @@
     <string name="admin_err_proxy_socks_auth">The server connection goes through a SOCKS5 proxy with a password, which the admin panel cannot use yet. Use an HTTP proxy or a SOCKS5 proxy without a password.</string>
     <string name="admin_err_proxy_bad">The server connection\'s proxy address is not valid. Check Settings → Connection.</string>
     <string name="admin_err_proxy_byedpi">The server connection goes through ByeDPI, which is not running. Start BirdSocks first.</string>
-
     <!-- Overview -->
     <string name="admin_overview_account">Account</string>
     <string name="admin_overview_server">Management server</string>
@@ -85,7 +80,6 @@
     <string name="admin_overview_ro_lock">This phone has no screen lock: the panel is read-only.</string>
     <string name="admin_overview_ro_switch">Read-only is on for this account. Change it under Access to the server.</string>
     <string name="admin_overview_restricted">Your role sees only your own peers.</string>
-
     <!-- Peers -->
     <string name="admin_peers_search">Name, address, OS</string>
     <string name="admin_peers_empty">No peers</string>
@@ -115,7 +109,6 @@
     <string name="admin_peer_read_only_note">Changes are off: read-only, no screen lock or your role.</string>
     <string name="admin_peer_rename_unlock">Rename %1$s</string>
     <string name="admin_peer_expiry_unlock">Login expiration of %1$s</string>
-
     <!-- Setup keys -->
     <string name="admin_keys_empty">No setup keys</string>
     <string name="admin_key_one_off">One-off</string>
@@ -151,10 +144,8 @@
     <string name="admin_key_revoke">Revoke</string>
     <string name="admin_key_revoke_title">Revoke %1$s?</string>
     <string name="admin_key_revoke_text">No new peer can join with it. Peers it already added stay.</string>
-
     <!-- Groups -->
     <string name="admin_groups_empty">No groups</string>
-
     <plurals name="admin_list_incomplete">
         <item quantity="one">%1$d entry could not be read and is not shown.</item>
         <item quantity="other">%1$d entries could not be read and are not shown.</item>
@@ -168,7 +159,6 @@
         <item quantity="other">%1$d resources</item>
     </plurals>
     <string name="admin_open_dashboard">Open the web dashboard</string>
-
     <!-- Home -->
     <string name="admin_home_attention">Needs you</string>
     <string name="admin_home_attention_none">Nothing waits for you.</string>
@@ -182,7 +172,6 @@
         <item quantity="one">%1$d day left</item>
         <item quantity="other">%1$d days left</item>
     </plurals>
-
     <!-- Areas -->
     <string name="admin_area_coming">Coming in a later version.</string>
     <string name="admin_area_coming_badge">coming</string>
@@ -216,7 +205,6 @@
     <string name="admin_area_identity_providers_summary">Where people sign in from.</string>
     <string name="admin_area_reverse_proxy">Reverse proxy</string>
     <string name="admin_area_reverse_proxy_summary">Services published on the internet, and their domains.</string>
-
     <!-- Lists -->
     <string name="admin_sort_attention">Needs attention first</string>
     <string name="admin_sort_name">By name</string>
@@ -229,7 +217,6 @@
     <string name="admin_groups_no_match">No group matches</string>
     <string name="admin_value_on">On</string>
     <string name="admin_value_off">Off</string>
-
     <!-- Picker -->
     <string name="admin_picker_search">Search</string>
     <string name="admin_picker_done">Done (%1$d)</string>
@@ -238,7 +225,6 @@
     <string name="admin_picker_kind_groups">Groups</string>
     <string name="admin_picker_kind_users">Users</string>
     <string name="admin_picker_kind_other">Other</string>
-
     <!-- Change gates -->
     <string name="admin_change_class_low">Low risk</string>
     <string name="admin_change_class_medium">Needs unlock</string>
@@ -275,7 +261,6 @@
     <string name="admin_refused_not_unlocked">Not sent: the unlock is missing or too old.</string>
     <string name="admin_refused_checks">Not sent: the checks did not pass.</string>
     <string name="admin_refused_no_session">Not sent: the panel is signed out.</string>
-
     <!-- Peers, keys, users: changes -->
     <string name="admin_peer_rename_effect">The peer will be called %1$s; its DNS name follows.</string>
     <string name="admin_peer_expiry_on_effect">The peer must sign in again when the account\'s login expiration runs out.</string>
@@ -295,7 +280,6 @@
     <string name="admin_user_reject_title">Reject %1$s?</string>
     <string name="admin_user_reject_effect">The sign-up is refused and the user is removed.</string>
     <string name="admin_user_rejected">Rejected %1$s</string>
-
     <!-- JSON editor -->
     <string name="admin_json_search">Search</string>
     <string name="admin_json_no_matches">No matches</string>
@@ -310,7 +294,6 @@
     <string name="admin_json_discard_title">Discard the changes?</string>
     <string name="admin_json_discard_text">What you edited here is not saved anywhere.</string>
     <string name="admin_json_discard">Discard</string>
-
     <!-- Peers, groups, setup keys: full areas -->
     <string name="admin_cutoff_warning">This change may cut this device off: it would no longer match %1$s.</string>
     <string name="admin_peers_filter_expiration">login expiration on</string>
@@ -747,7 +730,6 @@
         <item quantity="one">%1$d policy</item>
         <item quantity="other">%1$d policies</item>
     </plurals>
-
     <string name="admin_policy_err_in_rule">Rule %1$d: %2$s</string>
     <string name="admin_policy_err_no_name">A name is needed.</string>
     <string name="admin_policy_err_no_rules">A policy needs at least one rule.</string>
@@ -761,13 +743,11 @@
     <string name="admin_policy_err_unknown_check">A posture check that does not exist: %1$s</string>
     <string name="admin_policy_err_ssh_users">local users missing for %1$s</string>
     <string name="admin_policy_err_resource">a resource without its id or type</string>
-
     <string name="admin_policy_risk_all_to_all">%1$s lets every peer reach every peer.</string>
     <string name="admin_policy_risk_all_source">%1$s lets every peer in, including peers added later.</string>
     <string name="admin_policy_risk_all_protocol">%1$s allows all traffic, not one service.</string>
     <string name="admin_policy_risk_wide_ports">%1$s opens a wide port range: %2$s.</string>
     <string name="admin_policy_risk_ssh_any">%1$s allows NetBird SSH as any local user, root included.</string>
-
     <string name="admin_policy_review_title">Check before saving</string>
     <string name="admin_policy_review_continue">Continue</string>
     <string name="admin_policy_step_local">Validation</string>
@@ -794,7 +774,6 @@
     </plurals>
     <string name="admin_policy_grant_out">%1$s (%2$s): from this device</string>
     <string name="admin_policy_grant_in">%1$s (%2$s): to this device</string>
-
     <string name="admin_policy_ev_local">Validated on this phone (the server has no validation call)</string>
     <string name="admin_policy_ev_fresh">The server copy was read again and matched</string>
     <string name="admin_policy_ev_diff">%1$d lines added, %2$d removed</string>
@@ -810,7 +789,6 @@
         <item quantity="one">This device loses %1$d rule, keeps others</item>
         <item quantity="other">This device loses %1$d rules, keeps others</item>
     </plurals>
-
     <string name="admin_policy_stale">The policy changed on the server since it was checked. Nothing was written; open it again.</string>
     <string name="admin_policy_create_title">Create policy %1$s?</string>
     <string name="admin_policy_save_title">Save policy %1$s?</string>
@@ -822,7 +800,6 @@
     <string name="admin_policy_off_effect">Its rules stop applying; peers lose what only this policy allowed.</string>
     <string name="admin_policy_delete_title">Delete policy %1$s?</string>
     <string name="admin_policy_delete_effect">Its rules stop applying for good. Undo creates it again with new ids.</string>
-
     <string name="admin_policy_set_open">All policies as JSON</string>
     <string name="admin_policy_set_title_screen">All policies</string>
     <string name="admin_policy_set_title">Apply the policy document?</string>
@@ -838,7 +815,6 @@
     <string name="admin_policy_set_err_duplicate">Element %1$d repeats id %2$s.</string>
     <string name="admin_policy_set_err_unknown">Element %1$d has id %2$s, which the server does not have. Remove the id to create a new policy.</string>
     <string name="admin_policy_set_err_invalid">Element %1$d (%2$s): %3$s</string>
-
     <string name="admin_policy_templates">Templates</string>
     <string name="admin_policy_template_preview">What it creates</string>
     <string name="admin_policy_template_missing">Still needed: %1$s</string>
@@ -866,7 +842,6 @@
     <string name="admin_policy_tf_group">Group</string>
     <string name="admin_policy_tf_from">These groups</string>
     <string name="admin_policy_tf_to">…and these</string>
-
     <string name="admin_policy_reach">Who can reach…</string>
     <string name="admin_policy_reach_target">Target</string>
     <string name="admin_policy_reach_pick">Pick a peer or a group</string>
@@ -878,7 +853,6 @@
     <string name="admin_policy_reach_row">%1$s · %2$s</string>
     <string name="admin_policy_reach_row_block">Blocked: %1$s · %2$s</string>
     <string name="admin_policy_reach_reverse">(the rule works both ways)</string>
-
     <!-- Posture checks -->
     <string name="admin_posture_search">Search posture checks</string>
     <string name="admin_posture_empty">No posture checks</string>
@@ -939,4 +913,362 @@
     <string name="admin_posture_delete_effect">The check is removed. Undo creates it again with a new id.</string>
     <string name="admin_posture_delete_blocked_title">Still in use</string>
     <string name="admin_posture_delete_blocked_text">The server refuses to delete a posture check a policy uses. Remove it from these policies first: %1$s.</string>
+    <!-- Users, service users, events, account settings, event streaming, identity providers, reverse proxy -->
+    <string name="admin_secret_done">I saved it</string>
+    <string name="admin_users_tab_people">People</string>
+    <string name="admin_users_tab_invites">Invites</string>
+    <string name="admin_users_search">Search by name, e-mail, role or group</string>
+    <string name="admin_users_empty">No users</string>
+    <string name="admin_users_no_match">No user matches</string>
+    <string name="admin_users_filter_admins">Owners and admins</string>
+    <string name="admin_users_sort_login">Last login</string>
+    <string name="admin_user_status_active">active</string>
+    <string name="admin_user_status_blocked">blocked</string>
+    <string name="admin_user_status_invited">invited</string>
+    <string name="admin_user_status_pending">awaiting approval</string>
+    <string name="admin_user_you">you</string>
+    <string name="admin_user_last_login_short">last login %1$s</string>
+    <string name="admin_user_last_login">Last login</string>
+    <string name="admin_user_issued">Created through</string>
+    <string name="admin_user_idp">Identity provider</string>
+    <string name="admin_user_id">ID</string>
+    <string name="admin_user_name">Name</string>
+    <string name="admin_user_email">E-mail</string>
+    <string name="admin_user_role">Role</string>
+    <string name="admin_user_blocked">Blocked</string>
+    <string name="admin_user_blocked_desc">A blocked user cannot sign in, and their peers are cut off from the network until unblocked.</string>
+    <string name="admin_user_auto_groups">Auto-groups</string>
+    <string name="admin_user_auto_groups_none">None</string>
+    <string name="admin_user_auto_groups_desc">Peers this user adds join these groups.</string>
+    <string name="admin_user_delete">Delete user</string>
+    <string name="admin_user_lock_own">This is the user the panel acts as. Change it from another administrator\'s account.</string>
+    <string name="admin_user_lock_last_owner">The only owner: they cannot be demoted, blocked or deleted. Make someone else owner first.</string>
+    <string name="admin_user_role_title">Change %1$s\'s role</string>
+    <string name="admin_user_role_effect">They become %1$s and get exactly what that role allows.</string>
+    <string name="admin_user_role_owner_effect">They become %1$s: the account is theirs, and the current owner becomes an admin.</string>
+    <string name="admin_user_owner_transfer_warning">Ownership moves to this person. Only the new owner can give it back.</string>
+    <string name="admin_user_block_title">Block %1$s</string>
+    <string name="admin_user_unblock_title">Unblock %1$s</string>
+    <string name="admin_user_block_effect">They are signed out and their peers lose the network until unblocked.</string>
+    <string name="admin_user_unblock_effect">They can sign in again and their peers rejoin the network.</string>
+    <string name="admin_user_groups_title">Auto-groups of %1$s</string>
+    <string name="admin_user_groups_effect">Peers this user adds from now on join these groups; existing peers keep theirs.</string>
+    <string name="admin_user_delete_title">Delete %1$s</string>
+    <string name="admin_user_delete_effect">The user is removed and can no longer sign in; their peers are removed with them.</string>
+    <string name="admin_invites_search">Search invites</string>
+    <string name="admin_invites_empty">No pending invites</string>
+    <string name="admin_invites_no_match">No invite matches</string>
+    <string name="admin_invites_unavailable">This server has no link invites: they need the built-in identity provider.</string>
+    <string name="admin_invite_expired">expired</string>
+    <string name="admin_invite_expires">expires %1$s</string>
+    <string name="admin_invite_create">Invite</string>
+    <string name="admin_invite_create_action">Create link</string>
+    <string name="admin_invite_hours">Valid for, hours</string>
+    <string name="admin_invite_regenerate">New link</string>
+    <string name="admin_invite_delete">Delete invite</string>
+    <string name="admin_invite_bearer_warning">Whoever holds the link can join as this person. Send it only to them, over a private channel.</string>
+    <string name="admin_invite_create_title">Invite %1$s</string>
+    <string name="admin_invite_create_effect">A link that lets one person join as %1$s, valid for %2$d h.</string>
+    <string name="admin_invite_regenerate_title">New link for %1$s</string>
+    <string name="admin_invite_regenerate_effect">The old link stops working; a new one is shown once.</string>
+    <string name="admin_invite_delete_title">Delete the invite for %1$s</string>
+    <string name="admin_invite_delete_effect">The link stops working; nobody can join with it.</string>
+    <string name="admin_invite_new_title">Invite for %1$s</string>
+    <string name="admin_invite_new_once">This link is shown once and kept nowhere. Copy it now; whoever has it can join.</string>
+    <string name="admin_svc_create">New service user</string>
+    <string name="admin_svc_create_action">Create</string>
+    <string name="admin_svc_search">Search service users</string>
+    <string name="admin_svc_empty">No service users</string>
+    <string name="admin_svc_no_match">No service user matches</string>
+    <string name="admin_svc_subtitle">Service user</string>
+    <string name="admin_svc_desc">A service user has no sign-in of its own: scripts and integrations use its personal access tokens, with the rights of its role.</string>
+    <string name="admin_svc_create_title">Create service user %1$s</string>
+    <string name="admin_svc_create_effect">An identity for scripts with the role %1$s; it does nothing until it has a token.</string>
+    <string name="admin_svc_delete_effect">The service user and all its tokens are removed: scripts using them stop working.</string>
+    <string name="admin_pat_title">Personal access tokens</string>
+    <string name="admin_pat_create">New token</string>
+    <string name="admin_pat_create_action">Create</string>
+    <string name="admin_pat_empty">No tokens</string>
+    <string name="admin_pat_name">Token name</string>
+    <string name="admin_pat_days">Valid for, days</string>
+    <string name="admin_pat_days_hint">1 to 365</string>
+    <string name="admin_pat_never">never expires</string>
+    <string name="admin_pat_expired">expired</string>
+    <string name="admin_pat_expires_today">expires today</string>
+    <string name="admin_pat_soon">expires soon</string>
+    <string name="admin_pat_in_use">this panel</string>
+    <string name="admin_pat_maybe_in_use">maybe this panel</string>
+    <string name="admin_pat_last_used">last used %1$s</string>
+    <string name="admin_pat_never_used">never used</string>
+    <string name="admin_pat_created">created %1$s</string>
+    <string name="admin_pat_delete">Delete token</string>
+    <string name="admin_pat_soon_note">Tokens marked expiring soon stop working within %1$d days: make new ones before then.</string>
+    <string name="admin_pat_create_title">Create token %1$s for %2$s</string>
+    <string name="admin_pat_create_effect">Whoever holds the token acts as %1$s (%2$s) through the API for %3$d days.</string>
+    <string name="admin_pat_delete_title">Delete token %1$s of %2$s</string>
+    <string name="admin_pat_delete_effect">Anything signing in with this token is refused from now on.</string>
+    <string name="admin_pat_own_warning">This may be the token this panel signs in with. Deleting it signs the panel out; you will need another token to come back.</string>
+    <string name="admin_pat_new_title">Token %1$s</string>
+    <string name="admin_pat_new_once">The server keeps only a hash: this token is shown once and kept nowhere. Copy it now.</string>
+    <string name="admin_pat_own_expiring">The token this panel signs in with (%1$s) — %2$s. Make a new one and sign in with it.</string>
+    <string name="admin_ev_tab_audit">Audit log</string>
+    <string name="admin_ev_tab_traffic">Traffic</string>
+    <string name="admin_ev_search">Search events</string>
+    <string name="admin_ev_empty">No events</string>
+    <string name="admin_ev_no_match">No event matches</string>
+    <string name="admin_ev_filter_activity">Activity</string>
+    <string name="admin_ev_filter_activity_n">Activity: %1$d</string>
+    <string name="admin_ev_filter_initiator">Who</string>
+    <string name="admin_ev_filter_clear">Clear filters</string>
+    <string name="admin_ev_today">Today</string>
+    <string name="admin_ev_yesterday">Yesterday</string>
+    <string name="admin_ev_undated">Without a date</string>
+    <string name="admin_ev_code">Activity code</string>
+    <string name="admin_ev_initiator">Who</string>
+    <string name="admin_ev_initiator_id">Initiator ID</string>
+    <string name="admin_ev_target">Target ID</string>
+    <string name="admin_ev_meta">Details</string>
+    <string name="admin_ev_value">Value</string>
+    <string name="admin_ev_traffic_unavailable">This server does not keep network traffic events (they need NetBird Cloud with traffic logging on).</string>
+    <string name="admin_ev_traffic_empty">No traffic events</string>
+    <string name="admin_ev_prev">Newer</string>
+    <string name="admin_ev_next">Older</string>
+    <string name="admin_ev_page">Page %1$d of %2$d · %3$d in all</string>
+    <string name="admin_ev_bytes">↑%1$d B ↓%2$d B</string>
+    <string name="admin_ev_dropped">dropped</string>
+    <string name="admin_acct_on">on</string>
+    <string name="admin_acct_off">off</string>
+    <string name="admin_acct_none">none</string>
+    <string name="admin_acct_none_readable">No account could be read with this credential.</string>
+    <string name="admin_acct_id">Account ID</string>
+    <string name="admin_acct_embedded_idp">Built-in identity provider</string>
+    <string name="admin_acct_change_title">Change: %1$s</string>
+    <string name="admin_acct_unit_hours">Hours</string>
+    <string name="admin_acct_unit_days">Days</string>
+    <string name="admin_acct_bad_cidr4">An IPv4 network like 100.64.0.0/10 (prefix 8 to 30)</string>
+    <string name="admin_acct_bad_cidr6">An IPv6 network like fd00:1234::/64</string>
+    <string name="admin_acct_bad_domain">A domain like netbird.cloud</string>
+    <string name="admin_acct_bad_duration">From 1 hour to 180 days</string>
+    <string name="admin_acct_section_account">Account</string>
+    <string name="admin_acct_section_peers">Peers</string>
+    <string name="admin_acct_section_users">Users and sign-in</string>
+    <string name="admin_acct_section_groups">Groups and JWT</string>
+    <string name="admin_acct_section_network">Network and DNS</string>
+    <string name="admin_acct_section_traffic">Traffic logs</string>
+    <string name="admin_acct_section_updates">Updates and metrics</string>
+    <string name="admin_acct_login_exp">Peer login expiration</string>
+    <string name="admin_acct_login_exp_help">Peers added by users must sign in again after the set time. Peers added with setup keys are not affected.</string>
+    <string name="admin_acct_login_exp_on">Peers added by users must sign in again when their login expires.</string>
+    <string name="admin_acct_login_exp_off">Peers stay signed in for good, whatever happens to the people who added them.</string>
+    <string name="admin_acct_login_exp_time">Login expires after</string>
+    <string name="admin_acct_login_exp_time_help">How long a peer added by a user stays signed in.</string>
+    <string name="admin_acct_login_exp_time_set">Peers must sign in again after %1$s.</string>
+    <string name="admin_acct_inact_exp">Peer inactivity expiration</string>
+    <string name="admin_acct_inact_exp_help">A peer that stays disconnected for the set time must sign in again.</string>
+    <string name="admin_acct_inact_exp_on">Peers that stay offline too long must sign in again.</string>
+    <string name="admin_acct_inact_exp_off">Peers keep their login however long they stay offline.</string>
+    <string name="admin_acct_inact_exp_time">Inactive for</string>
+    <string name="admin_acct_inact_exp_time_help">How long a peer may stay offline before it must sign in again.</string>
+    <string name="admin_acct_inact_exp_time_set">Peers offline for %1$s must sign in again.</string>
+    <string name="admin_acct_peer_approval">Peer approval</string>
+    <string name="admin_acct_peer_approval_help">New peers wait for an administrator before they join the network.</string>
+    <string name="admin_acct_peer_approval_on">New peers wait for an administrator\'s approval before they join.</string>
+    <string name="admin_acct_peer_approval_off">New peers join at once, with nobody reviewing them.</string>
+    <string name="admin_acct_peer_approval_warning">Peers waiting now are let in, and every new peer joins without review.</string>
+    <string name="admin_acct_user_approval">User approval</string>
+    <string name="admin_acct_user_approval_help">People who sign up wait for an administrator before they can use the account.</string>
+    <string name="admin_acct_user_approval_on">New users wait for an administrator\'s approval.</string>
+    <string name="admin_acct_user_approval_off">Anyone who signs up gets in at once.</string>
+    <string name="admin_acct_hostname">Reject duplicate hostnames</string>
+    <string name="admin_acct_hostname_help">A peer whose hostname another peer already has is refused instead of being renamed.</string>
+    <string name="admin_acct_hostname_on">A peer with a hostname already taken is refused.</string>
+    <string name="admin_acct_hostname_off">A peer with a hostname already taken gets a numbered name.</string>
+    <string name="admin_acct_lazy">Lazy connections</string>
+    <string name="admin_acct_lazy_help">Peers connect to each other only when traffic needs it, and drop idle connections.</string>
+    <string name="admin_acct_lazy_on">Peers open connections only when needed and close idle ones.</string>
+    <string name="admin_acct_lazy_off">Peers keep a connection to every peer they may reach.</string>
+    <string name="admin_acct_expose">Peers may publish services</string>
+    <string name="admin_acct_expose_help">Peers in the chosen groups may put their ports on the internet through the reverse proxy.</string>
+    <string name="admin_acct_expose_on">Peers in the chosen groups may publish their ports on the internet.</string>
+    <string name="admin_acct_expose_off">No peer may publish its own ports any more; services already published stop.</string>
+    <string name="admin_acct_expose_groups">Groups that may publish</string>
+    <string name="admin_acct_expose_groups_help">Only peers in these groups may publish their ports.</string>
+    <string name="admin_acct_expose_groups_set">Peers in %1$s may publish their ports.</string>
+    <string name="admin_acct_view_blocked">Hide the network from regular users</string>
+    <string name="admin_acct_view_blocked_help">Regular users see only their own peers in the dashboard, not the rest of the network.</string>
+    <string name="admin_acct_view_blocked_on">Regular users see only their own peers.</string>
+    <string name="admin_acct_view_blocked_off">Regular users can see every peer, group and route of the account.</string>
+    <string name="admin_acct_local_auth_off">Disable local sign-in</string>
+    <string name="admin_acct_local_auth_off_help">Users can sign in only through an identity provider, not with a local password.</string>
+    <string name="admin_acct_local_auth_off_on">Local passwords stop working: everyone signs in through an identity provider.</string>
+    <string name="admin_acct_local_auth_off_off">Users may sign in with a local password again.</string>
+    <string name="admin_acct_local_auth_off_warning">Anyone without a working identity provider, possibly you, can no longer sign in.</string>
+    <string name="admin_acct_mfa">Two-factor for local sign-in</string>
+    <string name="admin_acct_mfa_help">Local sign-in asks for a second factor.</string>
+    <string name="admin_acct_mfa_on">Local sign-in asks for a second factor.</string>
+    <string name="admin_acct_mfa_off">A local password alone is enough to sign in.</string>
+    <string name="admin_acct_propagation">Propagate groups to peers</string>
+    <string name="admin_acct_propagation_help">When a user\'s auto-groups change, their existing peers join or leave those groups too.</string>
+    <string name="admin_acct_propagation_on">Changing a user\'s auto-groups moves their existing peers too.</string>
+    <string name="admin_acct_propagation_off">Changing a user\'s auto-groups affects only peers added later.</string>
+    <string name="admin_acct_jwt">Groups from JWT</string>
+    <string name="admin_acct_jwt_help">Users get groups from a claim of their identity provider\'s token.</string>
+    <string name="admin_acct_jwt_on">Users\' groups follow the claim in their identity provider\'s token.</string>
+    <string name="admin_acct_jwt_off">Groups come only from what is set here.</string>
+    <string name="admin_acct_jwt_claim">JWT groups claim</string>
+    <string name="admin_acct_jwt_claim_help">The token claim that lists the user\'s groups, e.g. groups.</string>
+    <string name="admin_acct_jwt_claim_set">Groups are read from the claim %1$s.</string>
+    <string name="admin_acct_jwt_allow">Allowed JWT groups</string>
+    <string name="admin_acct_jwt_allow_help">Only users in one of these groups (names, separated by commas) may use the account; empty lets everyone in.</string>
+    <string name="admin_acct_jwt_allow_set">Only members of %1$s may use the account.</string>
+    <string name="admin_acct_range">Network range (IPv4)</string>
+    <string name="admin_acct_range_help">The addresses peers get. Changing it gives every peer a new address.</string>
+    <string name="admin_acct_range_set">Every peer gets a new address in %1$s.</string>
+    <string name="admin_acct_range_warning">Connections drop while peers move, and anything that relies on the old addresses breaks.</string>
+    <string name="admin_acct_range6">Network range (IPv6)</string>
+    <string name="admin_acct_range6_help">The IPv6 addresses peers get in IPv6-enabled groups.</string>
+    <string name="admin_acct_range6_set">Peers get new IPv6 addresses in %1$s.</string>
+    <string name="admin_acct_ipv6_groups">IPv6 groups</string>
+    <string name="admin_acct_ipv6_groups_help">Peers in these groups also get an IPv6 address.</string>
+    <string name="admin_acct_ipv6_groups_set">Peers in %1$s get IPv6 addresses.</string>
+    <string name="admin_acct_dns_domain">DNS domain</string>
+    <string name="admin_acct_dns_domain_help">The domain every peer\'s name ends with, e.g. laptop.netbird.cloud.</string>
+    <string name="admin_acct_dns_domain_set">Every peer\'s name ends with %1$s.</string>
+    <string name="admin_acct_dns_domain_warning">Every peer name changes: bookmarks, scripts and certificates using the old names stop matching.</string>
+    <string name="admin_acct_routing_dns">DNS through routing peers</string>
+    <string name="admin_acct_routing_dns_help">Routing peers resolve domain routes for the peers behind them.</string>
+    <string name="admin_acct_routing_dns_on">Routing peers resolve the names of domain routes.</string>
+    <string name="admin_acct_routing_dns_off">Each peer resolves domain routes itself.</string>
+    <string name="admin_acct_traffic">Network traffic logs</string>
+    <string name="admin_acct_traffic_help">Peers report the connections they make; the Events area shows them.</string>
+    <string name="admin_acct_traffic_on">Peers report their connections to the server.</string>
+    <string name="admin_acct_traffic_off">Peers stop reporting their connections.</string>
+    <string name="admin_acct_counters">Packet counters</string>
+    <string name="admin_acct_counters_help">Traffic logs also count bytes and packets.</string>
+    <string name="admin_acct_counters_on">Traffic logs count bytes and packets.</string>
+    <string name="admin_acct_counters_off">Traffic logs record connections without counting.</string>
+    <string name="admin_acct_traffic_groups">Logged groups</string>
+    <string name="admin_acct_traffic_groups_help">Only peers in these groups report traffic; empty is every peer.</string>
+    <string name="admin_acct_traffic_groups_set">Traffic is logged for %1$s.</string>
+    <string name="admin_acct_update_version">Client auto-update version</string>
+    <string name="admin_acct_update_version_help">The version clients update themselves to: a number, latest, or empty for none.</string>
+    <string name="admin_acct_update_version_set">Clients update themselves to %1$s.</string>
+    <string name="admin_acct_update_always">Update without asking</string>
+    <string name="admin_acct_update_always_help">Clients install the update at once instead of asking their user.</string>
+    <string name="admin_acct_update_always_on">Clients install updates without asking.</string>
+    <string name="admin_acct_update_always_off">Clients ask their user before updating.</string>
+    <string name="admin_acct_metrics">Push metrics</string>
+    <string name="admin_acct_metrics_help">Clients send performance metrics to the server.</string>
+    <string name="admin_acct_metrics_on">Clients send performance metrics.</string>
+    <string name="admin_acct_metrics_off">Clients stop sending metrics.</string>
+    <string name="admin_stream_create">New stream</string>
+    <string name="admin_stream_create_for">New %1$s stream</string>
+    <string name="admin_stream_pick_platform">Where should the audit log be copied?</string>
+    <string name="admin_stream_search">Search streams</string>
+    <string name="admin_stream_empty">No event streams</string>
+    <string name="admin_stream_no_match">No stream matches</string>
+    <string name="admin_stream_platform">Platform</string>
+    <string name="admin_stream_enabled">Enabled</string>
+    <string name="admin_stream_config">Configuration</string>
+    <string name="admin_stream_config_empty">The server did not show the configuration.</string>
+    <string name="admin_stream_secret_note">Values that look like credentials are hidden. Nothing here is saved on the phone.</string>
+    <string name="admin_stream_edit">Edit configuration</string>
+    <string name="admin_stream_edit_note">Fill in only what changes: a blank value keeps what the server has.</string>
+    <string name="admin_stream_delete">Delete</string>
+    <string name="admin_stream_key">Key</string>
+    <string name="admin_stream_value">Value</string>
+    <string name="admin_stream_unchanged">unchanged</string>
+    <string name="admin_stream_add_key">Add a key</string>
+    <string name="admin_stream_create_title">Stream the audit log to %1$s</string>
+    <string name="admin_stream_create_effect">Every audit event of the account is copied to %1$s.</string>
+    <string name="admin_stream_on_title">Turn on %1$s</string>
+    <string name="admin_stream_off_title">Turn off %1$s</string>
+    <string name="admin_stream_on_effect">Audit events are copied to the destination again.</string>
+    <string name="admin_stream_off_effect">Audit events stop reaching the destination until it is turned back on.</string>
+    <string name="admin_stream_config_title">Change the configuration of %1$s</string>
+    <string name="admin_stream_config_effect">These keys change: %1$s.</string>
+    <string name="admin_stream_delete_title">Delete %1$s</string>
+    <string name="admin_stream_delete_effect">The destination stops getting audit events, and its configuration is removed.</string>
+    <string name="admin_idp_create">New provider</string>
+    <string name="admin_idp_edit">Edit</string>
+    <string name="admin_idp_delete">Delete</string>
+    <string name="admin_idp_search">Search providers</string>
+    <string name="admin_idp_empty">No identity providers</string>
+    <string name="admin_idp_no_match">No provider matches</string>
+    <string name="admin_idp_type">Type</string>
+    <string name="admin_idp_name">Name</string>
+    <string name="admin_idp_issuer">Issuer URL</string>
+    <string name="admin_idp_client_id">Client ID</string>
+    <string name="admin_idp_client_secret">Client secret</string>
+    <string name="admin_idp_id">ID</string>
+    <string name="admin_idp_secret_hidden">kept on the server, never shown</string>
+    <string name="admin_idp_secret_note">The secret goes to the server and is not kept on the phone.</string>
+    <string name="admin_idp_secret_again">The server never returns the secret: enter it again to save any change.</string>
+    <string name="admin_idp_secret_replaced">replaced</string>
+    <string name="admin_idp_signin_warning">Everyone who signs in through this provider is affected; a mistake can lock them out.</string>
+    <string name="admin_idp_create_title">Add provider %1$s</string>
+    <string name="admin_idp_create_effect">People can sign in through this %1$s provider.</string>
+    <string name="admin_idp_update_title">Change provider %1$s</string>
+    <string name="admin_idp_update_effect">Sign-in through this provider uses the new settings from now on.</string>
+    <string name="admin_idp_delete_title">Delete provider %1$s</string>
+    <string name="admin_idp_delete_effect">Nobody can sign in through this provider any more.</string>
+    <string name="admin_rp_tab_services">Services</string>
+    <string name="admin_rp_tab_domains">Domains</string>
+    <string name="admin_rp_publish_title">Publish a port of this phone</string>
+    <string name="admin_rp_publish_desc">The Publish screen puts a local port on the internet while BirdSocks runs.</string>
+    <string name="admin_rp_search_services">Search services</string>
+    <string name="admin_rp_search_domains">Search domains</string>
+    <string name="admin_rp_services_empty">No published services</string>
+    <string name="admin_rp_domains_empty">No domains</string>
+    <string name="admin_rp_no_match">Nothing matches</string>
+    <string name="admin_rp_enabled">Enabled</string>
+    <string name="admin_rp_filter_problem">Needs attention</string>
+    <string name="admin_rp_status_active">active</string>
+    <string name="admin_rp_status_pending">pending</string>
+    <string name="admin_rp_mode">Mode</string>
+    <string name="admin_rp_cluster">Proxy cluster</string>
+    <string name="admin_rp_targets">Targets</string>
+    <string name="admin_rp_auth">Visitor sign-in</string>
+    <string name="admin_rp_auth_none">none: open to anyone</string>
+    <string name="admin_rp_certificate">Certificate issued</string>
+    <string name="admin_rp_json">JSON</string>
+    <string name="admin_rp_json_note">The service as the server has it; saving replaces it.</string>
+    <string name="admin_rp_delete">Delete</string>
+    <string name="admin_rp_service_create">New service</string>
+    <string name="admin_rp_domain_add">Add domain</string>
+    <string name="admin_rp_domain">Domain</string>
+    <string name="admin_rp_domain_help">Point a CNAME of the domain at the cluster, then validate it here.</string>
+    <string name="admin_rp_validated">validated</string>
+    <string name="admin_rp_unvalidated">not validated</string>
+    <string name="admin_rp_validate">Validate</string>
+    <string name="admin_rp_validate_ok">%1$s checked out</string>
+    <string name="admin_rp_validate_fail">%1$s did not check out yet: is its CNAME in place?</string>
+    <string name="admin_rp_public_warning">The service answers anyone on the internet who reaches its address, within its sign-in rules.</string>
+    <string name="admin_rp_service_create_title">Publish service %1$s</string>
+    <string name="admin_rp_service_create_effect">%1$s starts answering on the internet.</string>
+    <string name="admin_rp_service_on_title">Turn on %1$s</string>
+    <string name="admin_rp_service_off_title">Turn off %1$s</string>
+    <string name="admin_rp_service_on_effect">%1$s answers on the internet again.</string>
+    <string name="admin_rp_service_off_effect">%1$s stops answering until it is turned back on.</string>
+    <string name="admin_rp_service_edit_title">Change service %1$s</string>
+    <string name="admin_rp_service_edit_effect">%1$s works as the edited JSON says from now on.</string>
+    <string name="admin_rp_service_delete_title">Delete service %1$s</string>
+    <string name="admin_rp_service_delete_effect">%1$s stops answering and its settings are removed.</string>
+    <string name="admin_rp_domain_add_title">Add domain %1$s</string>
+    <string name="admin_rp_domain_add_effect">Services may use %1$s once its CNAME points at %2$s and it validates.</string>
+    <string name="admin_rp_domain_delete_title">Delete domain %1$s</string>
+    <string name="admin_rp_domain_delete_effect">Services on this domain stop answering.</string>
+    <string name="admin_rp_domain_in_use">In use by: %1$s</string>
+    <plurals name="admin_pat_days_left">
+        <item quantity="one">expires in %d day</item>
+        <item quantity="other">expires in %d days</item>
+    </plurals>
+    <plurals name="admin_acct_dur_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="admin_acct_dur_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
 </resources>
