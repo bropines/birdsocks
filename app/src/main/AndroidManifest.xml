@@ -220,6 +220,7 @@
         <activity android:name=".ui.DnsActivity" android:exported="false" />
         <activity android:name=".ui.DiagnosticsActivity" android:exported="false" />
         <activity android:name=".ui.TraceActivity" android:exported="false" />
+        <activity android:name=".ui.LicensesActivity" android:exported="false" />
         <activity android:name=".ui.ExposeActivity" android:exported="false" />
         <!-- A task of its own, so a tap on the shortcut or the switch widget does not bring the
              app's task to the front behind it. -->

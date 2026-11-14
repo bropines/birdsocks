@@ -35,10 +35,14 @@ any code taken from NetBird's official Android app, which is GPLv3.
 
 ## In the app
 
-Settings → About → **Licenses** lists the components; **Full texts** opens
-every license in full, as MIT and BSD ask a binary to carry them. The texts
-live in [`app/src/main/assets/third_party_licenses.txt`](../app/src/main/assets/third_party_licenses.txt);
-update it when a component is added or changes its license.
+Settings → About → **Open-source licenses** (or `birdsocks://licenses`) lists
+every component in the APK — the Go modules in the daemon and the bridge, the
+Android libraries, the native C libraries — with its license and full text, as
+MIT and BSD ask a binary to carry them. The list is
+[`app/src/main/assets/licenses.json`](../app/src/main/assets/licenses.json),
+written by `scripts/licenses/generate.py` from what the build links and
+committed. Run it after `appctr/build.sh` and a Gradle build whenever a
+dependency changes; CI's `--check` warns when it is out of date.
 
 ## Trademark
 

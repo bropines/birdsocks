@@ -142,8 +142,10 @@ repository. Its `management/`, `signal/`, `relay/`, `combined/`, `proxy/` and
 (check with `go list -deps ./client/birdsocksd` after a new import). The official NetBird Android app
 (`netbirdio/android-client`) is **GPLv3: a reference, never a source** — read it to
 learn behaviour, write our own code. `client/internal/anet` carries anet's
-BSD-3 license (patch 03), and `assets/third_party_licenses.txt` the full texts
-the APK ships; regenerate it when a component changes.
+BSD-3 license (patch 03). `assets/licenses.json` is the Open-source licenses
+screen: every component the APK ships with its full text, written by
+`scripts/licenses/generate.py` from what the build links. Rerun it after
+`appctr/build.sh` and a Gradle build whenever a dependency changes, and commit it.
 
 ---
 

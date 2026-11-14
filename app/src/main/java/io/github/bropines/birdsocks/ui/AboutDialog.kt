@@ -48,7 +48,6 @@ fun AboutDialog(onDismiss: () -> Unit) {
     val selfUpdate = remember { UpdateChannel.selfUpdate(context) }
     val core = remember { runCatching { Appctr.coreVersion() }.getOrDefault("?") }
     var showChangelog by remember { mutableStateOf(false) }
-    var showLicenses by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -89,7 +88,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     Text(context.getString(R.string.about_donate))
                 }
 
-                OutlinedButton(onClick = { showLicenses = true }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { context.startActivity(android.content.Intent(context, LicensesActivity::class.java)) }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Gavel, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(context.getString(R.string.nb_about_licenses))
@@ -101,7 +100,6 @@ fun AboutDialog(onDismiss: () -> Unit) {
     )
 
     if (showChangelog) ChangelogDialog(onDismiss = { showChangelog = false })
-    if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
 }
 
 /**
@@ -272,33 +270,3 @@ private fun ReleaseNotes(release: Updater.Release, context: android.content.Cont
     }
 }
 
-/**
- * The licenses: one line per component, and the full texts the APK carries
- * (assets/third_party_licenses.txt), as MIT and BSD ask a binary to.
- */
-@Composable
-fun LicensesDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    var fullTexts by remember { mutableStateOf<String?>(null) }
-    val full = fullTexts
-    if (full == null) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(context.getString(R.string.nb_about_licenses)) },
-            text = { Text(context.getString(R.string.nb_about_licenses_text), style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
-            confirmButton = { TextButton(onClick = onDismiss) { Text(context.getString(R.string.action_close)) } },
-            dismissButton = {
-                TextButton(onClick = {
-                    fullTexts = runCatching { context.assets.open("third_party_licenses.txt").bufferedReader().use { it.readText() } }.getOrDefault("")
-                }) { Text(context.getString(R.string.nb_about_licenses_full)) }
-            }
-        )
-    } else {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(context.getString(R.string.nb_about_licenses)) },
-            text = { Text(full, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.verticalScroll(rememberScrollState())) },
-            confirmButton = { TextButton(onClick = onDismiss) { Text(context.getString(R.string.action_close)) } }
-        )
-    }
-}
