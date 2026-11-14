@@ -257,6 +257,9 @@ dependencies {
     
     
     implementation(libs.androidx.material3.adaptive)
+    // The admin panel: BiometricPrompt for writes, a QR for new setup keys.
+    implementation(libs.androidx.biometric)
+    implementation(libs.qrcodegen)
     debugImplementation(libs.androidx.ui.tooling)
     screenshotTestImplementation(libs.screenshot.validation.api)
     screenshotTestImplementation(libs.androidx.ui.tooling)

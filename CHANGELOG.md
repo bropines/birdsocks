@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- An admin panel for the active account, from Settings → Account or `birdsocks://admin`: overview, peers (search, rename, login expiration, delete), setup keys (create with an invite QR, revoke) and groups, through the server's API with an access token sealed on the phone; changes ask for the screen lock, read-only by default.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added

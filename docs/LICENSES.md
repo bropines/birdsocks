@@ -20,7 +20,8 @@ their own licenses:
 | [lwIP](https://savannah.nongnu.org/projects/lwip) | hev-socks5-tunnel's TCP/IP stack | BSD-3-Clause |
 | [hev-task-system](https://github.com/heiher/hev-task-system) | hev-socks5-tunnel's task runtime | MIT |
 | [ByeDPI](https://github.com/hufrea/byedpi) | the server connection against DPI | MIT |
-| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp) | the app | Apache-2.0 |
+| [qrcodegen](https://github.com/nayuki/QR-Code-generator) (Project Nayuki) | the QR code of a new setup key's invite link in the admin panel | MIT |
+| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp), [AndroidX Biometric](https://developer.android.com/jetpack/androidx/releases/biometric) | the app | Apache-2.0 |
 
 The daemon links about 110 Go modules in all (NetBird's `go.mod`): Apache-2.0,
 MIT, BSD, ISC and CC0, and three unmodified MPL-2.0 HashiCorp modules

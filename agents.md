@@ -154,6 +154,43 @@ Binding:
 
 ---
 
+## Admin panel (`admin/`)
+
+An in-app client of NetBird's **management HTTP API** for the active account:
+overview, peers, setup keys, groups. Entered only through `AdminPanel.open()`
+(Settings → Account, `birdsocks://admin`, later a main-screen button).
+
+* **The API, not the dashboard.** Calling management's HTTP API is fine;
+  NetBird's dashboard is **AGPLv3** and its Android app GPLv3: read them to
+  learn behaviour, never copy code, strings or layouts. Models in
+  `admin/api/ApiModels.kt` are written by hand from
+  `shared/management/http/api/openapi.yml`; never import its generated Go types.
+* **Base URL:** the profile's management URL with its port, plus `/api`
+  (`AdminUrls.apiBase`). https only; plain http only to loopback; no user info.
+* **Route:** the control plane's own (`AdminSession.controlRoute`): the user's
+  proxy or ByeDPI, as the daemon gets `NB_BIRDSOCKS_CONTROL_PROXY`. A route that
+  cannot be taken fails the request — never fall back to direct. SOCKS5 with a
+  password is refused until the Go bridge carries these requests.
+* **Secrets.** A per-account PAT, sealed by `secure/KeystoreSecretBox`
+  (AES-GCM, Keystore key, AAD bound to the account) in `admin_vault.xml`,
+  which is excluded from backups and device transfer and is not in
+  `core/Backup`. The account id is a hash of profile and normalized URL: a
+  changed server is another credential. Never log a token, never put one in an
+  exception message, a `toString()` or a URL. This device's sign-in (the
+  daemon's `RequestJWTAuth`, experimental) lives in memory only and is dropped
+  on the first 401.
+* **Writes.** Every change goes through `secure/AdminWriteGate` (biometric or
+  screen lock, Keystore-proven, fails closed). No screen lock, the per-account
+  **read-only** switch (on by default) or a role without the permission
+  (`users/current` → `permissions.modules`, narrowed by a 403) all mean the
+  control is not offered. Never delete this device's own peer. Destructive
+  changes confirm first; deleting a peer asks for its name to be typed.
+* **Decoding.** Lists decode element by element into `Listing<T>`; one bad
+  element costs that element. Reads retry on 429/502–504/no answer; writes only
+  on 429. New strings go in `strings_admin.xml`.
+
+---
+
 ## Working agreements
 
 * **Never run `git push`** — the author publishes, after testing, on «пушь».

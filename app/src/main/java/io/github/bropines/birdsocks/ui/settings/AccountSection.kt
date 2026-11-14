@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.admin.AdminPanel
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.ui.AccountSheet
@@ -76,6 +77,14 @@ internal fun AccountSection(env: SettingsEnv) {
                 subtitle = it.managementUrl,
                 icon = Icons.Default.Dns
             ) { openUrl(context, it.dashboardUrl) }
+            // The same server's peers, keys and groups in the app: the token
+            // setup until this account has a credential, the panel after.
+            val hasCredential = remember(env.profile, it.managementUrl) { AdminPanel.hasCredential(context, env.profile, it.managementUrl) }
+            SettingsClickableItem(
+                title = stringResource(R.string.admin_settings_row),
+                subtitle = stringResource(if (hasCredential) R.string.admin_settings_row_open else R.string.admin_settings_row_setup),
+                icon = Icons.Default.AdminPanelSettings
+            ) { AdminPanel.open(context) }
         }
         env.status?.sessionExpiresAt?.let { Box(Modifier.padding(vertical = 4.dp)) { SessionRow(it) } }
 
