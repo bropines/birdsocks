@@ -179,8 +179,17 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
         } else if (phase != Phase.READY) {
             phase = Phase.LOADING
         }
+        // Checked a moment ago in this process (the panel reopened, a deep link): the
+        // cached user stands, and a 401 on the next read still sends to setup.
+        val recent = checkedAt[acc.id]?.let { System.currentTimeMillis() - it < FRESH_MS } == true
+        if (recent && cachedUser != null && phase == Phase.READY) {
+            ownTokenId = ownTokens[acc.id]
+            load(*AdminKeys.HOME.toTypedArray())
+            return
+        }
         try {
             val me = client.currentUser()
+            checkedAt[acc.id] = System.currentTimeMillis()
             api = client
             user = me
             caps = Capabilities.of(me)
@@ -188,7 +197,8 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
             if (cachedUser == null) data.seed(AdminKeys.ALL, cached)
             phase = Phase.READY
             saveCurrentUser(acc.id, me)
-            refreshLoaded()
+            // What the home screen shows, where it is stale; areas read their own on entry.
+            load(*AdminKeys.HOME.toTypedArray())
             if (authMode == AuthMode.TOKEN) learnOwnToken(client, me)
         } catch (e: AdminApiException.Unauthorized) {
             onUnauthorized(acc)
@@ -207,11 +217,23 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
     /** Best effort: which token this is, so the runner can refuse revoking it. Needs the PATs read permission. */
     private fun learnOwnToken(client: NetbirdApi, me: ApiUser) {
         if (caps?.can(Capabilities.PATS, Op.READ) == false) return
-        viewModelScope.launch { ownTokenId = runCatching { client.guessOwnTokenId(me.id) }.getOrNull() }
+        val acc = account?.id
+        if (acc != null && ownTokens.containsKey(acc)) { ownTokenId = ownTokens[acc]; return }
+        viewModelScope.launch {
+            ownTokenId = runCatching { client.guessOwnTokenId(me.id) }.getOrNull()
+            if (acc != null) ownTokenId?.let { ownTokens[acc] = it }
+        }
+    }
+
+    /** The credential changed or was refused: the next open asks the server again. */
+    private fun forget(accountId: String) {
+        checkedAt.remove(accountId)
+        ownTokens.remove(accountId)
     }
 
     /** A 401: this device's token is dropped for the stored one; a rejected stored token sends to setup. */
     private suspend fun onUnauthorized(acc: AdminAccount) {
+        forget(acc.id)
         if (authMode == AuthMode.DEVICE) {
             AdminSession.setJwt(acc.id, null)
             if (hasToken) { connect(acc); return }
@@ -234,7 +256,9 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
         if (!canRead(key.module)) return
         val current = data[key]
         if (current.loading) return
-        val fresh = current.value != null && !current.fromDisk && System.currentTimeMillis() - current.loadedAt < FRESH_MS
+        // Fresh for a while, from disk too: opening the panel or an area again within
+        // FRESH_MS asks the server nothing; the refresh button and pull always do.
+        val fresh = current.value != null && System.currentTimeMillis() - current.loadedAt < FRESH_MS
         if (!force && fresh) return
         data.update(key) { it.copy(loading = true) }
         viewModelScope.launch {
@@ -353,6 +377,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
     fun saveToken(token: String, readOnlyChoice: Boolean) {
         val acc = account ?: return
         if (!vault.putToken(acc.id, token)) { note = AdminNote.res(R.string.admin_token_not_saved); return }
+        forget(acc.id)
         vault.setReadOnly(acc.id, readOnlyChoice)
         readOnly = readOnlyChoice
         hasToken = true
@@ -367,6 +392,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
     fun forgetToken() {
         val acc = account ?: return
         vault.forget(acc.id)
+        forget(acc.id)
         AdminSession.setJwt(acc.id, null)
         runCatching { cache.clear(acc.id) }
         hasToken = false
@@ -408,7 +434,12 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
 
     companion object {
         /** A value read this recently is not read again when a screen opens. */
-        private const val FRESH_MS = 30_000L
+        /** How long a list read from the server is used as it is before an open reads it again. */
+        internal const val FRESH_MS = 5 * 60_000L
+        /** When this process last heard the server confirm each account's credential. */
+        private val checkedAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+        /** The access token each account signs in with, once learned (for the "token in use" guard). */
+        private val ownTokens = java.util.concurrent.ConcurrentHashMap<String, String>()
         /** The cache entry for who the credential is, so the panel opens before the server answers. */
         private const val CURRENT_USER = "current_user"
     }

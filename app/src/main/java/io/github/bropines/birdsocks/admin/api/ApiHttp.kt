@@ -132,6 +132,8 @@ class OkHttpTransport(route: ProxyRoute, timeoutSec: Long = 20) : HttpTransport 
             .build()
         return try {
             client.newCall(okRequest).execute().use { resp ->
+                // Method, path and status only: never a header, a query or a body.
+                runCatching { appctr.Appctr.logAndroid("DEBUG", "ADMIN", "${request.method} ${okRequest.url.encodedPath} → ${resp.code}") }
                 HttpResponse(resp.code, resp.body?.string().orEmpty(), resp.headers.toMultimap().mapValues { it.value.firstOrNull().orEmpty() })
             }
         } catch (e: IOException) {

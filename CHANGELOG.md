@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- Admin panel: lists read from the server are used for five minutes before an open asks again; the refresh button and a pull still ask at once.
 - NetBird v0.83.1.
 - Root mode lives beside another VPN: it routes only NetBird's addresses then, or the apps that VPN bypasses; "Take the device" overrides.
 - Peers: a pull at the top of the list brings out the search; refresh moved to the top bar, beside a search button. The filter is remembered between visits.
