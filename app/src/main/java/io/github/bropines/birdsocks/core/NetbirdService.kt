@@ -361,6 +361,9 @@ class NetbirdService : Service() {
         ensureChannel(EVENTS_CHANNEL_ID, getString(R.string.nb_events_channel), NotificationManager.IMPORTANCE_DEFAULT)
         for (e in fresh) {
             if (e.severity !in setOf("WARNING", "ERROR", "CRITICAL")) continue
+            // A switch between redundant routing peers is NetBird balancing latency, not trouble:
+            // it stays in Events, without a notification each time.
+            if (e.message == "Routing peer changed") continue
             val at = io.github.bropines.birdsocks.ui.parseRfc3339Millis(e.timestamp) ?: continue
             if (now - at > 2 * 60_000) continue
             val open = PendingIntent.getActivity(this, 4, DiagnosticsActivity.intent(this, DiagnosticsActivity.PAGE_EVENTS), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

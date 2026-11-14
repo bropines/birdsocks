@@ -10,6 +10,9 @@
 - Root mode keeps the local network local and stays off carrier addresses inside NetBird's range.
 - Root mode waits for Android to validate the network before redirecting DNS, and steps aside while NetBird's resolver is silent.
 
+### Fixed
+- A switch between redundant routing peers no longer raises a notification each time.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added
