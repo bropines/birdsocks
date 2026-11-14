@@ -13,10 +13,15 @@ roughly in order.
 - Wi-Fi ↔ mobile switches (see the network monitor below).
 - The server connection through a SOCKS5/HTTP proxy and through ByeDPI (patch 08).
 - The R8 release build on a device.
+- Root mode beside a real VPN app (the shared and yielded states), with Private DNS on, and on KernelSU.
+- The admin panel against NetBird Cloud and a self-hosted server; signing in as this device.
 
 ## Next
 - **HTTP proxy** next to SOCKS5, for apps that only speak HTTP.
+- **Admin panel, phase 2**: users and invites, the audit feed; a token behind SOCKS5 with a password.
+- **Weblate**: the hosted project, once the repository is public (docs/TRANSLATING.md).
 
 ## Later
-- Root mode.
-- F-Droid (reproducible builds, all four ABIs), Weblate.
+- Admin panel, phase 3: policies, networks, DNS, posture checks.
+- Root mode at boot, before the app opens.
+- F-Droid (reproducible builds, all four ABIs).
