@@ -15,8 +15,8 @@ interface (`birdsocks0`, `birdsocksd0` for a debug build), hands it to the
 daemon over a unix socket and installs the routing. The helper lives exactly as
 long as the app's pipe to it: when BirdSocks stops, when the app dies, when the
 daemon lets go of the interface, or on a signal, it removes every rule it made.
-A helper that was killed outright leaves its rules behind; the next one removes
-them before it starts.
+A helper that was killed outright leaves its rules behind; the app removes them
+the next time it starts, and a new helper does before it installs its own.
 
 ## What it claims: three tiers
 
