@@ -1,6 +1,5 @@
 package io.github.bropines.birdsocks.ui.settings
 
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,18 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.os.LocaleListCompat
 import io.github.bropines.birdsocks.R
-import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.SegmentedChipItem
 import io.github.bropines.birdsocks.core.SlidingSegmentedChips
 import io.github.bropines.birdsocks.ui.SettingsCard
 import io.github.bropines.birdsocks.ui.SettingsSwitchItem
-import io.github.bropines.birdsocks.ui.theme.findActivity
 
 /** The theme the Activity draws with, and how to change it; held by the Activity so a change repaints at once. */
 class Appearance(
@@ -41,7 +36,6 @@ data class PresetItem(val id: String, val color: Color, val name: String)
 /** Settings → Appearance & language. */
 @Composable
 internal fun AppearanceSection(a: Appearance) {
-    val context = LocalContext.current
     SettingsCard(stringResource(R.string.settings_sect_personalization)) {
         val themes = listOf(
             Triple("system", Icons.Default.Settings, stringResource(R.string.settings_theme_system)),
@@ -58,29 +52,10 @@ internal fun AppearanceSection(a: Appearance) {
             height = 38.dp
         )
 
-        var lang by remember { mutableStateOf(GlobalSettings.getString(context, "app_locale", "sys")) }
-        val langs = listOf(
-            "sys" to stringResource(R.string.settings_lang_sys),
-            "en" to stringResource(R.string.settings_lang_en),
-            "ru" to stringResource(R.string.settings_lang_ru)
-        )
         Spacer(Modifier.height(12.dp))
         Text(stringResource(R.string.settings_lang_title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
-        SlidingSegmentedChips(
-            items = langs.map { SegmentedChipItem(it.second, Icons.Default.Language) },
-            selectedIndex = langs.indexOfFirst { it.first == lang }.coerceAtLeast(0),
-            onOptionSelected = { i ->
-                val id = langs[i].first
-                lang = id
-                GlobalSettings.setString(context, "app_locale", id)
-                AppCompatDelegate.setApplicationLocales(if (id == "sys") LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(id))
-                // The open section survives this: the hub keeps it in saved state.
-                context.findActivity()?.recreate()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            height = 38.dp
-        )
+        LanguagePicker()
 
         if (!a.dynamicColor || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
             val presets = listOf(

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- The app language is picked from every translated language; on Android 13+ BirdSocks appears in the system's per-app language settings, and the two choices agree.
 - What's new opens once after an update, in Russian from CHANGELOG_RU.md.
 
 ### Fixed
