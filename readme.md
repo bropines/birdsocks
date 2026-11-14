@@ -19,6 +19,7 @@
     <th>NetBird core</th>
     <th>Android</th>
     <th>License</th>
+    <th>Translated</th>
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases/latest"><img src="https://img.shields.io/github/v/release/bropines/birdsocks?style=for-the-badge&logo=github&logoColor=white&label=&color=2ea44f" alt="Release" /></a></td>
@@ -26,6 +27,7 @@
     <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.80.0"><img src="https://img.shields.io/badge/v0.80.0-F68330?style=for-the-badge" alt="NetBird core" /></a></td>
     <td align="center"><img src="https://img.shields.io/badge/7.0%2B-3ddc84?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+" /></td>
     <td align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/BSD_3--Clause-orange?style=for-the-badge" alt="License" /></a></td>
+    <td align="center"><a href="https://hosted.weblate.org/engage/birdsocks/"><img src="https://img.shields.io/weblate/progress/birdsocks?server=https%3A%2F%2Fhosted.weblate.org&style=for-the-badge&logo=weblate&logoColor=white&label=" alt="Translated" /></a></td>
   </tr>
 </table>
 
@@ -109,7 +111,7 @@ It says what is actually going on:
 | **Links** | `birdsocks://` opens any screen. Action links ask before they act, and invite links open a filled-in new account. |
 | **Backups** | A settings file, or a full backup with NetBird's accounts and keys under a password. |
 | **40 app icons** | Pick one in Settings → Appearance & language, in BirdSocks' colours or NetBird's. |
-| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English and Russian. |
+| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English and Russian; other languages on [Hosted Weblate](https://hosted.weblate.org/engage/birdsocks/) (being set up). |
 
 ---
 
@@ -239,7 +241,7 @@ Releases are built by GitHub Actions from a `v*` tag: all four ABIs, signed, wit
 | [Building](docs/BUILDING.md) | The NetBird daemon, the bridge and the APK |
 | [Releasing](docs/RELEASING.md) | From a tag to signed APKs; the signing secrets |
 | [Licenses](docs/LICENSES.md) | BirdSocks' licence and every component it ships |
-| [Translating](docs/TRANSLATING.md) | Adding a language |
+| [Translating](docs/TRANSLATING.md) | Adding a language; the Hosted Weblate project |
 | [Roadmap](docs/ROADMAP.md) | What comes next |
 | [Contributing](CONTRIBUTING.md) | How to send a change |
 | [`agents.md`](agents.md) | Architecture and rules for contributors, human or AI |

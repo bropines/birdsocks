@@ -2,7 +2,9 @@
 
 *Русская версия: [TRANSLATING_RU.md](TRANSLATING_RU.md)*
 
-BirdSocks is to be translated on [Hosted Weblate](https://hosted.weblate.org/). The project does not exist yet: Weblate's free Libre plan is for public projects, and this repository is still private. Until then English and Russian are maintained in the repository. Once it exists, translators work in the browser, with machine suggestions to start from, and Weblate sends the result back as pull requests.
+BirdSocks is to be translated on [Hosted Weblate](https://hosted.weblate.org/), as the project `birdsocks`. Translators work in the browser, with machine suggestions to start from, and Weblate sends the result back as pull requests. English is the source, Russian is maintained by hand in the repository, and every other language comes from Weblate.
+
+> **Status: to be created by the author.** The Weblate project does not exist yet: the free Libre plan is for public projects, and this repository is still private. The repository is ready for it — the steps below, the language list and its test — and the README badges point at `hosted.weblate.org/engage/birdsocks/`, which starts working once the project is created.
 
 ## For translators
 
@@ -30,7 +32,8 @@ A few conventions:
    - File format: Android String Resource.
 4. **Notifications** of new pushes come through the GitHub app. Only without it: this repository's *Settings → Webhooks → Add webhook*, payload URL `https://hosted.weblate.org/hooks/github/`, content type `application/json`, just the push event.
 5. **Add-ons** worth enabling: *Cleanup translation files* (drops strings the source removed) and *Squash Git commits* (one commit per language per PR).
-6. **Badge** for the README once the project exists:
+6. **Russian is maintained by hand.** Every change adds its Russian strings to `values-ru/` in the same commit, so Weblate only ever finds Russian complete. Keep it that way on Weblate too: in the Russian translation's settings, or by restricting it to reviewers, so that a suggestion there cannot overwrite the hand-written text unseen.
+7. **Badge** in `readme.md` and `readme_ru.md`, already in place:
 
    ```markdown
    [![Translation status](https://hosted.weblate.org/widget/birdsocks/svg-badge.svg)](https://hosted.weblate.org/engage/birdsocks/)
@@ -38,4 +41,13 @@ A few conventions:
 
 ## For contributors adding strings
 
-Add every new string in English to `values/` and in Russian to `values-ru/`; Weblate will carry the rest. Give a screen with many strings its own `strings_<area>.xml` rather than growing `strings.xml`. Mark a string `translatable="false"` only when it is not language at all: a brand or protocol name, an address, a format with no words.
+Add every new string in English to `values/` and in Russian to `values-ru/`; Weblate carries the rest. Give a screen with many strings its own `strings_<area>.xml` rather than growing `strings.xml`, so component discovery picks it up. Mark a string `translatable="false"` only when it is not language at all: a brand or protocol name, an address, a format with no words.
+
+## Merging a new language
+
+A language appears in Settings → Appearance & language once it has a translated string and its tag is in `AppLanguages.TAGS` (`core/AppLanguages.kt`) and in `res/xml/locales_config.xml`, the list Android 13+ shows in its own per-app language settings. `AppLanguagesTest` fails until both match `res/values-*`, so merging a new language from Weblate means adding its BCP 47 tag (`values-zh-rTW` → `zh-TW`) in both places. A language Weblate has only opened, with empty files, is left out until it has strings. Weblate's pull requests are merged by the author.
+
+## What is not on Weblate
+
+- **The changelog.** `CHANGELOG.md` and its Russian twin `CHANGELOG_RU.md` are written together by hand; "What's new" shows the Russian one in a Russian interface and English everywhere else.
+- **Store texts.** `fastlane/metadata/android/` has `en-US` and `ru`. Weblate can take them later as an extra component (format *Fastlane metadata*); until then a new language there is a pull request.
