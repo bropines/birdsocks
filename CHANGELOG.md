@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- What's new opens once after an update, in Russian from CHANGELOG_RU.md.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added

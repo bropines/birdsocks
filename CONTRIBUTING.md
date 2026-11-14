@@ -15,7 +15,7 @@ VPN slot unless you turn VPN mode on.
 - The daemon is NetBird's. Talk to it through its gRPC API, never a CLI. Change its behaviour only with a patch in `appctr/patches/`: edit `appctr/netbird_src/`, run `appctr/patches/recreate_patches.sh`, then `appctr/build.sh`.
 - Never copy code from NetBird's official Android app. It is GPLv3; read it to learn how things behave, then write your own.
 - Put new strings in the `res/values*/strings_<area>.xml` of their screen, in English and Russian.
-- Add a short bullet to the top section of [`CHANGELOG.md`](CHANGELOG.md) for every change in behaviour. The reasons go in the commit message.
+- Add a short bullet to the top section of [`CHANGELOG.md`](CHANGELOG.md) for every change in behaviour, and its Russian counterpart to [`CHANGELOG_RU.md`](CHANGELOG_RU.md) (or leave that to the maintainer). The reasons go in the commit message.
 - Keep commits small, with conventional messages (`feat:`, `fix:`, `docs:`…).
 
 ## Before a pull request

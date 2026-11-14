@@ -162,7 +162,11 @@ Binding:
   anything.
 * Code, comments, commits and docs in English; the author is answered in his
   language (Russian). Documentation is bilingual (`X.md` / `X_RU.md`).
-* `CHANGELOG.md`: one terse line per change; the why goes in commit bodies.
+* `CHANGELOG.md` and `CHANGELOG_RU.md` are extended together: one terse line per
+  change in each, the same groups and as many bullets (`ChangelogTest` checks
+  `[Unreleased]` and the newest release); the why goes in commit bodies. A release
+  renames `[Unreleased]` in both. "What's new" shows the Russian file in a Russian
+  interface and opens by itself once after an update.
 * **Never `adb uninstall` without explicit permission**, and then with `-k`.
 * HyperOS asks on screen before an `adb install`: a locked phone means the author
   has to be there.
