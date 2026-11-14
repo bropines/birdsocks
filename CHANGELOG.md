@@ -22,6 +22,7 @@
 - Admin panel, Peers: chips for online, offline, awaiting approval, login expiration on, expired, SSH, each group and each system, AND-ed, with sort and search; a peer's sheet edits its groups, SSH server, login and inactivity expiration, shows connection, version, location and which peers it can reach; a long press selects peers to add to or remove from groups at once. A change that may cut this device off says so and asks for the name.
 - Admin panel, Groups: create, rename, edit peers and network resources, delete with where the group is used (policies, routes, DNS, setup keys, users' groups); All stays read-only.
 - Admin panel, Setup keys: valid, expired and revoked chips; a key's sheet edits the groups new peers join, revokes or deletes it; a new key may allow extra DNS labels.
+- Admin panel: networks (resources, routing peers, and which policies let whom reach each resource), routes with exit nodes marked, and DNS (nameserver groups, private zones and records where the server has them, groups with DNS management off); every object also opens as JSON, fields the app does not know kept. Removing a route or nameservers this device uses asks for the name typed back.
 - Open-source licenses as a screen of their own: every component in the APK with its license and full text, from About or `birdsocks://licenses`.
 
 ### Fixed
