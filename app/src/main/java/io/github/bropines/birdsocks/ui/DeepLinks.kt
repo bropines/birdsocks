@@ -14,7 +14,7 @@ import io.github.bropines.birdsocks.core.Automation
  *     birdsocks://logs?category=NETBIRD           Logs, on one category
  *     birdsocks://settings?section=<id>           Settings, on a section (SettingsSections)
  *     birdsocks://settings?q=<words>              Settings, with the words typed into its search
- *     birdsocks://admin?page=peers|keys|groups|setup   the admin panel (AdminPanel)
+ *     birdsocks://admin?page=<area id>|overview|setup   the admin panel (AdminPanel, AdminAreas)
  *
  * Action links change something ([requestFor]):
  *

@@ -4,17 +4,20 @@
     device-to-device transfer is governed here. Without a policy the SOCKS5
     password and NetBird's profiles (the node's WireGuard and SSH private keys)
     would travel to a new device. Exclude them, and the admin panel's sealed
-    access tokens (admin_vault.xml), whose Keystore key cannot travel anyway.
+    access tokens (admin_vault.xml) and files/admin (its sealed list cache and local
+    audit log), whose Keystore keys cannot travel anyway.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="global_settings.xml" />
         <exclude domain="file" path="netbird" />
         <exclude domain="sharedpref" path="admin_vault.xml" />
+        <exclude domain="file" path="admin" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="global_settings.xml" />
         <exclude domain="file" path="netbird" />
         <exclude domain="sharedpref" path="admin_vault.xml" />
+        <exclude domain="file" path="admin" />
     </device-transfer>
 </data-extraction-rules>

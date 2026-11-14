@@ -37,10 +37,14 @@ class SettingsCatalogTest {
         "ui/DnsActivity.kt",
         "ui/DiagnosticTools.kt",
         "ui/PermissionsActivity.kt",
-        // The admin panel's own screens and dialogs; Settings → Account links to it.
-        "admin/AdminDialogs.kt",
-        "admin/AdminSetupScreen.kt",
     )
+
+    /**
+     * Directories of other screens, every file in them: the admin panel's screens,
+     * sheets and dialogs (Settings → Account links to the panel; its areas borrow the
+     * settings row for their own switches).
+     */
+    private val otherScreenDirs = listOf("admin/")
 
     /**
      * Titles that are not written where the row is called: the hub's sections (checked by
@@ -60,7 +64,7 @@ class SettingsCatalogTest {
     /** The sources that draw settings: every file with a row of the family or an anchor of its own, bar the other screens. */
     private val settingsSources: Map<String, String> by lazy {
         appSources.filter { (file, source) ->
-            file !in otherScreens && file != "ui/SettingsComponents.kt" &&
+            file !in otherScreens && otherScreenDirs.none { file.startsWith(it) } && file != "ui/SettingsComponents.kt" &&
                 (callsOf(file, source, rowFamily.keys.toList()).isNotEmpty() || anchorCall.containsMatchIn(source))
         }
     }

@@ -2,6 +2,7 @@ package io.github.bropines.birdsocks.admin
 
 import android.content.Context
 import android.content.Intent
+import io.github.bropines.birdsocks.admin.areas.AdminAreas
 
 /**
  * The way into the admin panel from anywhere in the app: Settings → Account,
@@ -10,22 +11,26 @@ import android.content.Intent
  * credential yet, the panel otherwise.
  */
 object AdminPanel {
+    /** The home screen. */
     const val PAGE_OVERVIEW = "overview"
     const val PAGE_PEERS = "peers"
+    /** Setup keys; "setup_keys" opens them too. */
     const val PAGE_KEYS = "keys"
     const val PAGE_GROUPS = "groups"
     /** The credential screen, even with a token stored. */
     const val PAGE_SETUP = "setup"
 
-    internal val PAGES = listOf(PAGE_OVERVIEW, PAGE_PEERS, PAGE_KEYS, PAGE_GROUPS)
     internal const val EXTRA_PAGE = "admin_page"
+
+    /** Whether [page] opens something: the home, the credential screen, or an area's id or alias ([AdminAreas]). */
+    internal fun isPage(page: String): Boolean = page == PAGE_OVERVIEW || page == PAGE_SETUP || AdminAreas.forPage(page) != null
 
     fun intent(context: Context, page: String? = null): Intent =
         Intent(context, AdminActivity::class.java).apply {
-            page?.lowercase()?.takeIf { it in PAGES || it == PAGE_SETUP }?.let { putExtra(EXTRA_PAGE, it) }
+            page?.trim()?.lowercase()?.takeIf { isPage(it) }?.let { putExtra(EXTRA_PAGE, it) }
         }
 
-    /** Opens the panel, on [page] when given (one of the PAGE_ constants). */
+    /** Opens the panel, on [page] when given: an area id ("policies"), "overview" or "setup". */
     fun open(context: Context, page: String? = null) {
         val i = intent(context, page)
         if (context !is android.app.Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

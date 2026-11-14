@@ -4,43 +4,59 @@ import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.admin.api.AdminApiException
-import io.github.bropines.birdsocks.admin.api.ApiAccount
 import io.github.bropines.birdsocks.admin.api.ApiAuth
-import io.github.bropines.birdsocks.admin.api.ApiCreateSetupKey
-import io.github.bropines.birdsocks.admin.api.ApiGroup
 import io.github.bropines.birdsocks.admin.api.ApiPeer
-import io.github.bropines.birdsocks.admin.api.ApiPeerRequest
-import io.github.bropines.birdsocks.admin.api.ApiSetupKey
 import io.github.bropines.birdsocks.admin.api.ApiUser
 import io.github.bropines.birdsocks.admin.api.Capabilities
 import io.github.bropines.birdsocks.admin.api.Capabilities.Op
-import io.github.bropines.birdsocks.admin.api.Listing
 import io.github.bropines.birdsocks.admin.api.NetbirdApi
+import io.github.bropines.birdsocks.admin.safety.AdminAuditLog
+import io.github.bropines.birdsocks.admin.safety.ChangeFlow
+import io.github.bropines.birdsocks.admin.safety.ChangeOutcome
+import io.github.bropines.birdsocks.admin.safety.PlannedChange
+import io.github.bropines.birdsocks.admin.safety.SafeChangeRunner
+import io.github.bropines.birdsocks.admin.safety.SafetyContext
+import io.github.bropines.birdsocks.admin.safety.UnlockFailedException
+import io.github.bropines.birdsocks.admin.safety.refusalText
+import io.github.bropines.birdsocks.admin.safety.unlockFailureText
 import io.github.bropines.birdsocks.admin.secure.AdminWriteGate
 import io.github.bropines.birdsocks.admin.secure.LockState
 import io.github.bropines.birdsocks.admin.secure.SecretUnavailableException
-import io.github.bropines.birdsocks.admin.secure.UnlockFailure
-import io.github.bropines.birdsocks.admin.secure.UnlockResult
+import io.github.bropines.birdsocks.admin.state.AdminCache
+import io.github.bropines.birdsocks.admin.state.AdminData
+import io.github.bropines.birdsocks.admin.state.AdminKeys
+import io.github.bropines.birdsocks.admin.state.DataKey
+import io.github.bropines.birdsocks.admin.state.Loadable
+import io.github.bropines.birdsocks.core.AppJson
 import io.github.bropines.birdsocks.core.NetbirdState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * The panel's state for the active account. Lists load in parallel and fail
- * apart: a 403 on setup keys hides that tab and leaves peers on screen.
+ * The panel's session for the active account, and the [AdminHost] every
+ * area gets. It owns what areas share and nothing area-specific:
+ *  - the session: account, credential, current user, [caps];
+ *  - [data]: the shared lists ([AdminKeys]), seeded from the sealed cache so
+ *    the panel opens at once, refreshed in place;
+ *  - the change gates ([flow], the runner, the local audit log);
+ *  - navigation ([route]) and notes;
+ *  - per-area state holders ([areaState]), so this class does not grow with
+ *    every area.
  */
-class AdminViewModel(app: Application) : AndroidViewModel(app) {
+class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
     enum class Phase { LOADING, NO_DAEMON, BAD_URL, SETUP, READY }
     enum class AuthMode { TOKEN, DEVICE }
 
-    /** Something to tell the user once: a resource with an argument, or an error to describe. */
-    data class Note(val res: Int, val arg: String? = null, val error: Throwable? = null)
+    /** Why the setup screen shows: a resource, and the error behind it. */
+    data class Note(val res: Int, val error: Throwable? = null)
 
     sealed interface DeviceSignIn {
         data object Idle : DeviceSignIn
@@ -51,48 +67,71 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
 
     private val context get() = getApplication<Application>()
     private val vault get() = AdminSession.vault(context)
+    private val cache by lazy { AdminCache.of(context.filesDir) }
+    private val audit by lazy { AdminAuditLog.of(context.filesDir) }
 
     var phase by mutableStateOf(Phase.LOADING); private set
-    var account by mutableStateOf<AdminAccount?>(null); private set
+    override var account by mutableStateOf<AdminAccount?>(null); private set
     var authMode by mutableStateOf<AuthMode?>(null); private set
-    var user by mutableStateOf<ApiUser?>(null); private set
-    var caps by mutableStateOf<Capabilities?>(null); private set
+    override var user by mutableStateOf<ApiUser?>(null); private set
+    override var caps by mutableStateOf<Capabilities?>(null); private set
     var readOnly by mutableStateOf(true); private set
     var hasToken by mutableStateOf(false); private set
-    /** Why the setup screen is showing when it was not asked for: a rejected token, an unreadable one. */
     var setupReason by mutableStateOf<Note?>(null); private set
     var deviceSignIn by mutableStateOf<DeviceSignIn>(DeviceSignIn.Idle); private set
+    /** The note on screen, if any; the activity clears it once shown. */
+    var note by mutableStateOf<AdminNote?>(null)
+    var route by mutableStateOf(AdminRoute.HOME); private set
 
-    var accountInfo by mutableStateOf<ApiAccount?>(null); private set
-    var peers by mutableStateOf<Listing<ApiPeer>?>(null); private set
-    var keys by mutableStateOf<Listing<ApiSetupKey>?>(null); private set
-    var groups by mutableStateOf<Listing<ApiGroup>?>(null); private set
-    /** Per list, the error that kept it from loading. */
-    var listErrors by mutableStateOf<Map<String, Throwable>>(emptyMap()); private set
-    var refreshing by mutableStateOf(false); private set
-    var busy by mutableStateOf(false); private set
-    var note by mutableStateOf<Note?>(null)
-
-    private var api: NetbirdApi? = null
+    override val data = AdminData()
+    override val scope: CoroutineScope get() = viewModelScope
+    override var api: NetbirdApi? = null; private set
+    private var ownTokenId: String? = null
     private var loadJob: Job? = null
+    private var saveJob: Job? = null
+    private val areaStates = HashMap<String, AreaState>()
+
+    private val runner = SafeChangeRunner(api = { api }, audit = audit, context = ::safetyContext)
+    val flow = ChangeFlow(viewModelScope, runner, ::onChangeFinished)
 
     val lockState: LockState get() = AdminWriteGate.lockState(context)
 
-    /** Whether a change may be offered at all; each one also checks its own permission. */
-    val writesAllowed: Boolean
+    override val writesAllowed: Boolean
         get() = !readOnly && lockState != LockState.NO_SCREEN_LOCK && caps?.readOnly == false
 
-    fun can(module: String, op: Op): Boolean =
+    override val changeBusy: Boolean get() = flow.busy
+
+    override fun can(module: String, op: Op): Boolean =
         caps?.can(module, op) == true && (op == Op.READ || writesAllowed)
 
-    /** This device's peer in the API's list: never deleted from here. */
-    fun isSelf(peer: ApiPeer): Boolean {
+    /** This device's peer in the API's list: matched by address, else by DNS label. */
+    override fun isSelf(peer: ApiPeer): Boolean {
         val local = NetbirdState.status.value?.fullStatus?.localPeerState ?: return false
-        if (local.address.isNotEmpty() && peer.ip == local.address) return true
+        if (local.address.isNotEmpty() && peer.ip == local.address.substringBefore('/')) return true
         return peer.dnsLabel.isNotEmpty() && local.fqdn.substringBefore('.').equals(peer.dnsLabel.substringBefore('.'), ignoreCase = true)
     }
 
-    // --- Arriving ---
+    /** Why nothing can be changed, when nothing can; for the home screen. */
+    val readOnlyReason: Int?
+        get() = when {
+            caps?.readOnly == true -> R.string.admin_overview_ro_role
+            lockState == LockState.NO_SCREEN_LOCK -> R.string.admin_overview_ro_lock
+            readOnly -> R.string.admin_overview_ro_switch
+            else -> null
+        }
+
+    private fun safetyContext() = SafetyContext(
+        accountId = account?.id.orEmpty(),
+        readOnly = readOnly || caps?.readOnly != false,
+        lockState = lockState,
+        ownUserId = user?.id,
+        ownTokenId = ownTokenId,
+        tokenAuth = authMode == AuthMode.TOKEN,
+        selfPeerIds = data.items(AdminKeys.PEERS).filter(::isSelf).map { it.id }.toSet(),
+        can = { m, op -> caps?.can(m, op) == true },
+    )
+
+    // ================================================================ arriving
 
     fun start() {
         loadJob?.cancel()
@@ -100,6 +139,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             phase = Phase.LOADING
             if (!NetbirdState.isRunning) { phase = Phase.NO_DAEMON; return@launch }
             val acc = runCatching { AdminSession.activeAccount(context) }.getOrElse { phase = Phase.NO_DAEMON; return@launch }
+            if (account?.id != acc.id) resetAccountState()
             account = acc
             if (acc.apiBase == null) { phase = Phase.BAD_URL; return@launch }
             readOnly = vault.isReadOnly(acc.id)
@@ -127,23 +167,47 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             else -> { phase = Phase.SETUP; return }
         }
         val client = AdminSession.api(context, acc, auth) ?: run { phase = Phase.BAD_URL; return }
-        phase = Phase.LOADING
+        // Open on the cache at once when it knows who we are; the server answers in place.
+        val cached = withContext(Dispatchers.IO) { runCatching { cache.read(acc.id) }.getOrDefault(emptyMap()) }
+        val cachedUser = cached[CURRENT_USER]?.let { runCatching { AppJson.decodeFromJsonElement(ApiUser.serializer(), it.value) }.getOrNull() }
+        if (cachedUser != null && phase != Phase.READY) {
+            data.seed(AdminKeys.ALL, cached)
+            api = client
+            user = cachedUser
+            caps = Capabilities.of(cachedUser)
+            phase = Phase.READY
+        } else if (phase != Phase.READY) {
+            phase = Phase.LOADING
+        }
         try {
             val me = client.currentUser()
             api = client
             user = me
             caps = Capabilities.of(me)
             setupReason = null
+            if (cachedUser == null) data.seed(AdminKeys.ALL, cached)
             phase = Phase.READY
-            refreshAll()
+            saveCurrentUser(acc.id, me)
+            refreshLoaded()
+            if (authMode == AuthMode.TOKEN) learnOwnToken(client, me)
         } catch (e: AdminApiException.Unauthorized) {
             onUnauthorized(acc)
         } catch (e: Exception) {
-            // The server could not be asked: the panel shows why, the credential stays.
-            api = client
-            setupReason = Note(R.string.admin_setup_reason_failed, error = e)
-            phase = Phase.SETUP
+            if (phase == Phase.READY) {
+                // On the cache with the server unreachable: stay, and say why.
+                notify(AdminNote.error(e))
+            } else {
+                api = client
+                setupReason = Note(R.string.admin_setup_reason_failed, error = e)
+                phase = Phase.SETUP
+            }
         }
+    }
+
+    /** Best effort: which token this is, so the runner can refuse revoking it. Needs the PATs read permission. */
+    private fun learnOwnToken(client: NetbirdApi, me: ApiUser) {
+        if (caps?.can(Capabilities.PATS, Op.READ) == false) return
+        viewModelScope.launch { ownTokenId = runCatching { client.guessOwnTokenId(me.id) }.getOrNull() }
     }
 
     /** A 401: this device's token is dropped for the stored one; a rejected stored token sends to setup. */
@@ -159,37 +223,125 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         phase = Phase.SETUP
     }
 
-    fun refreshAll() {
+    // ================================================================ data
+
+    override fun load(vararg keys: DataKey<*>, force: Boolean) {
+        for (key in keys) loadOne(key, force)
+    }
+
+    private fun <T> loadOne(key: DataKey<T>, force: Boolean) {
         val client = api ?: return
-        val acc = account ?: return
+        if (!canRead(key.module)) return
+        val current = data[key]
+        if (current.loading) return
+        val fresh = current.value != null && !current.fromDisk && System.currentTimeMillis() - current.loadedAt < FRESH_MS
+        if (!force && fresh) return
+        data.update(key) { it.copy(loading = true) }
         viewModelScope.launch {
-            refreshing = true
-            val errors = mutableMapOf<String, Throwable>()
-            suspend fun <T> load(module: String, block: suspend () -> T): T? = try {
-                block()
+            try {
+                val value = key.load(client)
+                data.set(key, Loadable(value, loadedAt = System.currentTimeMillis()))
+                if (key.cacheable) scheduleSave()
             } catch (e: AdminApiException.Forbidden) {
-                caps = caps?.denied(module, Op.READ); null
+                caps = caps?.denied(key.module, Op.READ)
+                data.update(key) { it.copy(loading = false, error = e) }
             } catch (e: AdminApiException.Unauthorized) {
-                errors[module] = e; null
+                data.update(key) { it.copy(loading = false, error = e) }
+                account?.let { onUnauthorized(it) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                data.update(key) { it.copy(loading = false) }
+                throw e
             } catch (e: Exception) {
-                errors[module] = e; null
+                data.update(key) { it.copy(loading = false, error = e) }
             }
-            val c = caps
-            val p = async { if (c?.can(Capabilities.PEERS, Op.READ) != false) load(Capabilities.PEERS) { client.peers() } else null }
-            val k = async { if (c?.can(Capabilities.SETUP_KEYS, Op.READ) != false) load(Capabilities.SETUP_KEYS) { client.setupKeys() } else null }
-            val g = async { if (c?.can(Capabilities.GROUPS, Op.READ) != false) load(Capabilities.GROUPS) { client.groups() } else null }
-            val a = async { if (c?.can(Capabilities.ACCOUNTS, Op.READ) != false) load(Capabilities.ACCOUNTS) { client.accounts() } else null }
-            peers = p.await()
-            keys = k.await()
-            groups = g.await()
-            accountInfo = a.await()?.items?.firstOrNull()
-            listErrors = errors
-            refreshing = false
-            if (errors.values.any { it is AdminApiException.Unauthorized }) onUnauthorized(acc)
         }
     }
 
-    // --- Setup ---
+    /** Everything read so far, again; the home screen's keys always. */
+    fun refreshLoaded() {
+        val keys = AdminKeys.ALL.filter { k -> k in AdminKeys.HOME || data[k].value != null || data[k].error != null }
+        load(*keys.toTypedArray(), force = true)
+    }
+
+    val refreshing: Boolean get() = AdminKeys.ALL.any { data[it].loading }
+
+    /** Writes the cacheable values a little after the last read, off the main thread. */
+    private fun scheduleSave() {
+        val acc = account ?: return
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(1_000)
+            val snapshot = data.snapshot(AdminKeys.ALL)
+            withContext(Dispatchers.IO) { runCatching { cache.write(acc.id, snapshot) } }
+        }
+    }
+
+    private fun saveCurrentUser(accountId: String, me: ApiUser) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { cache.write(accountId, mapOf(CURRENT_USER to AdminCache.Entry(System.currentTimeMillis(), AppJson.encodeToJsonElement(ApiUser.serializer(), me)))) }
+        }
+    }
+
+    private fun resetAccountState() {
+        data.clear()
+        areaStates.values.forEach { runCatching { it.onCleared() } }
+        areaStates.clear()
+        api = null
+        user = null
+        caps = null
+        ownTokenId = null
+        route = AdminRoute.HOME
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : AreaState> areaState(id: String, create: (AdminHost) -> T): T = areaStates.getOrPut(id) { create(this) } as T
+
+    // ================================================================ navigation and notes
+
+    override fun navigate(route: AdminRoute) {
+        this.route = route
+    }
+
+    override fun back() {
+        route = AdminRoute.HOME
+    }
+
+    override fun notify(note: AdminNote) {
+        this.note = note
+    }
+
+    // ================================================================ changes
+
+    override fun propose(change: PlannedChange): Boolean = flow.propose(change)
+
+    private fun onChangeFinished(planned: PlannedChange, outcome: ChangeOutcome) {
+        val kind = planned.change.kind
+        when (outcome) {
+            is ChangeOutcome.Applied -> {
+                val undo = planned.undo
+                note = when (outcome.verified) {
+                    false -> AdminNote({ ctx -> ctx.getString(R.string.admin_change_mismatch, planned.change.title) })
+                    else -> AdminNote(
+                        message = { ctx -> planned.done ?: ctx.getString(R.string.admin_change_done, planned.change.title) },
+                        action = undo?.let { u -> AdminNote.Action({ ctx -> ctx.getString(R.string.admin_undo) }) { propose(u) } },
+                    )
+                }
+                if (planned.refreshes.isNotEmpty()) load(*planned.refreshes.toTypedArray(), force = true)
+            }
+            is ChangeOutcome.Refused -> note = AdminNote({ ctx -> refusalText(ctx, outcome.reason) })
+            is ChangeOutcome.Failed -> when (val e = outcome.error) {
+                is UnlockFailedException -> note = AdminNote({ ctx -> unlockFailureText(ctx, e.result.reason) })
+                is AdminApiException.Forbidden -> {
+                    caps = caps?.denied(kind.module, kind.op)
+                    note = AdminNote.error(e)
+                }
+                is AdminApiException.Unauthorized -> account?.let { acc -> viewModelScope.launch { onUnauthorized(acc) } }
+                else -> note = AdminNote.error(e)
+            }
+        }
+    }
+
+    // ================================================================ setup
 
     /** Asks GET /api/users/current with [token] without storing it. */
     suspend fun testToken(token: String): Result<ApiUser> {
@@ -200,11 +352,15 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveToken(token: String, readOnlyChoice: Boolean) {
         val acc = account ?: return
-        if (!vault.putToken(acc.id, token)) { note = Note(R.string.admin_token_not_saved); return }
+        if (!vault.putToken(acc.id, token)) { note = AdminNote.res(R.string.admin_token_not_saved); return }
         vault.setReadOnly(acc.id, readOnlyChoice)
         readOnly = readOnlyChoice
         hasToken = true
         AdminSession.setJwt(acc.id, null)
+        // Another token may be another user: nothing of the old session is kept.
+        resetAccountState()
+        account = acc
+        phase = Phase.LOADING
         viewModelScope.launch { connect(acc) }
     }
 
@@ -212,12 +368,11 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         val acc = account ?: return
         vault.forget(acc.id)
         AdminSession.setJwt(acc.id, null)
+        runCatching { cache.clear(acc.id) }
         hasToken = false
         readOnly = true
-        api = null
-        user = null
-        caps = null
-        peers = null; keys = null; groups = null; accountInfo = null
+        resetAccountState()
+        account = acc
         setupReason = null
         phase = Phase.SETUP
     }
@@ -251,73 +406,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         start()
     }
 
-    // --- Changes ---
-
-    /**
-     * One change: refused when the panel is read-only or the role may not,
-     * then the screen lock, then the call and a refresh. A 403 narrows what
-     * the panel offers from then on.
-     */
-    private fun change(activity: FragmentActivity, module: String, op: Op, label: String, done: Note?, block: suspend (NetbirdApi) -> Unit) {
-        val client = api ?: return
-        if (!can(module, op)) { note = Note(R.string.admin_write_refused); return }
-        if (busy) return
-        busy = true
-        viewModelScope.launch {
-            try {
-                when (val r = AdminWriteGate.unlock(activity, activity.getString(R.string.admin_unlock_title), label)) {
-                    UnlockResult.Granted -> {
-                        block(client)
-                        done?.let { note = it }
-                        refreshAll()
-                    }
-                    UnlockResult.Cancelled -> Unit
-                    is UnlockResult.Failed -> note = Note(
-                        when (r.reason) {
-                            UnlockFailure.NO_SCREEN_LOCK -> R.string.admin_unlock_no_lock
-                            UnlockFailure.LOCKOUT -> R.string.admin_unlock_lockout
-                            else -> R.string.admin_unlock_failed
-                        }
-                    )
-                }
-            } catch (e: AdminApiException.Forbidden) {
-                caps = caps?.denied(module, op)
-                note = Note(R.string.admin_error_generic, error = e)
-            } catch (e: AdminApiException.Unauthorized) {
-                account?.let { onUnauthorized(it) }
-            } catch (e: Exception) {
-                note = Note(R.string.admin_error_generic, error = e)
-            } finally {
-                busy = false
-            }
-        }
+    companion object {
+        /** A value read this recently is not read again when a screen opens. */
+        private const val FRESH_MS = 30_000L
+        /** The cache entry for who the credential is, so the panel opens before the server answers. */
+        private const val CURRENT_USER = "current_user"
     }
-
-    fun renamePeer(activity: FragmentActivity, peer: ApiPeer, name: String) =
-        change(activity, Capabilities.PEERS, Op.UPDATE, activity.getString(R.string.admin_peer_rename_unlock, peer.name), Note(R.string.admin_done_saved)) {
-            it.updatePeer(peer.id, ApiPeerRequest.of(peer).copy(name = name.trim()))
-        }
-
-    fun setLoginExpiration(activity: FragmentActivity, peer: ApiPeer, enabled: Boolean) =
-        change(activity, Capabilities.PEERS, Op.UPDATE, activity.getString(R.string.admin_peer_expiry_unlock, peer.name), Note(R.string.admin_done_saved)) {
-            it.updatePeer(peer.id, ApiPeerRequest.of(peer).copy(loginExpirationEnabled = enabled))
-        }
-
-    fun deletePeer(activity: FragmentActivity, peer: ApiPeer) {
-        if (isSelf(peer)) { note = Note(R.string.admin_peer_self_guard); return }
-        change(activity, Capabilities.PEERS, Op.DELETE, activity.getString(R.string.admin_peer_delete_unlock, peer.name), Note(R.string.admin_done_deleted, peer.name)) {
-            it.deletePeer(peer.id)
-        }
-    }
-
-    /** The created key goes to [onCreated] once; it is never stored. */
-    fun createKey(activity: FragmentActivity, request: ApiCreateSetupKey, onCreated: (ApiSetupKey) -> Unit) =
-        change(activity, Capabilities.SETUP_KEYS, Op.CREATE, activity.getString(R.string.admin_key_create_unlock, request.name), null) {
-            onCreated(it.createSetupKey(request))
-        }
-
-    fun revokeKey(activity: FragmentActivity, key: ApiSetupKey) =
-        change(activity, Capabilities.SETUP_KEYS, Op.UPDATE, activity.getString(R.string.admin_key_revoke_unlock, key.name), Note(R.string.admin_done_revoked, key.name)) {
-            it.revokeSetupKey(key)
-        }
 }

@@ -7,4 +7,5 @@
     <exclude domain="sharedpref" path="global_settings.xml" />
     <exclude domain="file" path="netbird" />
     <exclude domain="sharedpref" path="admin_vault.xml" />
+    <exclude domain="file" path="admin" />
 </full-backup-content>
