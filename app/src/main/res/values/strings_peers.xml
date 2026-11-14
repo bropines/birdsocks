@@ -63,4 +63,19 @@
     <string name="peer_session_never">Does not expire</string>
     <string name="peer_dns_labels">Extra DNS names</string>
     <string name="peer_dns_labels_edit">Change in Settings</string>
+
+    <!-- The top bar: the search a pull at the top of the list also brings out, and reload. -->
+    <string name="nb_peers_search_open">Search</string>
+    <string name="nb_peers_search_close">Close search</string>
+    <string name="nb_peers_refresh">Refresh</string>
+
+    <!-- "Copy as…", from a long press on a row. -->
+    <string name="peer_copy_as">Copy as…</string>
+    <string name="peer_copy_as_title">Copy %1$s as…</string>
+    <string name="peer_copy_name">Name</string>
+    <string name="peer_copy_fqdn">Full name (FQDN)</string>
+    <string name="peer_copy_ipv4">IPv4 address</string>
+    <string name="peer_copy_ipv6">IPv6 address</string>
+    <string name="peer_copy_ssh">SSH command</string>
+    <string name="peer_copy_ping">Ping command</string>
 </resources>

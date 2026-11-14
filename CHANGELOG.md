@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
+
+### Changed
+- Peers: a pull at the top of the list brings out the search; refresh moved to the top bar, beside a search button. The filter is remembered between visits.
+
 ### Fixed
 - Quick Settings tile: shows the state a tap asked for until the service catches up, says "Stopping…" while it stops, and no longer sticks at "Starting…" when Android refuses a start from the panel.
 

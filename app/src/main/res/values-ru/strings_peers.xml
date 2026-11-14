@@ -53,4 +53,19 @@
     <string name="peer_session_never">Не истекает</string>
     <string name="peer_dns_labels">Дополнительные DNS-имена</string>
     <string name="peer_dns_labels_edit">Изменить в настройках</string>
+
+    <!-- The top bar: the search a pull at the top of the list also brings out, and reload. -->
+    <string name="nb_peers_search_open">Поиск</string>
+    <string name="nb_peers_search_close">Закрыть поиск</string>
+    <string name="nb_peers_refresh">Обновить</string>
+
+    <!-- "Copy as…", from a long press on a row. -->
+    <string name="peer_copy_as">Копировать как…</string>
+    <string name="peer_copy_as_title">Копировать %1$s как…</string>
+    <string name="peer_copy_name">Имя</string>
+    <string name="peer_copy_fqdn">Полное имя (FQDN)</string>
+    <string name="peer_copy_ipv4">Адрес IPv4</string>
+    <string name="peer_copy_ipv6">Адрес IPv6</string>
+    <string name="peer_copy_ssh">Команда SSH</string>
+    <string name="peer_copy_ping">Команда ping</string>
 </resources>
