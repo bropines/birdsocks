@@ -71,6 +71,7 @@ fun ExitNodeCard(
     fun change(block: suspend () -> Unit) {
         scope.launch {
             runCatching { block(); onChanged(Netbird.networks()) }.onFailure { toast(context, it) }
+            WidgetUpdates.request(context, networks = true)
         }
     }
 

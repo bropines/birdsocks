@@ -16,7 +16,6 @@ roughly in order.
 
 ## Next
 - **HTTP proxy** next to SOCKS5, for apps that only speak HTTP.
-- Home-screen widgets.
 
 ## Later
 - Root mode.

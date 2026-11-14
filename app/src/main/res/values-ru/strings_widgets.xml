@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The home-screen widgets (ui/Widgets.kt, ui/WidgetUpdates.kt) and their entries in the widget picker. -->
+<resources>
+    <!-- The widget picker -->
+    <string name="widget_name_service">Переключатель BirdSocks</string>
+    <string name="widget_name_exit">Выходной узел BirdSocks</string>
+    <string name="widget_desc_service">Включить или выключить BirdSocks и увидеть состояние подключения</string>
+    <string name="widget_desc_exit">Выбрать выходной узел или обойтись без него</string>
+
+    <!-- The switch -->
+    <string name="widget_refresh">Обновить</string>
+    <string name="widget_copy_ip">Скопировать адрес NetBird</string>
+
+    <!-- The exit node -->
+    <string name="widget_exit_inactive">Не используется</string>
+    <string name="widget_exit_format">Выход: %1$s</string>
+    <string name="widget_exit_direct">Напрямую</string>
+    <string name="widget_exit_none">В этой сети нет выходных узлов</string>
+    <string name="widget_exit_stopped">Включите BirdSocks, чтобы выбрать выходной узел</string>
+    <string name="widget_offline">не подключён</string>
+    <string name="widget_toast_exit_off">Выходной узел выключен</string>
+    <string name="widget_toast_exit_on">Выход через %1$s</string>
+</resources>

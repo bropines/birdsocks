@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Home-screen widgets: a switch that resizes from a 1×1 round toggle to a card with the state, exit node and address, and an exit-node list to pick from or go direct.
 - Exit-node sheet: a search by exit node or routing peer once it lists more than six.
 - Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
 
