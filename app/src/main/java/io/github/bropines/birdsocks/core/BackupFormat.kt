@@ -170,6 +170,8 @@ object BackupFormat {
         // Appearance and language
         add(Scope.SETTING, Type.STRING, "app_theme", "theme_preset", "app_locale", "app_icon")
         add(Scope.SETTING, Type.BOOLEAN, "dynamic_color", "amoled_mode")
+        // The main screen's arrangement (MainLayoutStore), as its JSON string
+        add(Scope.SETTING, Type.STRING, MainLayoutStore.KEY)
         // The SOCKS5 proxy; before addresses there was only a port
         add(Scope.SETTING, Type.STRING, "socks_address")
         add(Scope.SETTING, Type.INT, "socks_port")

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -17,7 +18,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
@@ -52,8 +54,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.Changelog
+import io.github.bropines.birdsocks.core.Automation
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.LoginFlow
+import io.github.bropines.birdsocks.core.MainItem
+import io.github.bropines.birdsocks.core.MainLayout
+import io.github.bropines.birdsocks.core.MainLayoutStore
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdService
 import io.github.bropines.birdsocks.core.NetbirdState
@@ -65,6 +71,7 @@ import io.github.bropines.birdsocks.models.NbConnState
 import io.github.bropines.birdsocks.models.NbNetwork
 import io.github.bropines.birdsocks.models.NbStatus
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
+import io.github.bropines.birdsocks.ui.theme.findActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.put
@@ -73,6 +80,14 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Opened from the "session expiring" notice: start renewing at once. */
         const val EXTRA_EXTEND = "extend"
+        /** Opened from Settings → Appearance → Main screen: the main screen with its editor. */
+        private const val EXTRA_EDIT_LAYOUT = "edit_layout"
+
+        fun editLayoutIntent(context: Context): Intent =
+            Intent(context, MainActivity::class.java).putExtra(EXTRA_EDIT_LAYOUT, true)
+
+        /** Set by [EXTRA_EDIT_LAYOUT]; the main screen takes it and turns into its editor. */
+        internal val editRequest = kotlinx.coroutines.flow.MutableStateFlow(false)
     }
 
     private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -158,6 +173,10 @@ class MainActivity : ComponentActivity() {
             intent.removeExtra(EXTRA_EXTEND)
             io.github.bropines.birdsocks.core.ExtendFlow.start(this)
         }
+        if (intent?.getBooleanExtra(EXTRA_EDIT_LAYOUT, false) == true) {
+            intent.removeExtra(EXTRA_EDIT_LAYOUT)
+            editRequest.value = true
+        }
         // The installer session's answer (Updater.installWithSession).
         if (intent?.action == Updater.ACTION_INSTALL_STATUS) {
             Updater.onInstallStatus(this, intent)
@@ -232,9 +251,67 @@ fun MainScreen() {
     val update by Updater.state.collectAsStateOr { Updater.State.Idle }
     val updateWaiting = update is Updater.State.Available || update is Updater.State.Ready
 
+    // The arrangement (core/MainLayout.kt), read again on every return: Settings may have put
+    // something back on the screen, a restore may have brought another arrangement.
+    var layout by remember { mutableStateOf(MainLayoutStore.load(context)) }
+    var editing by rememberSaveable { mutableStateOf(false) }
+    var showPalette by remember { mutableStateOf(false) }
+    var confirmReset by remember { mutableStateOf(false) }
+    var vpnEnabled by remember { mutableStateOf(GlobalSettings.isTunModeEnabled(context)) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                layout = MainLayoutStore.load(context)
+                vpnEnabled = GlobalSettings.isTunModeEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val editRequested by MainActivity.editRequest.collectAsState()
+    LaunchedEffect(editRequested) {
+        if (editRequested) {
+            editing = true
+            MainActivity.editRequest.value = false
+        }
+    }
+    BackHandler(enabled = editing) { editing = false }
+    fun edit(change: (MainLayout) -> MainLayout) {
+        val next = change(layout)
+        if (next != layout) {
+            layout = next
+            MainLayoutStore.save(context, next)
+        }
+    }
+    val addable = layout.addable(mainItemsOffered)
+    // The exit-node row is there only with an exit node to pick; arranging, it stands in by name.
+    val exitShown = card == CardState.Connected && networks.any { it.isExitNode }
+    val cells = layout.shown(mainItemsOffered).filter { editing || it.item != MainItem.EXIT_NODE || exitShown }
+
+    fun open(item: MainItem) {
+        when (item) {
+            MainItem.ACCOUNTS -> showAccounts = true
+            MainItem.VPN -> {
+                val activity = context.findActivity() ?: return
+                Automation.runFromActivity(activity, Automation.Command.Tun(!vpnEnabled))
+                vpnEnabled = !vpnEnabled
+            }
+            else -> item.screen(context)?.let { context.startActivity(it) }
+        }
+    }
+
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    // On its side a phone has no height to spare for a bar under the canvas: the controls stand beside it.
+    val sideways = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
+        configuration.screenHeightDp < 480
+    val scroll = rememberScrollState()
+
     Scaffold(
         topBar = {
-            AppTopBar(
+            if (editing) {
+                AppTopBar(title = stringResource(R.string.main_layout_title), onBack = { editing = false })
+            } else AppTopBar(
                 title = stringResource(R.string.app_name),
                 subtitle = accountLabel,
                 // Stopped too: the sheet starts the daemon for what it does.
@@ -255,71 +332,149 @@ fun MainScreen() {
                     }
                 }
             )
+        },
+        bottomBar = {
+            if (editing && !sideways) MainEditBar(
+                columns = layout.columns,
+                onColumns = { c -> edit { it.withColumns(c) } },
+                canAdd = addable.isNotEmpty(),
+                onAdd = { showPalette = true },
+                onReset = { confirmReset = true },
+                onDone = { editing = false },
+            )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).readableWidth(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                StatusCard(
-                    state = card,
-                    status = status,
-                    onToggle = {
-                        if (card == CardState.Stopped) NetbirdService.start(context) else NetbirdService.stop(context)
-                    },
-                    onConnect = { scope.launch { runCatching { Netbird.up() }.onFailure { toast(context, it) } } }
-                )
-            }
-            error?.let { message ->
-                item { ErrorCard(message) { NetbirdState.dismissError() } }
-            }
-            // The server refuses extra DNS names to a device not added with a key that allows them.
-            val mgmtError = status?.fullStatus?.managementState?.error.orEmpty()
-            if ("extra DNS labels" in mgmtError) {
-                item { DnsLabelsRefusedCard() }
-            }
-            if (card == CardState.NeedsLogin || login !is LoginFlow.State.Idle) {
-                item { LoginCard(login, status?.fullStatus?.managementState?.error.orEmpty()) }
-            }
-            if (card == CardState.Connected) {
-                // The session lives in Settings → Account; here only when it needs a hand.
-                if (sessionShown) status?.sessionExpiresAt?.let { expiry -> item { SessionRow(expiry) } }
-                if (networks.any { it.isExitNode }) {
-                    item { ExitNodeCard(networks, status, connected = true, onChanged = { networks = it }) }
-                }
-            }
-            item {
-                BoxWithConstraints {
-                    val entries = listOf(
-                        MenuEntry(stringResource(R.string.nb_menu_peers), Icons.Default.Devices) {
-                            context.startActivity(Intent(context, PeersActivity::class.java))
-                        },
-                        MenuEntry(stringResource(R.string.nb_menu_networks), Icons.Default.Hub) {
-                            context.startActivity(Intent(context, NetworksActivity::class.java))
-                        },
-                        MenuEntry(stringResource(R.string.nb_menu_dns), Icons.Default.Dns) {
-                            context.startActivity(Intent(context, DnsActivity::class.java))
-                        },
-                        MenuEntry(stringResource(R.string.nb_expose_title), Icons.Default.Public) {
-                            context.startActivity(Intent(context, ExposeActivity::class.java))
-                        },
-                        MenuEntry(stringResource(R.string.nb_menu_diagnostics), Icons.Default.MonitorHeart) {
-                            context.startActivity(DiagnosticsActivity.intent(context))
-                        },
-                        MenuEntry(stringResource(R.string.menu_settings), Icons.Default.Settings) {
-                            context.startActivity(Intent(context, SettingsActivity::class.java))
+        Row(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .verticalScroll(scroll)
+                    .readableWidth()
+                    .padding(16.dp)
+            ) {
+                MainCanvas(
+                    cells = cells,
+                    columns = layout.effectiveColumns,
+                    cardHeight = 96.dp,
+                    editing = editing,
+                    scroll = scroll,
+                    inserts = listOf(
+                        // The banners stand under the status card, wherever it is: only when something needs the user.
+                        MainCanvasInsert(MainItem.STATUS) {
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                error?.let { message -> ErrorCard(message) { NetbirdState.dismissError() } }
+                                // The server refuses extra DNS names to a device not added with a key that allows them.
+                                val mgmtError = status?.fullStatus?.managementState?.error.orEmpty()
+                                if ("extra DNS labels" in mgmtError) DnsLabelsRefusedCard()
+                                if (card == CardState.NeedsLogin || login !is LoginFlow.State.Idle) {
+                                    LoginCard(login, status?.fullStatus?.managementState?.error.orEmpty())
+                                }
+                                // The session lives in Settings → Account; here only when it needs a hand.
+                                if (card == CardState.Connected && sessionShown) status?.sessionExpiresAt?.let { expiry -> SessionRow(expiry) }
+                            }
                         }
-                    )
-                    MenuGrid(menuColumnsFor(maxWidth, entries.size), entries)
+                    ),
+                    title = { stringResource(it.spec().title) },
+                    // A long press anywhere on the screen turns it into its own editor.
+                    onLongPress = { editing = true; true },
+                    onMove = { item, target -> edit { it.move(item, target) } },
+                    onStep = { item, by -> edit { it.step(item, by, mainItemsOffered) } },
+                    onRemove = { item -> edit { it.remove(item) } },
+                    onSetWide = { item, wide -> edit { it.setWide(item, wide) } },
+                ) { placed ->
+                    when (val item = placed.item) {
+                        MainItem.STATUS -> StatusCard(
+                            state = card,
+                            status = status,
+                            onToggle = {
+                                if (card == CardState.Stopped) NetbirdService.start(context) else NetbirdService.stop(context)
+                            },
+                            onConnect = { scope.launch { runCatching { Netbird.up() }.onFailure { toast(context, it) } } }
+                        )
+                        MainItem.EXIT_NODE ->
+                            if (exitShown) ExitNodeCard(networks, status, connected = true, onChanged = { networks = it })
+                            else MainBlockPlaceholder(item, note = R.string.main_layout_exit_when)
+                        MainItem.PROXY -> ProxyAddressCard()
+                        MainItem.VPN -> {
+                            val spec = item.spec()
+                            val stateWord = stringResource(if (vpnEnabled) R.string.main_status_state_on else R.string.main_status_state_off)
+                            MenuCard(
+                                stringResource(spec.title),
+                                if (vpnEnabled) Icons.Default.VpnKey else Icons.Default.VpnKeyOff,
+                                Modifier.semantics { role = Role.Switch; stateDescription = stateWord },
+                                highlighted = vpnEnabled,
+                            ) { open(item) }
+                        }
+                        else -> {
+                            val spec = item.spec()
+                            MenuCard(stringResource(spec.title), spec.icon) { open(item) }
+                        }
+                    }
+                }
+                if (editing && addable.isNotEmpty()) {
+                    Spacer(Modifier.height(MainTileGap))
+                    MainAddCell(onClick = { showPalette = true })
                 }
             }
+            if (editing && sideways) MainEditRail(
+                columns = layout.columns,
+                onColumns = { c -> edit { it.withColumns(c) } },
+                canAdd = addable.isNotEmpty(),
+                onAdd = { showPalette = true },
+                onReset = { confirmReset = true },
+                onDone = { editing = false },
+            )
         }
     }
 
+    if (showPalette) MainPaletteSheet(addable, onAdd = { item -> edit { it.add(item) } }, onDismiss = { showPalette = false })
+    if (confirmReset) {
+        // Resolved here: a dialog is a window of its own, outside the app's language.
+        val resetTitle = stringResource(R.string.main_layout_reset_title)
+        val resetText = stringResource(R.string.main_layout_reset_text)
+        val resetLabel = stringResource(R.string.main_layout_reset)
+        val cancelLabel = stringResource(R.string.action_cancel)
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text(resetTitle) },
+            text = { Text(resetText) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmReset = false
+                    MainLayoutStore.reset(context)
+                    layout = MainLayoutStore.load(context)
+                }) { Text(resetLabel) }
+            },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(cancelLabel) } }
+        )
+    }
     if (showAccounts) AccountSheet(onDismiss = { showAccounts = false })
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
+}
+
+/** The SOCKS5 proxy's address, as apps are to be set: a tap copies it. */
+@Composable
+private fun ProxyAddressCard() {
+    val context = LocalContext.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val address = remember { GlobalSettings.getSocksAddress(context) }
+    val copied = stringResource(R.string.settings_lan_copied, address)
+    Card(
+        onClick = {
+            clipboard.copyText(scope, address)
+            Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+        },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        ListItem(
+            leadingContent = { Icon(Icons.Default.Lan, null, tint = MaterialTheme.colorScheme.primary) },
+            overlineContent = { Text(stringResource(R.string.nb_socks_title)) },
+            trailingContent = { Icon(Icons.Default.ContentCopy, stringResource(R.string.main_proxy_copy_cd)) },
+            colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+        ) { Text(address, fontFamily = FontFamily.Monospace) }
+    }
 }
 
 /**
@@ -659,35 +814,18 @@ private fun DnsLabelsRefusedCard() {
     }
 }
 
-/** A destination on the main screen; [icon2], when set, stands beside [icon]. */
-data class MenuEntry(val title: String, val icon: ImageVector, val icon2: ImageVector? = null, val onClick: () -> Unit)
-
-/** Menu tiles go two to a row, whatever the width (the author's call: never three). */
-@Suppress("UNUSED_PARAMETER")
-fun menuColumnsFor(width: Dp, entries: Int = 4): Int = 2
-
 @Composable
-fun MenuGrid(columns: Int, entries: List<MenuEntry>, cardHeight: Dp = 96.dp, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        entries.chunked(columns).forEachIndexed { rowIndex, row ->
-            if (rowIndex > 0) Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                row.forEachIndexed { i, entry ->
-                    if (i > 0) Spacer(Modifier.width(16.dp))
-                    MenuCard(entry.title, entry.icon, Modifier.weight(1f).fillMaxHeight().heightIn(min = cardHeight), entry.icon2, entry.onClick)
-                }
-                repeat(columns - row.size) {
-                    Spacer(Modifier.width(16.dp))
-                    Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MenuCard(title: String, icon: ImageVector, modifier: Modifier = Modifier, icon2: ImageVector? = null, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
+fun MenuCard(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    icon2: ImageVector? = null,
+    /** A tile that is a switch, while it is on. */
+    highlighted: Boolean = false,
+    onClick: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = if (highlighted) scheme.primaryContainer else scheme.surfaceContainer, modifier = modifier) {
         Column(
             Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

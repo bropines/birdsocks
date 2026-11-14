@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import io.github.bropines.birdsocks.R
 import io.github.bropines.birdsocks.core.SegmentedChipItem
 import io.github.bropines.birdsocks.core.SlidingSegmentedChips
+import io.github.bropines.birdsocks.ui.MainHiddenRow
+import io.github.bropines.birdsocks.ui.MainLayoutRow
 import io.github.bropines.birdsocks.ui.SettingsCard
 import io.github.bropines.birdsocks.ui.SettingsSwitchItem
 
@@ -89,5 +91,10 @@ internal fun AppearanceSection(a: Appearance) {
         }
         SettingsSwitchItem(stringResource(R.string.settings_amoled_black_title), stringResource(R.string.settings_amoled_black_desc), Icons.Default.Contrast, a.amoled, onCheckedChange = a.onAmoled)
         AppIconRow()
+    }
+    // The main screen's arrangement: its editor, and what was taken off it (ui/MainHiddenItems.kt).
+    SettingsCard(stringResource(R.string.settings_main_screen)) {
+        MainLayoutRow()
+        MainHiddenRow()
     }
 }

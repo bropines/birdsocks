@@ -1,0 +1,343 @@
+package io.github.bropines.birdsocks.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.core.MainItem
+import io.github.bropines.birdsocks.core.MainLayout
+
+/*
+ * What stands around the canvas while the main screen is being arranged (ui/MainCanvas.kt):
+ * the bar under it, the sheet of what can be added, and the stand-in for a block that has
+ * nothing to show right now.
+ */
+
+// ─── The bar under the canvas ────────────────────────────────────────────────────────────────
+
+/**
+ * The editor's bar: how many columns the tiles stand in, and the three things to do — put
+ * everything back, add something, finish. Every change is stored as it is made, so Done only
+ * leaves.
+ */
+@Composable
+internal fun MainEditBar(
+    columns: Int,
+    onColumns: (Int) -> Unit,
+    canAdd: Boolean,
+    onAdd: () -> Unit,
+    onReset: () -> Unit,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier.fillMaxWidth()) {
+        Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 10.dp)) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    stringResource(R.string.main_layout_columns),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 4.dp),
+                )
+                for (choice in 0..MainLayout.MAX_COLUMNS) {
+                    val spoken = if (choice == MainLayout.AUTO) stringResource(R.string.main_layout_columns_auto)
+                                 else stringResource(R.string.main_layout_columns_cd, choice)
+                    FilterChip(
+                        selected = columns == choice,
+                        onClick = { onColumns(choice) },
+                        label = { Text(if (choice == MainLayout.AUTO) stringResource(R.string.main_layout_columns_auto) else choice.toString()) },
+                        modifier = Modifier.semantics { contentDescription = spoken },
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onReset) {
+                    Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.main_layout_reset), maxLines = 1)
+                }
+                Spacer(Modifier.weight(1f))
+                FilledTonalButton(onClick = onAdd, enabled = canAdd) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.main_layout_add), maxLines = 1)
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onDone) { Text(stringResource(R.string.main_layout_done), maxLines = 1) }
+            }
+        }
+    }
+}
+
+/**
+ * The same controls as [MainEditBar] for a window lying on its side, where a bar under the
+ * canvas would take most of the height: a column at the window's end edge.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun MainEditRail(
+    columns: Int,
+    onColumns: (Int) -> Unit,
+    canAdd: Boolean,
+    onAdd: () -> Unit,
+    onReset: () -> Unit,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier.fillMaxHeight()) {
+        Column(
+            Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End + WindowInsetsSides.Vertical))
+                .width(176.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.main_layout_done), maxLines = 1) }
+            FilledTonalButton(onClick = onAdd, enabled = canAdd, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.main_layout_add), maxLines = 1)
+            }
+            Text(
+                stringResource(R.string.main_layout_columns),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (choice in 0..MainLayout.MAX_COLUMNS) {
+                    val spoken = if (choice == MainLayout.AUTO) stringResource(R.string.main_layout_columns_auto)
+                                 else stringResource(R.string.main_layout_columns_cd, choice)
+                    FilterChip(
+                        selected = columns == choice,
+                        onClick = { onColumns(choice) },
+                        label = { Text(if (choice == MainLayout.AUTO) stringResource(R.string.main_layout_columns_auto) else choice.toString()) },
+                        modifier = Modifier.semantics { contentDescription = spoken },
+                    )
+                }
+            }
+            TextButton(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.main_layout_reset), maxLines = 1)
+            }
+        }
+    }
+}
+
+/** The plus at the end of the canvas: an empty place, drawn as one, that opens the list of what can fill it. */
+@Composable
+internal fun MainAddCell(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.outline
+    val shape = MaterialTheme.shapes.large
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .clip(shape)
+            .drawBehind {
+                drawRoundRect(
+                    color = color,
+                    cornerRadius = CornerRadius(16.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx()))),
+                )
+            }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.main_layout_add), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+/**
+ * A block that is on the screen and has nothing to draw right now — the exit-node line and
+ * the graph of a connection that is not up — as the canvas shows it: by name, so that it can
+ * still be moved and taken off.
+ */
+@Composable
+internal fun MainBlockPlaceholder(item: MainItem, modifier: Modifier = Modifier, @androidx.annotation.StringRes note: Int = R.string.main_layout_when_connected) {
+    val spec = item.spec()
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(spec.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(spec.title), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+// ─── What can be added ───────────────────────────────────────────────────────────────────────
+
+/** A row of the sheet, its words already resolved: the sheet is a window of its own (see wrapContextWithLocale). */
+internal data class PaletteRow(val item: MainItem, val title: String, val desc: String, val icon: ImageVector, val group: String)
+
+/** [items] as the sheet lists them, named in the screen's language. */
+@Composable
+internal fun paletteRows(items: List<MainItem>): List<PaletteRow> = items.map { item ->
+    val spec = item.spec()
+    PaletteRow(item, stringResource(spec.title), stringResource(spec.desc), spec.icon, stringResource(item.group.title()))
+}
+
+/**
+ * Everything that is not on the main screen and could be, by kind. A press adds one and the
+ * sheet stays: whoever opens it usually wants more than one thing, and each lands on the canvas
+ * behind it at once.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun MainPaletteSheet(items: List<MainItem>, onAdd: (MainItem) -> Unit, onDismiss: () -> Unit) {
+    val rows = paletteRows(items)
+    val title = stringResource(R.string.main_layout_palette_title)
+    val empty = stringResource(R.string.main_layout_palette_empty)
+    val add = stringResource(R.string.main_layout_add)
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        MainPaletteContent(rows, title, empty, add, onAdd, Modifier.navigationBarsPadding())
+    }
+}
+
+@Composable
+internal fun MainPaletteContent(
+    rows: List<PaletteRow>,
+    title: String,
+    empty: String,
+    addLabel: String,
+    onAdd: (MainItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp).semantics { heading() },
+        )
+        if (rows.isEmpty()) {
+            Text(
+                empty,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp),
+            )
+            return@Column
+        }
+        Spacer(Modifier.height(4.dp))
+        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 12.dp).weight(1f, fill = false)) {
+            for ((group, members) in rows.groupBy { it.group }) {
+                item(key = "group:$group") {
+                    Text(
+                        group,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.animateItem().padding(start = 12.dp, top = 16.dp, bottom = 4.dp).semantics { heading() },
+                    )
+                }
+                items(members.size, key = { members[it].item.id }) { i ->
+                    val row = members[i]
+                    Surface(
+                        onClick = { onAdd(row.item) },
+                        shape = MaterialTheme.shapes.medium,
+                        color = androidx.compose.ui.graphics.Color.Transparent,
+                        modifier = Modifier.animateItem().fillMaxWidth().semantics { contentDescription = "$addLabel: ${row.title}. ${row.desc}" },
+                    ) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(row.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(row.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    row.desc,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

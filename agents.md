@@ -171,7 +171,14 @@ Binding:
   functions on `Dispatchers.IO`.
 * The structure: the main screen is the status card, banners
   only when something needs the user, the exit-node row and six tiles (Peers,
-  Networks, DNS, Publish, Diagnostics, Settings). This device lives in Peers as
+  Networks, DNS, Publish, Diagnostics, Settings) — by default. It is the
+  user's to arrange: a long press on it, or Settings → Appearance → Main
+  screen, turns it into its own editor (`core/MainLayout.kt`, one JSON string
+  in `main_layout`, carried by backups; `ui/MainCanvas.kt`,
+  `ui/MainLayoutEditor.kt`, `ui/MainTiles.kt`, `ui/MainHiddenItems.kt`). The
+  status card and Settings cannot be taken off; the banners follow the card.
+  A new main-screen item is a `MainItem` with a stable id, a `spec()` and,
+  if it opens a screen, a `screen()`. This device lives in Peers as
   its first row. Settings is a hub of sections (`SettingsSections` ids, opened by
   `EXTRA_OPEN_SECTION` and `birdsocks://settings?section=`); each setting lives in
   one place. Accounts are managed only in the account sheet.
