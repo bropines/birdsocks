@@ -44,4 +44,6 @@
     <string name="search_sum_docs">NetBird\'s own documentation, on docs.netbird.io</string>
     <string name="search_sum_source">BirdSocks on GitHub: code, issues, releases</string>
     <string name="search_sum_donate">A donation to the author</string>
+    <string name="search_need_tun_root">Shown in Root mode</string>
+    <string name="search_sum_main_hidden">What was taken off the main screen, to open or put back</string>
 </resources>

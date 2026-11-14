@@ -64,7 +64,7 @@
     <string name="nb_tun_root_dns_unhealthy">Резолвер NetBird не отвечает: телефон разрешает имена сам, пока он не вернётся.</string>
     <string name="nb_tun_root_lan_title">Оставить локальную сеть</string>
     <string name="nb_tun_root_lan_desc">Сети, в которых находится телефон, остаются локальными, когда туннель берёт весь трафик, даже если их маршрутизирует пир.</string>
-    <string name="nb_tun_root_take_title">Забрать устройство у другого VPN</string>
+    <string name="nb_tun_root_take_title">Забирать устройство всегда</string>
     <string name="nb_tun_root_take_desc">Выкл.: рядом с другим VPN BirdSocks маршрутизирует только адреса NetBird и приложения, которые тот VPN пропускает. Вкл.: выходной узел и DNS для всех приложений.</string>
     <string name="nb_tun_root_take_confirm_title">Забрать все приложения?</string>
     <string name="nb_tun_root_take_confirm_body">Пока BirdSocks работает, приложения другого VPN теряют его туннель и DNS — их трафик идёт в NetBird. Настройка только этого телефона, в резервные копии не попадает.</string>

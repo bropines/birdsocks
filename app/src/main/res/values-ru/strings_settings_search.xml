@@ -40,4 +40,6 @@
     <string name="search_sum_docs">Документация самого NetBird на docs.netbird.io</string>
     <string name="search_sum_source">BirdSocks на GitHub: код, задачи, релизы</string>
     <string name="search_sum_donate">Пожертвование автору</string>
+    <string name="search_need_tun_root">Видно в режиме Root</string>
+    <string name="search_sum_main_hidden">Что убрано с главного экрана — открыть или вернуть</string>
 </resources>

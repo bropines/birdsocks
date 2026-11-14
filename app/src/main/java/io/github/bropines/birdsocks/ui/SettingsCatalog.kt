@@ -64,6 +64,8 @@ enum class Need(@param:StringRes val reason: Int = 0, val broughtBy: String? = n
     TUN_VPN(R.string.search_need_tun_vpn, "tunnel_mode"),
     /** The VPN through the proxy engine (hev-socks5-tunnel). */
     TUN_SOCKS(R.string.search_need_tun_socks, "tun_engine"),
+    /** Root mode. */
+    TUN_ROOT(R.string.search_need_tun_root, "tunnel_mode"),
     CONTROL_PROXY(R.string.search_need_control_proxy, "control_mode"),
     CONTROL_BYEDPI(R.string.search_need_control_byedpi, "control_mode"),
     AUTOMATION(R.string.search_need_automation, "automation_enable"),
@@ -149,6 +151,8 @@ object SettingsCatalog {
         row("palette", SettingsPage.APPEARANCE, R.string.settings_palette_title, R.string.search_sum_palette, R.string.search_kw_palette, look, needs = Need.STATIC_COLORS)
         row("dynamic_color", SettingsPage.APPEARANCE, R.string.settings_dynamic_color_title, R.string.settings_dynamic_color_desc, R.string.search_kw_dynamic_color, look, needs = Need.ANDROID_12)
         row("amoled", SettingsPage.APPEARANCE, R.string.settings_amoled_black_title, R.string.settings_amoled_black_desc, R.string.search_kw_amoled, look)
+        row("main_layout", SettingsPage.APPEARANCE, R.string.settings_main_layout_title, R.string.settings_main_layout_desc, R.string.search_kw_main_layout, R.string.settings_main_screen)
+        row("main_hidden", SettingsPage.APPEARANCE, R.string.main_hidden_title, R.string.search_sum_main_hidden, R.string.search_kw_main_hidden, R.string.settings_main_screen)
         row("app_icon", SettingsPage.APPEARANCE, R.string.icon_title, R.string.search_sum_app_icon, R.string.search_kw_app_icon, look, help = R.string.icon_note)
 
         // ─── Account & device ────────────────────────────────────────────────────────────
@@ -168,6 +172,8 @@ object SettingsCatalog {
         row("tunnel_mode", SettingsPage.TUNNEL, R.string.search_title_tunnel_mode, R.string.search_sum_tunnel_mode, R.string.search_kw_tunnel_mode, anchor = R.string.nb_tun_mode_title, help = R.string.nb_tun_mode_vpn_desc, suggested = true)
         val vpn = R.string.nb_tun_card
         row("tun_engine", SettingsPage.TUNNEL, R.string.nb_tun_engine_title, R.string.search_sum_tun_engine, R.string.search_kw_tun_engine, vpn, help = R.string.nb_tun_engine_socks_desc, needs = Need.TUN_VPN)
+        row("tun_root_lan", SettingsPage.TUNNEL, R.string.nb_tun_root_lan_title, R.string.nb_tun_root_lan_desc, R.string.search_kw_tun_root_lan, R.string.nb_tun_engine_root, needs = Need.TUN_ROOT)
+        row("tun_root_take", SettingsPage.TUNNEL, R.string.nb_tun_root_take_title, R.string.nb_tun_root_take_desc, R.string.search_kw_tun_root_take, R.string.nb_tun_engine_root, needs = Need.TUN_ROOT)
         row("tun_route_all", SettingsPage.TUNNEL, R.string.nb_tun_route_all_title, R.string.nb_tun_route_all_desc, R.string.search_kw_tun_route_all, vpn, needs = Need.TUN_MODE)
         row("tun_ipv6", SettingsPage.TUNNEL, R.string.nb_tun_ipv6_title, R.string.nb_tun_ipv6_desc, R.string.search_kw_tun_ipv6, vpn, needs = Need.TUN_MODE)
         row("tun_excluded_apps", SettingsPage.TUNNEL, R.string.nb_tun_apps_title, R.string.search_sum_tun_excluded_apps, R.string.search_kw_tun_excluded_apps, vpn, needs = Need.TUN_MODE)

@@ -64,7 +64,7 @@ pointing at it — and:
 | none | T1 + T2 + T3 | Root |
 | takes every app | T1 only: NetBird addresses work from every app; no exit node, networks or device-wide DNS | Root · NetBird only |
 | bypasses some apps | T1, T2 for the apps it bypasses, T3 except its own network's queries | Root · shared |
-| any, with **Take the device from another VPN** on | T1 + T2 + T3 | Root |
+| any, with **Take the device anyway** on | T1 + T2 + T3 | Root |
 
 The other VPN's apps keep their tunnel and their DNS unless you take the device.
 The SOCKS5 proxy works in every case: point an app or the other VPN's outbound

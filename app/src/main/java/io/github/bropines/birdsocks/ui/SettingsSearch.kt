@@ -103,6 +103,7 @@ internal class StoredSettingsFacts(private val context: Context) : SettingsFacts
             Need.TUN_MODE -> tun
             Need.TUN_VPN -> tun && engine != GlobalSettings.TUN_ENGINE_ROOT
             Need.TUN_SOCKS -> tun && engine == GlobalSettings.TUN_ENGINE_SOCKS
+            Need.TUN_ROOT -> tun && engine == GlobalSettings.TUN_ENGINE_ROOT
             Need.CONTROL_PROXY -> GlobalSettings.getControlMode(context) == GlobalSettings.CONTROL_PROXY
             Need.CONTROL_BYEDPI -> GlobalSettings.getControlMode(context) == GlobalSettings.CONTROL_BYEDPI
             Need.AUTOMATION -> Automation.isEnabled(context)

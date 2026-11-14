@@ -120,4 +120,8 @@
     <string name="search_kw_source">github, repository, code, open source, issues</string>
     <string name="search_kw_donate">donate, boosty, sponsor, money, tip</string>
     <string name="search_kw_licenses">open source licenses, third party, legal, bsd, gpl</string>
+    <string name="search_kw_main_layout">main screen, home, dashboard, tiles, layout, arrange, reorder, columns, edit</string>
+    <string name="search_kw_main_hidden">hidden tiles, removed, put back, restore tile</string>
+    <string name="search_kw_tun_root_lan">lan, local network, home network, router, nas, printer, root</string>
+    <string name="search_kw_tun_root_take">other vpn, coexistence, override, take over, conflict, root</string>
 </resources>

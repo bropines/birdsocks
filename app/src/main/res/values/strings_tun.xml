@@ -65,7 +65,7 @@
     <string name="nb_tun_root_dns_unhealthy">NetBird\'s resolver is not answering: the phone resolves on its own until it does.</string>
     <string name="nb_tun_root_lan_title">Keep the local network</string>
     <string name="nb_tun_root_lan_desc">The networks this phone is on stay local while the tunnel takes all traffic, even when a peer routes them.</string>
-    <string name="nb_tun_root_take_title">Take the device from another VPN</string>
+    <string name="nb_tun_root_take_title">Take the device anyway</string>
     <string name="nb_tun_root_take_desc">Off: beside another VPN, BirdSocks routes only NetBird\'s addresses and the apps that VPN bypasses. On: the exit node and DNS for every app.</string>
     <string name="nb_tun_root_take_confirm_title">Take every app?</string>
     <string name="nb_tun_root_take_confirm_body">While BirdSocks runs, the other VPN\'s apps lose their tunnel and its DNS — their traffic goes to NetBird instead. Stays on this phone only, not in backups.</string>

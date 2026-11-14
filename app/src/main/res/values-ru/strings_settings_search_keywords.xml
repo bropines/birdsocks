@@ -108,4 +108,8 @@
     <string name="search_kw_source">гитхаб, github, репозиторий, код, открытый код, issues</string>
     <string name="search_kw_donate">донат, пожертвовать, boosty, бусти, поддержать, деньги</string>
     <string name="search_kw_licenses">лицензии открытого кода, сторонние, юридическое, bsd, gpl</string>
+    <string name="search_kw_main_layout">главный экран, плитки, раскладка, переставить, порядок, колонки, редактировать</string>
+    <string name="search_kw_main_hidden">скрытые плитки, убранные, вернуть, восстановить плитку</string>
+    <string name="search_kw_tun_root_lan">локальная сеть, домашняя сеть, роутер, nas, принтер, root</string>
+    <string name="search_kw_tun_root_take">другой vpn, соседство, конфликт, забрать, перехватить, root</string>
 </resources>
