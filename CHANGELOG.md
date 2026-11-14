@@ -5,6 +5,9 @@
 ### Added
 - What's new opens once after an update, in Russian from CHANGELOG_RU.md.
 
+### Fixed
+- Dialogs (About, What's new, logout, the VPN warning, debug bundle, packet capture) follow the app's language, not the system's.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added

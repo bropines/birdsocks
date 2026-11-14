@@ -106,20 +106,20 @@ fun DebugBundleDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         icon = { Icon(Icons.Default.Inventory2, null) },
-        title = { Text(stringResource(R.string.nb_bundle_title)) },
+        title = { Text(context.getString(R.string.nb_bundle_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.nb_bundle_desc), style = MaterialTheme.typography.bodyMedium)
+                Text(context.getString(R.string.nb_bundle_desc), style = MaterialTheme.typography.bodyMedium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = anonymize, onCheckedChange = { anonymize = it }, enabled = !busy)
-                    Text(stringResource(R.string.nb_bundle_anonymize))
+                    Text(context.getString(R.string.nb_bundle_anonymize))
                 }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 result?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         },
-        confirmButton = { TextButton(enabled = !busy, onClick = { build(upload = true) }) { Text(stringResource(R.string.nb_bundle_upload)) } },
-        dismissButton = { TextButton(enabled = !busy, onClick = { build(upload = false) }) { Text(stringResource(R.string.nb_bundle_save)) } }
+        confirmButton = { TextButton(enabled = !busy, onClick = { build(upload = true) }) { Text(context.getString(R.string.nb_bundle_upload)) } },
+        dismissButton = { TextButton(enabled = !busy, onClick = { build(upload = false) }) { Text(context.getString(R.string.nb_bundle_save)) } }
     )
 }
 
@@ -189,32 +189,32 @@ fun CaptureDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = { if (!running) onDismiss() },
         icon = { Icon(Icons.Default.Sensors, null) },
-        title = { Text(stringResource(R.string.nb_capture_title)) },
+        title = { Text(context.getString(R.string.nb_capture_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.nb_capture_desc), style = MaterialTheme.typography.bodySmall)
+                Text(context.getString(R.string.nb_capture_desc), style = MaterialTheme.typography.bodySmall)
                 SlidingSegmentedChips(
-                    options = CAPTURE_SECONDS.map { stringResource(R.string.nb_capture_seconds, it) },
+                    options = CAPTURE_SECONDS.map { context.getString(R.string.nb_capture_seconds, it) },
                     selectedIndex = CAPTURE_SECONDS.indexOf(seconds).coerceAtLeast(0),
                     onOptionSelected = { if (!running) seconds = CAPTURE_SECONDS[it] },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = filter, onValueChange = { filter = it }, enabled = !running, singleLine = true,
-                    label = { Text(stringResource(R.string.nb_capture_filter)) },
-                    supportingText = { Text(stringResource(R.string.nb_capture_filter_desc)) }
+                    label = { Text(context.getString(R.string.nb_capture_filter)) },
+                    supportingText = { Text(context.getString(R.string.nb_capture_filter_desc)) }
                 )
                 if (running) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Text(stringResource(R.string.nb_capture_progress, bytes / 1024), style = MaterialTheme.typography.bodySmall)
+                    Text(context.getString(R.string.nb_capture_progress, bytes / 1024), style = MaterialTheme.typography.bodySmall)
                 }
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {
-            if (running) TextButton(enabled = sub != null, onClick = { sub?.cancel() }) { Text(stringResource(R.string.nb_capture_stop)) }
-            else TextButton(onClick = ::start) { Text(stringResource(R.string.nb_capture_start)) }
+            if (running) TextButton(enabled = sub != null, onClick = { sub?.cancel() }) { Text(context.getString(R.string.nb_capture_stop)) }
+            else TextButton(onClick = ::start) { Text(context.getString(R.string.nb_capture_start)) }
         },
-        dismissButton = { TextButton(enabled = !running, onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
+        dismissButton = { TextButton(enabled = !running, onClick = onDismiss) { Text(context.getString(R.string.action_cancel)) } }
     )
 }

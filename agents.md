@@ -138,6 +138,11 @@ Binding:
   ⓘ, unfold on tap or long press); long text belongs in dialogs. No ⋮ menus on
   cards.
 * Every new string goes in English to `values/` and in Russian to `values-ru/`.
+* **Dialogs resolve their strings in the parent composition.** A dialog or sheet
+  is a window of its own where `stringResource()` can follow the system language,
+  not the app's: read strings before the call, or through the parent's
+  `LocalContext.current` (`context.getString`) inside it — also in the blocks a
+  dialog calls. See `wrapContextWithLocale()`.
 * Never block the main thread on the bridge: `Netbird.*` calls are suspend
   functions on `Dispatchers.IO`.
 * The structure: the main screen is the status card, banners
