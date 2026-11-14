@@ -19,7 +19,11 @@
 - Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
 - An admin panel for the active account, from the shield on the main screen, a tile, Settings → Account or `birdsocks://admin`: overview, peers (search, rename, login expiration, delete), setup keys (create with an invite QR, revoke) and groups, through the server's API with an access token sealed on the phone; changes ask for the screen lock, read-only by default.
 - Admin panel: a home screen with what needs you (peers and users awaiting approval, setup keys about to expire) and its actions inline, and a grid of areas; every change shows what it does and what it changes before the screen lock, and a risky one asks for the name typed back. The panel opens on the last lists it saw while it refreshes.
-- Open-source licenses as a screen of their own: every component in the APK with its license and full text, from About or `birdsocks://licenses`.
+- Admin panel: users (roles, block, auto-groups, approve or reject, delete; never your own user or the last owner, making someone owner warned) and link invites, shown once and out of screenshots.
+- Admin panel: service users and personal access tokens — expiry and last use, new tokens shown once, a flag on tokens expiring soon and on the one the panel signs in with, which is deleted only after a warning.
+- Admin panel: the audit log by day, filtered by activity and by who, each entry's changes as before → after; network traffic events, page by page, where the server keeps them.
+- Admin panel: every account setting, each saved on its own and described by what it does; changing the network range or turning approval off goes through the high-risk review.
+- Admin panel: event streaming (cloud), identity providers with secrets never shown, and the reverse proxy's services and domains with validation, next to a link to the Publish screen.
 
 ### Fixed
 - A switch between redundant routing peers no longer raises a notification each time.

@@ -18,6 +18,13 @@ import io.github.bropines.birdsocks.admin.api.Capabilities
 import io.github.bropines.birdsocks.admin.areas.groups.GroupsArea
 import io.github.bropines.birdsocks.admin.areas.keys.SetupKeysArea
 import io.github.bropines.birdsocks.admin.areas.peers.PeersArea
+import io.github.bropines.birdsocks.admin.areas.events.EventsArea
+import io.github.bropines.birdsocks.admin.areas.idp.IdentityProvidersArea
+import io.github.bropines.birdsocks.admin.areas.proxy.ReverseProxyArea
+import io.github.bropines.birdsocks.admin.areas.settings.AccountSettingsArea
+import io.github.bropines.birdsocks.admin.areas.streaming.EventStreamingArea
+import io.github.bropines.birdsocks.admin.areas.users.ServiceUsersArea
+import io.github.bropines.birdsocks.admin.areas.users.UsersArea
 
 /**
  * Every area of the panel, in the order the home screen shows them. One line
@@ -35,14 +42,13 @@ object AdminAreas {
         comingArea("routes", R.string.admin_area_routes, R.string.admin_area_routes_summary, Icons.AutoMirrored.Filled.AltRoute, Capabilities.ROUTES),
         comingArea("dns", R.string.admin_area_dns, R.string.admin_area_dns_summary, Icons.Default.Dns, null,
             available = { it.canRead(Capabilities.DNS) || it.canRead(Capabilities.NAMESERVERS) }),
-        comingArea("users", R.string.admin_area_users, R.string.admin_area_users_summary, Icons.Default.People, Capabilities.USERS),
-        comingArea("service_users", R.string.admin_area_service_users, R.string.admin_area_service_users_summary, Icons.Default.ManageAccounts, Capabilities.USERS),
-        comingArea("events", R.string.admin_area_events, R.string.admin_area_events_summary, Icons.Default.History, Capabilities.EVENTS),
-        comingArea("account_settings", R.string.admin_area_account_settings, R.string.admin_area_account_settings_summary, Icons.Default.Tune, Capabilities.ACCOUNTS),
-        comingArea("event_streaming", R.string.admin_area_event_streaming, R.string.admin_area_event_streaming_summary, Icons.Default.Stream, Capabilities.SETTINGS,
-            available = { it.account?.isCloud == true }),
-        comingArea("identity_providers", R.string.admin_area_identity_providers, R.string.admin_area_identity_providers_summary, Icons.Default.Fingerprint, Capabilities.IDENTITY_PROVIDERS),
-        comingArea("reverse_proxy", R.string.admin_area_reverse_proxy, R.string.admin_area_reverse_proxy_summary, Icons.Default.Public, Capabilities.SERVICES),
+        UsersArea,
+        ServiceUsersArea,
+        EventsArea,
+        AccountSettingsArea,
+        EventStreamingArea,
+        IdentityProvidersArea,
+        ReverseProxyArea,
     )
 
     fun byId(id: String): AdminArea? = all.firstOrNull { it.id == id }
