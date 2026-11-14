@@ -36,8 +36,33 @@ enum class LockState {
     NO_SCREEN_LOCK,
 }
 
+/**
+ * Proof that the person at the phone unlocked one change just now: good for
+ * one use ([consume]) within [VALID_MS]. The SafeChangeRunner takes it; a
+ * grant already used or gone stale refuses the change.
+ */
+class WriteGrant internal constructor(val issuedAt: Long, val via: LockState) {
+    private var used = false
+
+    /** Takes the grant for one change; false when it was already used or has gone stale. */
+    @Synchronized
+    fun consume(now: Long = System.currentTimeMillis()): Boolean {
+        if (used || now - issuedAt !in 0..VALID_MS) return false
+        used = true
+        return true
+    }
+
+    companion object {
+        const val VALID_MS = 60_000L
+
+        /** For JVM tests of the runner; the app gets grants only from [AdminWriteGate.unlock]. */
+        @androidx.annotation.VisibleForTesting
+        fun forTest(issuedAt: Long, via: LockState = LockState.CRYPTO_PER_USE) = WriteGrant(issuedAt, via)
+    }
+}
+
 sealed class UnlockResult {
-    data object Granted : UnlockResult()
+    class Granted(val grant: WriteGrant) : UnlockResult()
     /** The user closed the prompt. */
     data object Cancelled : UnlockResult()
     class Failed(val reason: UnlockFailure, val detail: String? = null) : UnlockResult()
@@ -144,7 +169,7 @@ object AdminWriteGate {
             // Below API 30 the cipher is initialised only now, inside the key's validity window.
             if (state == LockState.TIME_BOUND) cipher.init(Cipher.ENCRYPT_MODE, key(state))
             cipher.doFinal(ByteArray(32).also { SecureRandom().nextBytes(it) })
-            UnlockResult.Granted
+            UnlockResult.Granted(WriteGrant(System.currentTimeMillis(), state))
         } catch (e: UserNotAuthenticatedException) {
             UnlockResult.Failed(UnlockFailure.NOT_PROVEN, "the Keystore did not accept this unlock")
         } catch (e: KeyPermanentlyInvalidatedException) {

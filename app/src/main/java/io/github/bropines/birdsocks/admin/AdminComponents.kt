@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import android.os.PersistableBundle
 import androidx.compose.foundation.background
@@ -16,6 +17,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +37,15 @@ import io.github.bropines.birdsocks.admin.api.ProxyUnusableException
 import io.github.bropines.birdsocks.ui.parseRfc3339Millis
 import io.nayuki.qrcodegen.DataTooLongException
 import io.nayuki.qrcodegen.QrCode
+
+/** The activity BiometricPrompt needs, from inside the composition. */
+@Composable
+internal fun rememberFragmentActivity(): FragmentActivity {
+    val context = LocalContext.current
+    return remember(context) {
+        generateSequence(context) { (it as? ContextWrapper)?.baseContext }.filterIsInstance<FragmentActivity>().first()
+    }
+}
 
 /** What went wrong, in the user's words; the server's own message after it when it sent one. */
 fun describeError(context: Context, e: Throwable): String {

@@ -12,10 +12,6 @@
     <string name="admin_retry">Try again</string>
     <string name="admin_bad_url">The admin panel sends a token only over HTTPS. This account\'s server is %1$s.</string>
 
-    <string name="admin_tab_overview">Overview</string>
-    <string name="admin_tab_peers">Peers</string>
-    <string name="admin_tab_keys">Setup keys</string>
-    <string name="admin_tab_groups">Groups</string>
 
     <!-- Credential -->
     <string name="admin_credential_title">Access to the server</string>
@@ -52,12 +48,8 @@
     <string name="admin_unlock_no_lock">Set a screen lock to make changes.</string>
     <string name="admin_unlock_lockout">Too many attempts. Try again later.</string>
     <string name="admin_unlock_failed">The unlock was not confirmed; nothing changed.</string>
-    <string name="admin_write_refused">The panel is read-only for this account, or your role may not do this.</string>
-    <string name="admin_done_saved">Saved</string>
     <string name="admin_done_deleted">Deleted %1$s</string>
     <string name="admin_done_revoked">Revoked %1$s</string>
-    <string name="admin_error_generic">The change failed</string>
-    <string name="admin_type_name">Type %1$s</string>
 
     <!-- Errors -->
     <string name="admin_err_unauthorized">The server did not accept the credential.</string>
@@ -86,11 +78,8 @@
     <string name="admin_overview_signed_in_with">Signed in with</string>
     <string name="admin_overview_auth_token">an access token</string>
     <string name="admin_overview_auth_device">this device\'s sign-in (experimental)</string>
-    <string name="admin_overview_counts">In this network</string>
     <string name="admin_overview_peers_count">%1$d online of %2$d</string>
     <string name="admin_overview_keys_count">%1$d valid of %2$d</string>
-    <string name="admin_overview_pending">Waiting for approval</string>
-    <string name="admin_overview_expired">Login expired</string>
     <string name="admin_overview_nothing">Your role shows nothing here.</string>
     <string name="admin_overview_ro_role">Your role can only read: the panel is read-only.</string>
     <string name="admin_overview_ro_lock">This phone has no screen lock: the panel is read-only.</string>
@@ -123,11 +112,9 @@
     <string name="admin_peer_delete_title">Delete %1$s?</string>
     <string name="admin_peer_delete_text">The peer leaves the network at once and has to be added again with a new sign-in or setup key.</string>
     <string name="admin_peer_self_note">This is this device. It cannot be deleted from here; sign out in Settings instead.</string>
-    <string name="admin_peer_self_guard">This device cannot delete its own peer.</string>
     <string name="admin_peer_read_only_note">Changes are off: read-only, no screen lock or your role.</string>
     <string name="admin_peer_rename_unlock">Rename %1$s</string>
     <string name="admin_peer_expiry_unlock">Login expiration of %1$s</string>
-    <string name="admin_peer_delete_unlock">Delete %1$s</string>
 
     <!-- Setup keys -->
     <string name="admin_keys_empty">No setup keys</string>
@@ -164,7 +151,6 @@
     <string name="admin_key_revoke">Revoke</string>
     <string name="admin_key_revoke_title">Revoke %1$s?</string>
     <string name="admin_key_revoke_text">No new peer can join with it. Peers it already added stay.</string>
-    <string name="admin_key_revoke_unlock">Revoke setup key %1$s</string>
 
     <!-- Groups -->
     <string name="admin_groups_empty">No groups</string>
@@ -182,4 +168,146 @@
         <item quantity="other">%1$d resources</item>
     </plurals>
     <string name="admin_open_dashboard">Open the web dashboard</string>
+
+    <!-- Home -->
+    <string name="admin_home_attention">Needs you</string>
+    <string name="admin_home_attention_none">Nothing waits for you.</string>
+    <string name="admin_home_areas">Manage</string>
+    <string name="admin_home_open">Open</string>
+    <string name="admin_home_peer_awaiting">%1$s waits for approval</string>
+    <string name="admin_home_user_awaiting">%1$s asks to join</string>
+    <string name="admin_home_key_expiring">Setup key %1$s expires soon</string>
+    <string name="admin_home_key_expires_today">Expires today</string>
+    <plurals name="admin_home_key_days_left">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+
+    <!-- Areas -->
+    <string name="admin_area_coming">Coming in a later version.</string>
+    <string name="admin_area_coming_badge">coming</string>
+    <string name="admin_area_peers">Peers</string>
+    <string name="admin_area_peers_summary">Machines in the network: rename, approve, expire, remove.</string>
+    <string name="admin_area_groups">Groups</string>
+    <string name="admin_area_groups_summary">Sets of peers and resources that policies and routes name.</string>
+    <string name="admin_area_setup_keys">Setup keys</string>
+    <string name="admin_area_setup_keys_summary">Keys that let new machines join without a sign-in.</string>
+    <string name="admin_area_policies">Policies</string>
+    <string name="admin_area_policies_summary">Who may reach whom, on which ports.</string>
+    <string name="admin_area_posture_checks">Posture checks</string>
+    <string name="admin_area_posture_checks_summary">Conditions a peer must meet: version, OS, location, network.</string>
+    <string name="admin_area_networks">Networks</string>
+    <string name="admin_area_networks_summary">Resources behind routing peers: hosts, subnets, domains.</string>
+    <string name="admin_area_routes">Routes</string>
+    <string name="admin_area_routes_summary">Network routes and exit nodes, the older way.</string>
+    <string name="admin_area_dns">DNS</string>
+    <string name="admin_area_dns_summary">Nameservers, private zones and records.</string>
+    <string name="admin_area_users">Users</string>
+    <string name="admin_area_users_summary">People in the account: roles, approval, invites.</string>
+    <string name="admin_area_service_users">Service users and tokens</string>
+    <string name="admin_area_service_users_summary">Accounts for automation and their access tokens.</string>
+    <string name="admin_area_events">Activity</string>
+    <string name="admin_area_events_summary">The account\'s audit log: who changed what.</string>
+    <string name="admin_area_account_settings">Account settings</string>
+    <string name="admin_area_account_settings_summary">Login expiration, approval, DNS domain, network range.</string>
+    <string name="admin_area_event_streaming">Event streaming</string>
+    <string name="admin_area_event_streaming_summary">Sends the audit log to another service.</string>
+    <string name="admin_area_identity_providers">Identity providers</string>
+    <string name="admin_area_identity_providers_summary">Where people sign in from.</string>
+    <string name="admin_area_reverse_proxy">Reverse proxy</string>
+    <string name="admin_area_reverse_proxy_summary">Services published on the internet, and their domains.</string>
+
+    <!-- Lists -->
+    <string name="admin_sort_attention">Needs attention first</string>
+    <string name="admin_sort_name">By name</string>
+    <string name="admin_sort_last_seen">Last seen</string>
+    <string name="admin_sort_expires">Expires first</string>
+    <string name="admin_sort_size">Largest first</string>
+    <string name="admin_keys_search">Search keys</string>
+    <string name="admin_keys_no_match">No key matches</string>
+    <string name="admin_groups_search">Search groups</string>
+    <string name="admin_groups_no_match">No group matches</string>
+    <string name="admin_value_on">On</string>
+    <string name="admin_value_off">Off</string>
+
+    <!-- Picker -->
+    <string name="admin_picker_search">Search</string>
+    <string name="admin_picker_done">Done (%1$d)</string>
+    <string name="admin_picker_clear">Clear the choice</string>
+    <string name="admin_picker_kind_peers">Peers</string>
+    <string name="admin_picker_kind_groups">Groups</string>
+    <string name="admin_picker_kind_users">Users</string>
+    <string name="admin_picker_kind_other">Other</string>
+
+    <!-- Change gates -->
+    <string name="admin_change_class_low">Low risk</string>
+    <string name="admin_change_class_medium">Needs unlock</string>
+    <string name="admin_change_class_high">High risk</string>
+    <string name="admin_change_class_policy">Access rules</string>
+    <string name="admin_change_target">Acts on</string>
+    <string name="admin_change_diff">What changes</string>
+    <string name="admin_change_before">Before</string>
+    <string name="admin_change_after">After</string>
+    <string name="admin_change_nothing">(nothing)</string>
+    <string name="admin_change_type_name">Type %1$s to confirm.</string>
+    <string name="admin_change_type_phrase">Type «%1$s» to confirm.</string>
+    <string name="admin_change_type_label">Typed name</string>
+    <string name="admin_change_apply">Unlock and apply</string>
+    <string name="admin_change_unlock_note">The screen lock is asked next.</string>
+    <string name="admin_change_applying">Applying…</string>
+    <string name="admin_change_this_device">This is the phone you are using.</string>
+    <string name="admin_change_checks">Checks</string>
+    <string name="admin_change_done">Done: %1$s</string>
+    <string name="admin_change_mismatch">Sent, but the server now shows something else: %1$s. Refresh and check.</string>
+    <string name="admin_undo">Undo</string>
+    <plurals name="admin_diff_folded">
+        <item quantity="one">%1$d unchanged line</item>
+        <item quantity="other">%1$d unchanged lines</item>
+    </plurals>
+    <string name="admin_refused_read_only">Not sent: the panel is read-only for this account.</string>
+    <string name="admin_refused_no_lock">Not sent: this phone has no screen lock.</string>
+    <string name="admin_refused_not_allowed">Not sent: your role may not do this.</string>
+    <string name="admin_refused_own_peer">Not sent: this is the phone you are using.</string>
+    <string name="admin_refused_own_user">Not sent: this is your own user.</string>
+    <string name="admin_refused_own_credential">Not sent: the panel signs in with this token.</string>
+    <string name="admin_refused_not_confirmed">Not sent: it was not confirmed.</string>
+    <string name="admin_refused_typed">Not sent: the typed name does not match.</string>
+    <string name="admin_refused_not_unlocked">Not sent: the unlock is missing or too old.</string>
+    <string name="admin_refused_checks">Not sent: the checks did not pass.</string>
+    <string name="admin_refused_no_session">Not sent: the panel is signed out.</string>
+
+    <!-- Peers, keys, users: changes -->
+    <string name="admin_peer_rename_effect">The peer will be called %1$s; its DNS name follows.</string>
+    <string name="admin_peer_expiry_on_effect">The peer must sign in again when the account\'s login expiration runs out.</string>
+    <string name="admin_peer_expiry_off_effect">The peer stays signed in for good, whatever the account\'s login expiration says.</string>
+    <string name="admin_peer_approve">Approve</string>
+    <string name="admin_peer_approve_title">Approve %1$s?</string>
+    <string name="admin_peer_approve_effect">The peer joins the network and gets what its groups allow.</string>
+    <string name="admin_peer_approved">Approved %1$s</string>
+    <string name="admin_key_create_effect_one_off">One machine can join with it, within %1$d days.</string>
+    <string name="admin_key_create_effect_reusable">Machines can join with it for %1$d days.</string>
+    <string name="admin_key_unlimited_warning">Reusable without a limit: anyone holding the key can add any number of machines until it expires.</string>
+    <string name="admin_user_approve">Approve</string>
+    <string name="admin_user_approve_title">Let %1$s in?</string>
+    <string name="admin_user_approve_effect">The user can sign in and add peers with the role and groups they have.</string>
+    <string name="admin_user_approved">Approved %1$s</string>
+    <string name="admin_user_reject">Reject</string>
+    <string name="admin_user_reject_title">Reject %1$s?</string>
+    <string name="admin_user_reject_effect">The sign-up is refused and the user is removed.</string>
+    <string name="admin_user_rejected">Rejected %1$s</string>
+
+    <!-- JSON editor -->
+    <string name="admin_json_search">Search</string>
+    <string name="admin_json_no_matches">No matches</string>
+    <string name="admin_json_previous">Previous match</string>
+    <string name="admin_json_next">Next match</string>
+    <string name="admin_json_undo">Undo</string>
+    <string name="admin_json_redo">Redo</string>
+    <string name="admin_json_format">Format</string>
+    <string name="admin_json_valid">Valid JSON</string>
+    <string name="admin_json_problem">Line %1$d, column %2$d: %3$s</string>
+    <string name="admin_json_position">%1$d:%2$d</string>
+    <string name="admin_json_discard_title">Discard the changes?</string>
+    <string name="admin_json_discard_text">What you edited here is not saved anywhere.</string>
+    <string name="admin_json_discard">Discard</string>
 </resources>

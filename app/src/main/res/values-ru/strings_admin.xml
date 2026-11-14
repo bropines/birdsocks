@@ -12,10 +12,6 @@
     <string name="admin_retry">Повторить</string>
     <string name="admin_bad_url">Панель отправляет токен только по HTTPS. Сервер этого аккаунта: %1$s.</string>
 
-    <string name="admin_tab_overview">Обзор</string>
-    <string name="admin_tab_peers">Узлы</string>
-    <string name="admin_tab_keys">Ключи</string>
-    <string name="admin_tab_groups">Группы</string>
 
     <!-- Доступ -->
     <string name="admin_credential_title">Доступ к серверу</string>
@@ -52,12 +48,8 @@
     <string name="admin_unlock_no_lock">Чтобы вносить изменения, задайте блокировку экрана.</string>
     <string name="admin_unlock_lockout">Слишком много попыток. Повторите позже.</string>
     <string name="admin_unlock_failed">Разблокировка не подтверждена; ничего не изменено.</string>
-    <string name="admin_write_refused">Для этого аккаунта панель только читает, или ваша роль этого не позволяет.</string>
-    <string name="admin_done_saved">Сохранено</string>
     <string name="admin_done_deleted">%1$s удалён</string>
     <string name="admin_done_revoked">%1$s отозван</string>
-    <string name="admin_error_generic">Изменение не удалось</string>
-    <string name="admin_type_name">Введите %1$s</string>
 
     <!-- Ошибки -->
     <string name="admin_err_unauthorized">Сервер не принял учётные данные.</string>
@@ -86,11 +78,8 @@
     <string name="admin_overview_signed_in_with">Вход через</string>
     <string name="admin_overview_auth_token">токен доступа</string>
     <string name="admin_overview_auth_device">вход этого устройства (эксперимент)</string>
-    <string name="admin_overview_counts">В этой сети</string>
     <string name="admin_overview_peers_count">%1$d в сети из %2$d</string>
     <string name="admin_overview_keys_count">%1$d действующих из %2$d</string>
-    <string name="admin_overview_pending">Ждут одобрения</string>
-    <string name="admin_overview_expired">Вход истёк</string>
     <string name="admin_overview_nothing">Вашей роли здесь ничего не видно.</string>
     <string name="admin_overview_ro_role">Ваша роль может только читать: панель только для чтения.</string>
     <string name="admin_overview_ro_lock">На телефоне нет блокировки экрана: панель только для чтения.</string>
@@ -123,11 +112,9 @@
     <string name="admin_peer_delete_title">Удалить %1$s?</string>
     <string name="admin_peer_delete_text">Узел сразу покинет сеть, и добавить его можно будет только новым входом или ключом установки.</string>
     <string name="admin_peer_self_note">Это ваше устройство. Отсюда его не удалить; выйдите из аккаунта в Настройках.</string>
-    <string name="admin_peer_self_guard">Устройство не может удалить собственный узел.</string>
     <string name="admin_peer_read_only_note">Изменения выключены: только чтение, нет блокировки экрана или не позволяет роль.</string>
     <string name="admin_peer_rename_unlock">Переименовать %1$s</string>
     <string name="admin_peer_expiry_unlock">Истечение входа %1$s</string>
-    <string name="admin_peer_delete_unlock">Удалить %1$s</string>
 
     <!-- Ключи установки -->
     <string name="admin_keys_empty">Нет ключей установки</string>
@@ -164,7 +151,6 @@
     <string name="admin_key_revoke">Отозвать</string>
     <string name="admin_key_revoke_title">Отозвать %1$s?</string>
     <string name="admin_key_revoke_text">С ним больше не сможет войти ни один новый узел. Уже добавленные узлы останутся.</string>
-    <string name="admin_key_revoke_unlock">Отозвать ключ установки %1$s</string>
 
     <!-- Группы -->
     <string name="admin_groups_empty">Нет групп</string>
@@ -188,4 +174,150 @@
         <item quantity="other">%1$d ресурса</item>
     </plurals>
     <string name="admin_open_dashboard">Открыть веб-панель</string>
+
+    <!-- Home -->
+    <string name="admin_home_attention">Ждёт вас</string>
+    <string name="admin_home_attention_none">Ничего не ждёт вашего решения.</string>
+    <string name="admin_home_areas">Управление</string>
+    <string name="admin_home_open">Открыть</string>
+    <string name="admin_home_peer_awaiting">%1$s ждёт одобрения</string>
+    <string name="admin_home_user_awaiting">%1$s просит доступ</string>
+    <string name="admin_home_key_expiring">Ключ установки %1$s скоро истечёт</string>
+    <string name="admin_home_key_expires_today">Истекает сегодня</string>
+    <plurals name="admin_home_key_days_left">
+        <item quantity="one">Остался %1$d день</item>
+        <item quantity="few">Осталось %1$d дня</item>
+        <item quantity="many">Осталось %1$d дней</item>
+        <item quantity="other">Осталось %1$d дня</item>
+    </plurals>
+
+    <!-- Areas -->
+    <string name="admin_area_coming">Появится в одной из следующих версий.</string>
+    <string name="admin_area_coming_badge">скоро</string>
+    <string name="admin_area_peers">Узлы</string>
+    <string name="admin_area_peers_summary">Машины в сети: переименовать, одобрить, сбросить вход, удалить.</string>
+    <string name="admin_area_groups">Группы</string>
+    <string name="admin_area_groups_summary">Наборы узлов и ресурсов, на которые ссылаются политики и маршруты.</string>
+    <string name="admin_area_setup_keys">Ключи установки</string>
+    <string name="admin_area_setup_keys_summary">Ключи, с которыми новые машины входят в сеть без входа в аккаунт.</string>
+    <string name="admin_area_policies">Политики</string>
+    <string name="admin_area_policies_summary">Кто к кому может подключаться и по каким портам.</string>
+    <string name="admin_area_posture_checks">Проверки состояния</string>
+    <string name="admin_area_posture_checks_summary">Условия для узла: версия, ОС, страна, сеть.</string>
+    <string name="admin_area_networks">Сети</string>
+    <string name="admin_area_networks_summary">Ресурсы за маршрутизирующими узлами: хосты, подсети, домены.</string>
+    <string name="admin_area_routes">Маршруты</string>
+    <string name="admin_area_routes_summary">Сетевые маршруты и выходные узлы, прежний способ.</string>
+    <string name="admin_area_dns">DNS</string>
+    <string name="admin_area_dns_summary">DNS-серверы, частные зоны и записи.</string>
+    <string name="admin_area_users">Пользователи</string>
+    <string name="admin_area_users_summary">Люди в аккаунте: роли, одобрение, приглашения.</string>
+    <string name="admin_area_service_users">Сервисные пользователи и токены</string>
+    <string name="admin_area_service_users_summary">Учётные записи для автоматизации и их токены доступа.</string>
+    <string name="admin_area_events">Журнал</string>
+    <string name="admin_area_events_summary">Журнал аудита аккаунта: кто что изменил.</string>
+    <string name="admin_area_account_settings">Настройки аккаунта</string>
+    <string name="admin_area_account_settings_summary">Истечение входа, одобрение, DNS-домен, диапазон адресов.</string>
+    <string name="admin_area_event_streaming">Передача событий</string>
+    <string name="admin_area_event_streaming_summary">Отправляет журнал аудита в другой сервис.</string>
+    <string name="admin_area_identity_providers">Провайдеры входа</string>
+    <string name="admin_area_identity_providers_summary">Откуда люди входят в аккаунт.</string>
+    <string name="admin_area_reverse_proxy">Обратный прокси</string>
+    <string name="admin_area_reverse_proxy_summary">Сервисы, опубликованные в интернете, и их домены.</string>
+
+    <!-- Lists -->
+    <string name="admin_sort_attention">Сначала требующие внимания</string>
+    <string name="admin_sort_name">По имени</string>
+    <string name="admin_sort_last_seen">По последней активности</string>
+    <string name="admin_sort_expires">Сначала истекающие</string>
+    <string name="admin_sort_size">Сначала крупные</string>
+    <string name="admin_keys_search">Поиск ключей</string>
+    <string name="admin_keys_no_match">Таких ключей нет</string>
+    <string name="admin_groups_search">Поиск групп</string>
+    <string name="admin_groups_no_match">Таких групп нет</string>
+    <string name="admin_value_on">Вкл.</string>
+    <string name="admin_value_off">Выкл.</string>
+
+    <!-- Picker -->
+    <string name="admin_picker_search">Поиск</string>
+    <string name="admin_picker_done">Готово (%1$d)</string>
+    <string name="admin_picker_clear">Снять выбор</string>
+    <string name="admin_picker_kind_peers">Узлы</string>
+    <string name="admin_picker_kind_groups">Группы</string>
+    <string name="admin_picker_kind_users">Пользователи</string>
+    <string name="admin_picker_kind_other">Другое</string>
+
+    <!-- Change gates -->
+    <string name="admin_change_class_low">Низкий риск</string>
+    <string name="admin_change_class_medium">Нужна разблокировка</string>
+    <string name="admin_change_class_high">Высокий риск</string>
+    <string name="admin_change_class_policy">Правила доступа</string>
+    <string name="admin_change_target">Затрагивает</string>
+    <string name="admin_change_diff">Что изменится</string>
+    <string name="admin_change_before">Было</string>
+    <string name="admin_change_after">Станет</string>
+    <string name="admin_change_nothing">(ничего)</string>
+    <string name="admin_change_type_name">Введите %1$s для подтверждения.</string>
+    <string name="admin_change_type_phrase">Введите «%1$s» для подтверждения.</string>
+    <string name="admin_change_type_label">Введённое имя</string>
+    <string name="admin_change_apply">Разблокировать и применить</string>
+    <string name="admin_change_unlock_note">Следом будет запрошена блокировка экрана.</string>
+    <string name="admin_change_applying">Применяется…</string>
+    <string name="admin_change_this_device">Это телефон, которым вы пользуетесь.</string>
+    <string name="admin_change_checks">Проверки</string>
+    <string name="admin_change_done">Готово: %1$s</string>
+    <string name="admin_change_mismatch">Отправлено, но сервер показывает другое: %1$s. Обновите и проверьте.</string>
+    <string name="admin_undo">Отменить</string>
+    <plurals name="admin_diff_folded">
+        <item quantity="one">%1$d строка без изменений</item>
+        <item quantity="few">%1$d строки без изменений</item>
+        <item quantity="many">%1$d строк без изменений</item>
+        <item quantity="other">%1$d строки без изменений</item>
+    </plurals>
+    <string name="admin_refused_read_only">Не отправлено: для этого аккаунта панель только для чтения.</string>
+    <string name="admin_refused_no_lock">Не отправлено: на телефоне нет блокировки экрана.</string>
+    <string name="admin_refused_not_allowed">Не отправлено: вашей роли это не разрешено.</string>
+    <string name="admin_refused_own_peer">Не отправлено: это телефон, которым вы пользуетесь.</string>
+    <string name="admin_refused_own_user">Не отправлено: это ваш собственный пользователь.</string>
+    <string name="admin_refused_own_credential">Не отправлено: панель входит с этим токеном.</string>
+    <string name="admin_refused_not_confirmed">Не отправлено: изменение не подтверждено.</string>
+    <string name="admin_refused_typed">Не отправлено: введённое имя не совпадает.</string>
+    <string name="admin_refused_not_unlocked">Не отправлено: разблокировки нет или она устарела.</string>
+    <string name="admin_refused_checks">Не отправлено: проверки не пройдены.</string>
+    <string name="admin_refused_no_session">Не отправлено: панель вышла из аккаунта.</string>
+
+    <!-- Peers, keys, users: changes -->
+    <string name="admin_peer_rename_effect">Узел будет называться %1$s; его DNS-имя изменится вместе с ним.</string>
+    <string name="admin_peer_expiry_on_effect">Узлу придётся войти снова, когда истечёт срок входа, заданный для аккаунта.</string>
+    <string name="admin_peer_expiry_off_effect">Узел останется в сети без повторного входа, что бы ни было задано для аккаунта.</string>
+    <string name="admin_peer_approve">Одобрить</string>
+    <string name="admin_peer_approve_title">Одобрить %1$s?</string>
+    <string name="admin_peer_approve_effect">Узел войдёт в сеть и получит то, что разрешают его группы.</string>
+    <string name="admin_peer_approved">%1$s одобрен</string>
+    <string name="admin_key_create_effect_one_off">С ним сможет войти одна машина в течение %1$d дн.</string>
+    <string name="admin_key_create_effect_reusable">С ним смогут входить машины в течение %1$d дн.</string>
+    <string name="admin_key_unlimited_warning">Многоразовый без ограничения: любой, у кого есть ключ, сможет добавить сколько угодно машин, пока ключ не истечёт.</string>
+    <string name="admin_user_approve">Одобрить</string>
+    <string name="admin_user_approve_title">Впустить %1$s?</string>
+    <string name="admin_user_approve_effect">Пользователь сможет входить и добавлять узлы со своей ролью и группами.</string>
+    <string name="admin_user_approved">%1$s одобрен</string>
+    <string name="admin_user_reject">Отклонить</string>
+    <string name="admin_user_reject_title">Отклонить %1$s?</string>
+    <string name="admin_user_reject_effect">Регистрация будет отклонена, пользователь удалён.</string>
+    <string name="admin_user_rejected">%1$s отклонён</string>
+
+    <!-- JSON editor -->
+    <string name="admin_json_search">Поиск</string>
+    <string name="admin_json_no_matches">Совпадений нет</string>
+    <string name="admin_json_previous">Предыдущее совпадение</string>
+    <string name="admin_json_next">Следующее совпадение</string>
+    <string name="admin_json_undo">Отменить</string>
+    <string name="admin_json_redo">Повторить</string>
+    <string name="admin_json_format">Форматировать</string>
+    <string name="admin_json_valid">JSON без ошибок</string>
+    <string name="admin_json_problem">Строка %1$d, столбец %2$d: %3$s</string>
+    <string name="admin_json_position">%1$d:%2$d</string>
+    <string name="admin_json_discard_title">Отбросить изменения?</string>
+    <string name="admin_json_discard_text">То, что вы здесь изменили, нигде не сохранено.</string>
+    <string name="admin_json_discard">Отбросить</string>
 </resources>
