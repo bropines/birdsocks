@@ -2,11 +2,9 @@ package io.github.bropines.birdsocks.admin.areas
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Stream
 import androidx.compose.material.icons.filled.Tune
@@ -18,6 +16,8 @@ import io.github.bropines.birdsocks.admin.areas.keys.SetupKeysArea
 import io.github.bropines.birdsocks.admin.areas.networks.NetworksArea
 import io.github.bropines.birdsocks.admin.areas.peers.PeersArea
 import io.github.bropines.birdsocks.admin.areas.routes.RoutesArea
+import io.github.bropines.birdsocks.admin.areas.policies.PoliciesArea
+import io.github.bropines.birdsocks.admin.areas.posture.PostureChecksArea
 
 /**
  * Every area of the panel, in the order the home screen shows them. One line
@@ -29,8 +29,8 @@ object AdminAreas {
         PeersArea,
         GroupsArea,
         SetupKeysArea,
-        comingArea("policies", R.string.admin_area_policies, R.string.admin_area_policies_summary, Icons.Default.Policy, Capabilities.POLICIES),
-        comingArea("posture_checks", R.string.admin_area_posture_checks, R.string.admin_area_posture_checks_summary, Icons.Default.HealthAndSafety, Capabilities.POLICIES),
+        PoliciesArea,
+        PostureChecksArea,
         NetworksArea,
         RoutesArea,
         DnsArea,
