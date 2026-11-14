@@ -1167,7 +1167,7 @@
 +}
 --- netbird_orig/client/iface/netstack/tundns.go
 +++ netbird_src/client/iface/netstack/tundns.go
-@@ -0,0 +1,242 @@
+@@ -0,0 +1,248 @@
 +package netstack
 +
 +// tundns.go — BirdSocks: the resolver of the app's VPN mode. The VPN
@@ -1183,28 +1183,38 @@
 +	"net"
 +	"net/netip"
 +	"os"
++	"strings"
 +	"sync"
 +	"syscall"
 +	"time"
 +)
 +
-+// EnvTunDNSAddress is the address the VPN announces as its DNS server; unset,
-+// nothing is intercepted.
++// EnvTunDNSAddress is the address the VPN announces as its DNS server, or
++// several, comma-separated (an IPv4 and an IPv6 one: Android's resolver may
++// keep to whichever family its server statistics prefer); unset, nothing is
++// intercepted.
 +const EnvTunDNSAddress = "NB_TUN_DNS_ADDRESS"
 +
 +// tunDNSResolve answers one query; tests replace it.
 +var tunDNSResolve = func(q []byte) []byte { return resolveQuery(nil, q) }
 +
-+func tunDNSAddress() (netip.Addr, bool) {
-+	v := os.Getenv(EnvTunDNSAddress)
-+	if v == "" {
-+		return netip.Addr{}, false
++func tunDNSAddresses() []netip.Addr {
++	var out []netip.Addr
++	for _, v := range strings.Split(os.Getenv(EnvTunDNSAddress), ",") {
++		if a, err := netip.ParseAddr(strings.TrimSpace(v)); err == nil {
++			out = append(out, a.Unmap())
++		}
 +	}
-+	a, err := netip.ParseAddr(v)
-+	if err != nil {
-+		return netip.Addr{}, false
++	return out
++}
++
++func isTunDNSAddress(a netip.Addr) bool {
++	for _, d := range tunDNSAddresses() {
++		if d == a {
++			return true
++		}
 +	}
-+	return a.Unmap(), true
++	return false
 +}
 +
 +// tunDNSDial takes over a dial to the VPN's DNS address: port 53 gets the
@@ -1212,12 +1222,8 @@
 +// "automatic" probes 853, and a refusal sends it back to 53 without a wait.
 +// handled is false for every other destination.
 +func tunDNSDial(network, addr string) (conn net.Conn, handled bool, err error) {
-+	dns, ok := tunDNSAddress()
-+	if !ok {
-+		return nil, false, nil
-+	}
 +	ap, perr := netip.ParseAddrPort(addr)
-+	if perr != nil || ap.Addr().Unmap() != dns {
++	if perr != nil || !isTunDNSAddress(ap.Addr().Unmap()) {
 +		return nil, false, nil
 +	}
 +	stream := false
@@ -1412,7 +1418,7 @@
 +func (c *tunDNSConn) SetWriteDeadline(time.Time) error { return nil }
 --- netbird_orig/client/iface/netstack/tundns_test.go
 +++ netbird_src/client/iface/netstack/tundns_test.go
-@@ -0,0 +1,304 @@
+@@ -0,0 +1,318 @@
 +package netstack
 +
 +import (
@@ -1715,6 +1721,20 @@
 +	_, _ = dot.Write([]byte{5, 1, 0, 1, 198, 18, 0, 2, 3, 85})
 +	if rep := readN(t, dot, 10); rep[1] != statute.RepConnectionRefused {
 +		t.Fatalf("853 got reply %d, want refused", rep[1])
++	}
++}
++
++func TestTunDNSDialTakesEveryAnnouncedAddress(t *testing.T) {
++	t.Setenv(EnvTunDNSAddress, "198.18.0.2, fd00:bd:53::2")
++	for _, addr := range []string{"198.18.0.2:53", "[fd00:bd:53::2]:53"} {
++		conn, handled, err := tunDNSDial("udp", addr)
++		if !handled || err != nil || conn == nil {
++			t.Fatalf("%s: handled=%t err=%v", addr, handled, err)
++		}
++		_ = conn.Close()
++	}
++	if _, handled, _ := tunDNSDial("udp", "[fd00:bd:53::3]:53"); handled {
++		t.Error("an address not announced was taken over")
 +	}
 +}
 --- netbird_orig/client/iface/netstack/associate.go

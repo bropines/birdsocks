@@ -276,7 +276,7 @@ class NetbirdService : Service() {
         logLevel = GlobalSettings.getLogLevel(this@NetbirdService)
         dnsProxy = if (GlobalSettings.isDnsProxyEnabled(this@NetbirdService)) GlobalSettings.getDnsProxyAddress(this@NetbirdService) else ""
         dnsUpstream = GlobalSettings.getDnsUpstream(this@NetbirdService)
-        tunDNS = TunRoutes.DNS_IP
+        tunDNS = TunRoutes.DNS_IP + "," + TunRoutes.DNS_IP6
         relayQUIC = GlobalSettings.isRelayQuic(this@NetbirdService)
         controlProxy = controlProxyUrl()
         lazyConn = GlobalSettings.getLazyConn(this@NetbirdService)

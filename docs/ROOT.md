@@ -28,7 +28,7 @@ comes in tiers, by how much of the device each one claims:
 |---|---|---|
 | **T1 — NetBird** | priority 90: `to <NetBird range> iif lo lookup 25203`, and the same for the resolver `198.18.0.2` | only packets this device sends to NetBird addresses |
 | **T2 — all traffic** | priority 201: `fwmark 0x0/0x20000 iif lo lookup 25204`; the local network back to Android at 151, excluded apps at 191 | everything, while an exit node, a network or *Route all traffic* is selected |
-| **T3 — DNS** | the `BIRDSOCKS_DNS` nat chain: port 53 to `198.18.0.2` | every DNS query on the device |
+| **T3 — DNS** | the `BIRDSOCKS_DNS` nat chain: port 53 to `198.18.0.2`; IPv6 port 53 to `fd00:bd:53::2` where the kernel has IPv6 NAT, untouched where not | every DNS query on the device |
 
 The app's own packages skip all of it at priority 89: the daemon's WireGuard,
 relay and signal connections must reach the real network.

@@ -63,7 +63,8 @@ type StartOptions struct {
 	// empty for the network's resolvers. The DNS proxy and the VPN's
 	// resolver both use it.
 	DNSUpstream string
-	// TunDNS is the address the app's VPN announces as its DNS server; the
+	// TunDNS is the address the app's VPN announces as its DNS server, or an IPv4
+	// and an IPv6 one comma-separated (the root engine redirects both); the
 	// SOCKS5 proxy answers queries to it itself (netstack/tundns.go). Set
 	// whether or not the VPN runs, so turning it on needs no restart.
 	TunDNS string

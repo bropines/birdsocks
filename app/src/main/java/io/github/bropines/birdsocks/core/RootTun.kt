@@ -407,6 +407,7 @@ object RootTun {
             put("app_domain", domain)
             put("table", if (dev) TABLE_DEV else TABLE)
             put("dns", TunRoutes.DNS_IP)
+            put("dns6", TunRoutes.DNS_IP6)
             put("socket", File(context.filesDir, "vpn.sock").absolutePath)
             put("chain", if (dev) "BIRDSOCKSD" else "BIRDSOCKS")
             put("state_dir", if (dev) "/data/adb/birdsocks-dev" else "/data/adb/birdsocks")

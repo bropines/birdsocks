@@ -183,7 +183,7 @@
 +		return
 +	}
 +	dst := pi.dst.Unmap()
-+	if dns, ok := tunDNSAddress(); ok && dst == dns {
++	if isTunDNSAddress(dst) {
 +		k.inject(p)
 +		return
 +	}

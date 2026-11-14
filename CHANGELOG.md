@@ -32,6 +32,7 @@
 - Admin panel: event streaming (cloud), identity providers with secrets never shown, and the reverse proxy's services and domains with validation, next to a link to the Publish screen.
 
 ### Fixed
+- Root mode no longer takes DNS away when Android keeps to the router's IPv6 resolver; the admin panel and every app resolve again.
 - Root mode no longer leaves the device without DNS when BirdSocks is killed or updated while it runs; rules a helper left are swept on the next start.
 - A switch between redundant routing peers no longer raises a notification each time.
 - Dialogs (About, What's new, logout, the VPN warning, debug bundle, packet capture) follow the app's language, not the system's.

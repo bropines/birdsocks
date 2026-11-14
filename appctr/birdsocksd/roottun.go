@@ -24,8 +24,8 @@ package main
 //   - rules 89/90/151/191/201 (roottun_plan.go);
 //   - nat OUTPUT → <chain>_DNS: port 53 to the VPN's resolver, except the
 //     daemon's own queries, the overlay and another tunnel's network; IPv6
-//     port 53 is refused where the kernel has IPv6 nat, so resolvers move on
-//     to an IPv4 server. Held while Android has not validated the network
+//     port 53 likewise to the resolver's IPv6 address where the kernel has
+//     IPv6 NAT, and left alone where it has not — never refused. Held while Android has not validated the network
 //     (its probe resolves through the system resolver) and taken off while
 //     the resolver does not answer;
 //   - rp_filter loose while the catch-all is in (replies to the daemon's
@@ -102,7 +102,12 @@ type rootConfig struct {
 	AppDomain string `json:"app_domain"`
 	Table     int    `json:"table"`
 	DNS       string `json:"dns"`
-	Socket    string `json:"socket"`
+	// DNS6: the same resolver's IPv6 address. Android's resolver may keep to an
+	// IPv6 server for half an hour after its IPv4 ones failed, so refusing
+	// port 53 over IPv6 can leave a phone with no DNS at all: it is redirected
+	// there instead, or left alone where the kernel has no IPv6 NAT.
+	DNS6   string `json:"dns6"`
+	Socket string `json:"socket"`
 	// Chain names the iptables chains (<chain>_DNS); StateDir keeps what
 	// must outlive a killed helper (rp_filter's old value).
 	Chain    string `json:"chain"`
@@ -142,6 +147,11 @@ func (c rootConfig) validate() error {
 	if c.DNS != "" {
 		if _, err := netip.ParseAddr(c.DNS); err != nil {
 			return fmt.Errorf("DNS %q", c.DNS)
+		}
+	}
+	if c.DNS6 != "" {
+		if a, err := netip.ParseAddr(c.DNS6); err != nil || !a.Is6() {
+			return fmt.Errorf("DNS6 %q", c.DNS6)
 		}
 	}
 	return nil
@@ -220,7 +230,9 @@ var (
 )
 
 func say(format string, args ...any) {
-	if _, err := fmt.Fprintf(os.Stdout, format+"\n", args...); err != nil {
+	// One line per message: the app reads lines, and a tool's error may span several.
+	msg := strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf(format, args...)), "\n", " · ")
+	if _, err := fmt.Fprintln(os.Stdout, msg); err != nil {
 		pipeGoneOnce.Do(func() { close(pipeGone) })
 	}
 }
@@ -626,8 +638,10 @@ func (r *rootTun) tables(cfg rootConfig, env rootEnv, plan rootPlan) error {
 	for _, p := range cfg.Overlay {
 		add(t1, p)
 	}
-	if cfg.DNS != "" {
-		add(t1, netip.PrefixFrom(netip.MustParseAddr(cfg.DNS), netip.MustParseAddr(cfg.DNS).BitLen()).String())
+	for _, d := range []string{cfg.DNS, cfg.DNS6} {
+		if d != "" {
+			add(t1, netip.PrefixFrom(netip.MustParseAddr(d), netip.MustParseAddr(d).BitLen()).String())
+		}
 	}
 	for _, g := range env.cgnat {
 		if err := ip("-4", "route", "replace", "throw", g.prefix.String(), "table", t1); err == nil {
@@ -715,6 +729,11 @@ func (r *rootTun) rules(fam string, cfg rootConfig, env rootEnv, plan rootPlan) 
 	if fam == "-4" && cfg.DNS != "" {
 		if err := ip(fam, "rule", "add", "pref", strconv.Itoa(prefOverlay), "to", cfg.DNS+"/32", "iif", "lo", "lookup", t1); err != nil {
 			say("warn: DNS rule: %v", err)
+		}
+	}
+	if fam == "-6" && cfg.DNS6 != "" {
+		if err := ip(fam, "rule", "add", "pref", strconv.Itoa(prefOverlay), "to", cfg.DNS6+"/128", "iif", "lo", "lookup", t1); err != nil {
+			say("warn: IPv6 DNS rule: %v", err)
 		}
 	}
 	if !plan.capture {
@@ -820,27 +839,41 @@ func (r *rootTun) hookDNS() {
 	if !r.env.ipv6 {
 		return
 	}
-	// No IPv6 resolver in the tunnel: refuse port 53 over IPv6, so a
-	// resolver moves on to an IPv4 server instead of bypassing NetBird.
+	if cfg.DNS6 == "" {
+		return
+	}
+	// IPv6 port 53 to the resolver's IPv6 address. Never a REJECT: Android's
+	// resolver, with its IPv4 servers marked bad by recent failures, keeps to
+	// an IPv6 one, and a refusal there left the phone with no DNS at all.
+	// Without IPv6 NAT in the kernel, IPv6 DNS is left alone.
 	chain6 := cfg.dns6Chain()
-	steps6 := [][]string{{"-N", chain6}}
+	steps6 := [][]string{{"-t", "nat", "-N", chain6}}
 	for _, uid := range uniqueUIDs(cfg.OwnUIDs, cfg.AppUID) {
-		steps6 = append(steps6, []string{"-A", chain6, "-m", "owner", "--uid-owner", strconv.Itoa(uid), "-j", "RETURN"})
+		steps6 = append(steps6, []string{"-t", "nat", "-A", chain6, "-m", "owner", "--uid-owner", strconv.Itoa(uid), "-j", "RETURN"})
 	}
 	for _, id := range r.plan.dnsReturnNetIDs {
-		steps6 = append(steps6, []string{"-A", chain6, "-m", "mark", "--mark", fmt.Sprintf("0x%x/0xffff", id), "-j", "RETURN"})
+		steps6 = append(steps6, []string{"-t", "nat", "-A", chain6, "-m", "mark", "--mark", fmt.Sprintf("0x%x/0xffff", id), "-j", "RETURN"})
 	}
+	for _, o := range cfg.overlayPrefixes() {
+		if o.Addr().Is6() {
+			steps6 = append(steps6, []string{"-t", "nat", "-A", chain6, "-d", o.String(), "-j", "RETURN"})
+		}
+	}
+	to := "[" + cfg.DNS6 + "]:53"
 	steps6 = append(steps6,
-		[]string{"-A", chain6, "-p", "udp", "--dport", "53", "-j", "REJECT"},
-		[]string{"-A", chain6, "-p", "tcp", "--dport", "53", "-j", "REJECT", "--reject-with", "tcp-reset"},
-		[]string{"-I", "OUTPUT", "1", "-j", chain6},
+		[]string{"-t", "nat", "-A", chain6, "-p", "udp", "--dport", "53", "-j", "DNAT", "--to-destination", to},
+		[]string{"-t", "nat", "-A", chain6, "-p", "tcp", "--dport", "53", "-j", "DNAT", "--to-destination", to},
+		[]string{"-t", "nat", "-I", "OUTPUT", "1", "-j", chain6},
 	)
 	for _, s := range steps6 {
 		if err := iptables("ip6tables", s...); err != nil {
-			say("warn: IPv6 DNS: %v", err)
+			say("warn: IPv6 DNS left alone (no IPv6 NAT here?): %v", err)
 			removeDNS6(cfg)
 			return
 		}
+	}
+	for _, uid := range uniqueUIDs(cfg.ExcludeUIDs, 0) {
+		_ = iptables("ip6tables", "-t", "nat", "-I", chain6, "1", "-m", "owner", "--uid-owner", strconv.Itoa(uid), "-j", "RETURN")
 	}
 }
 
@@ -855,10 +888,13 @@ func removeDNS(cfg rootConfig) {
 
 func removeDNS6(cfg rootConfig) {
 	chain := cfg.dns6Chain()
-	for i := 0; i < 64 && iptables("ip6tables", "-D", "OUTPUT", "-j", chain) == nil; i++ {
+	// nat now; filter is where builds before it put a REJECT chain.
+	for _, table := range []string{"nat", "filter"} {
+		for i := 0; i < 64 && iptables("ip6tables", "-t", table, "-D", "OUTPUT", "-j", chain) == nil; i++ {
+		}
+		_ = iptables("ip6tables", "-t", table, "-F", chain)
+		_ = iptables("ip6tables", "-t", table, "-X", chain)
 	}
-	_ = iptables("ip6tables", "-F", chain)
-	_ = iptables("ip6tables", "-X", chain)
 }
 
 // checkDNS asks the VPN's resolver for an outside name; after three misses
@@ -878,8 +914,14 @@ func (r *rootTun) checkDNS() {
 		return d.DialContext(ctx, "udp", server)
 	}}
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
-	_, err := res.LookupNetIP(ctx, "ip4", healthName)
+	// A fresh name each time: a cached one answers while upstream is dead.
+	name := fmt.Sprintf("bs-%d.%s", time.Now().UnixNano(), healthName)
+	_, err := res.LookupNetIP(ctx, "ip4", name)
 	cancel()
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) && dnsErr.IsNotFound {
+		err = nil // NXDOMAIN came from upstream: the resolver works
+	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
