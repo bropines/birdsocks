@@ -1,5 +1,6 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,15 +49,17 @@ internal fun AppearanceSection(a: Appearance) {
             Triple("light", Icons.Default.LightMode, stringResource(R.string.settings_theme_light)),
             Triple("dark", Icons.Default.DarkMode, stringResource(R.string.settings_theme_dark))
         )
-        Text(stringResource(R.string.settings_theme_title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(8.dp))
-        SlidingSegmentedChips(
-            items = themes.map { SegmentedChipItem(it.third, it.second) },
-            selectedIndex = themes.indexOfFirst { it.first == a.theme }.coerceAtLeast(0),
-            onOptionSelected = { a.onTheme(themes[it].first) },
-            modifier = Modifier.fillMaxWidth(),
-            height = 38.dp
-        )
+        Column(Modifier.settingAnchor(stringResource(R.string.settings_theme_title), outset = 6.dp)) {
+            Text(stringResource(R.string.settings_theme_title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            SlidingSegmentedChips(
+                items = themes.map { SegmentedChipItem(it.third, it.second) },
+                selectedIndex = themes.indexOfFirst { it.first == a.theme }.coerceAtLeast(0),
+                onOptionSelected = { a.onTheme(themes[it].first) },
+                modifier = Modifier.fillMaxWidth(),
+                height = 38.dp
+            )
+        }
 
         var lang by remember { mutableStateOf(GlobalSettings.getString(context, "app_locale", "sys")) }
         val langs = listOf(
@@ -93,6 +96,7 @@ internal fun AppearanceSection(a: Appearance) {
                 PresetItem("tokionight", Color(0xFF7AA2F7), stringResource(R.string.settings_preset_tokionight))
             )
             Spacer(Modifier.height(12.dp))
+            Column(Modifier.settingAnchor(stringResource(R.string.settings_palette_title), outset = 6.dp)) {
             Text(stringResource(R.string.settings_palette_title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -106,6 +110,7 @@ internal fun AppearanceSection(a: Appearance) {
                         if (selected) Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
+            }
             }
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {

@@ -77,4 +77,6 @@
     <string name="settings_link_publish_desc">Give a port of this phone a public address</string>
     <string name="settings_link_diagnostics_desc">Connection, events, access check, packet capture</string>
     <string name="settings_link_logs_desc">The daemon\'s log, with filters and export</string>
+    <string name="settings_suggested">Suggested</string>
+    <string name="nb_settings_mtu" translatable="false">MTU</string>
 </resources>

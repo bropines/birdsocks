@@ -76,4 +76,5 @@
     <string name="settings_link_publish_desc">Дать порту телефона публичный адрес</string>
     <string name="settings_link_diagnostics_desc">Соединение, события, проверка доступа, захват пакетов</string>
     <string name="settings_link_logs_desc">Лог демона с фильтрами и выгрузкой</string>
+    <string name="settings_suggested">Предложения</string>
 </resources>

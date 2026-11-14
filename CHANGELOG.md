@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Settings search: a field over the sections finds any setting by its name or other words for it, in English or Russian, and opens its section on the row; `birdsocks://settings?q=` opens it with the words typed in.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added

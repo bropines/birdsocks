@@ -1,5 +1,6 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
@@ -57,7 +58,9 @@ internal fun AccountSection(env: SettingsEnv) {
         SettingsClickableItem(
             title = label,
             subtitle = listOf(who, stringResource(R.string.settings_account_hint)).filter { it.isNotEmpty() }.joinToString("\n"),
-            icon = Icons.Default.AccountCircle
+            icon = Icons.Default.AccountCircle,
+            // Titled with the account's name: the search finds it as Accounts.
+            modifier = Modifier.settingAnchor(stringResource(R.string.nb_accounts_title))
         ) { showAccounts = true }
 
         var deviceName by remember { mutableStateOf(GlobalSettings.getDeviceName(context)) }

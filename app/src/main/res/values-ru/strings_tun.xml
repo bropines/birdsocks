@@ -57,4 +57,5 @@
     <string name="nb_tun_tile_active">Активно · VPN</string>
     <string name="nb_tun_notif_text_root">%1$s · Root</string>
     <string name="nb_tun_tile_active_root">Активно · Root</string>
+    <string name="nb_tun_engine_title">Движок</string>
 </resources>

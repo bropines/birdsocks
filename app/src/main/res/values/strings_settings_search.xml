@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings search: the field, the lines above a list of results -->
+    <string name="search_settings_hint">Search settings</string>
+    <string name="search_recent">Recently found</string>
+    <string name="search_suggested">Often needed</string>
+    <string name="search_none">Nothing found for “%1$s”</string>
+    <string name="search_closest">No exact match. The closest:</string>
+    <string name="search_read_as">Showing results for “%1$s”</string>
+
+    <!-- Why a found setting is not in its section right now. One line each; the result then opens the row that brings it. -->
+    <string name="search_need_daemon">Shown while NetBird is running</string>
+    <string name="search_need_tun">Shown in VPN and Root modes</string>
+    <string name="search_need_tun_vpn">Shown in VPN mode</string>
+    <string name="search_need_tun_socks">Shown with the VPN going through the proxy</string>
+    <string name="search_need_control_proxy">Shown when the server connection goes through a proxy</string>
+    <string name="search_need_control_byedpi">Shown when the server connection goes through ByeDPI</string>
+    <string name="search_need_automation">Shown once automation is allowed</string>
+    <string name="search_need_static_colors">Shown while dynamic colors are off</string>
+
+    <!-- A result's title, for a block whose own title says too little out of its section -->
+    <string name="search_title_tunnel_mode">Proxy, VPN or Root</string>
+
+    <!-- One line of what a setting does, for the rows that say it nowhere in their section -->
+    <string name="search_sum_theme">Light, dark, or the same as the system</string>
+    <string name="search_sum_language">The system\'s language, English or Russian</string>
+    <string name="search_sum_palette">The accent color of the interface</string>
+    <string name="search_sum_app_icon">The icon BirdSocks has in the launcher</string>
+    <string name="search_sum_device_name">The name this device has among the peers</string>
+    <string name="search_sum_management_server">The NetBird server of this account; opens its dashboard</string>
+    <string name="search_sum_tunnel_mode">Proxy only, a VPN for every app, or Root without the VPN slot</string>
+    <string name="search_sum_tun_engine">What carries the VPN\'s packets: NetBird itself or the SOCKS5 proxy</string>
+    <string name="search_sum_tun_excluded_apps">Apps that stay outside the tunnel</string>
+    <string name="search_sum_socks_address">The address and port the SOCKS5 proxy listens on</string>
+    <string name="search_sum_socks_username">A login for the SOCKS5 proxy; set it together with a password</string>
+    <string name="search_sum_socks_password">A password for the SOCKS5 proxy; set it together with a username</string>
+    <string name="search_sum_socks_link">A socks5:// link to this proxy for NekoBox, v2rayNG and the like</string>
+    <string name="search_sum_dns_proxy_address">The address and port of the local DNS that answers NetBird names</string>
+    <string name="search_sum_control_mode">Reach the NetBird server directly, through a proxy, or through ByeDPI</string>
+    <string name="search_sum_control_proxy_host">The proxy the NetBird server is reached through</string>
+    <string name="search_sum_control_proxy_port">The port of that proxy</string>
+    <string name="search_sum_automation_token">The secret other apps must send with every command</string>
+    <string name="search_sum_log_level">How much the daemon writes to the log: info, debug or trace</string>
+    <string name="search_sum_docs">NetBird\'s own documentation, on docs.netbird.io</string>
+    <string name="search_sum_source">BirdSocks on GitHub: code, issues, releases</string>
+    <string name="search_sum_donate">A donation to the author</string>
+</resources>
