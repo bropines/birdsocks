@@ -3,8 +3,13 @@
 package main
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
 func validRootConfig() rootConfig {
@@ -97,5 +102,32 @@ func TestUniqueUIDs(t *testing.T) {
 	got := uniqueUIDs([]int{10360, 10200, 10200, 0, -1}, 10360)
 	if !reflect.DeepEqual(got, []int{10360, 10200}) {
 		t.Errorf("uniqueUIDs = %v, want [10360 10200]: the app first, no duplicates, no root or negatives", got)
+	}
+}
+
+func TestHelperLockKeepsASecondHelperOut(t *testing.T) {
+	dir := t.TempDir()
+	defer func() {
+		if heldLock != nil {
+			_ = heldLock.Close()
+			heldLock = nil
+		}
+	}()
+	if err := takeHelperLock(dir, 0); err != nil {
+		t.Fatalf("first lock: %v", err)
+	}
+	// Another helper: its own open file description of the same lock.
+	f, err := os.OpenFile(filepath.Join(dir, "helper.lock"), os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB); !errors.Is(err, unix.EWOULDBLOCK) {
+		t.Fatalf("second helper got the lock: %v", err)
+	}
+	_ = heldLock.Close()
+	heldLock = nil
+	if err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		t.Fatalf("lock not free after the first helper let go: %v", err)
 	}
 }

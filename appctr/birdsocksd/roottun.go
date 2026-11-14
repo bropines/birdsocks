@@ -290,6 +290,12 @@ func runRootTun() int {
 					say("error: %v", err)
 					return 1
 				}
+				// A helper still alive (an old one tearing down) holds the lock
+				// and takes its own; a sweep then would take a living one's rules.
+				if err := takeHelperLock(cfg.StateDir, sweepWait); err != nil {
+					say("down: nothing swept: %v", err)
+					return 0
+				}
 				sweep(cfg)
 				say("down: swept what an earlier helper left")
 				return 0
@@ -340,6 +346,9 @@ func (r *rootTun) apply(cfg rootConfig) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.cur == nil {
+		if err := takeHelperLock(cfg.StateDir, lockWait); err != nil {
+			return err
+		}
 		// A helper killed outright left its rules, and the daemon still holds
 		// its interface; take both first, or the name is busy.
 		sweep(cfg)
