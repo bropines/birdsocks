@@ -79,7 +79,7 @@
 +}
 --- netbird_orig/client/firewall/uspfilter/forwarder/birdsocks_vpn.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/birdsocks_vpn.go
-@@ -0,0 +1,70 @@
+@@ -0,0 +1,78 @@
 +package forwarder
 +
 +// birdsocks_vpn.go — BirdSocks: a forwarder for the app's VPN. What apps on
@@ -122,10 +122,18 @@
 +	if err != nil {
 +		return nil, err
 +	}
-+	if dial != nil {
-+		f.dial = dial
-+	}
++	f.direct = true
++	f.dial = dial
 +	return f, nil
++}
++
++// dialOut reaches a forwarded connection's destination: with f.dial when
++// it is set (NewDirect), from the host otherwise.
++func (f *Forwarder) dialOut(ctx context.Context, network, address string) (net.Conn, error) {
++	if f.dial != nil {
++		return f.dial(ctx, network, address)
++	}
++	return (&net.Dialer{}).DialContext(ctx, network, address)
 +}
 +
 +// noFlowLogger: the apps' own traffic is not NetBird network traffic, and
@@ -152,13 +160,15 @@
 +})
 --- netbird_orig/client/firewall/uspfilter/forwarder/forwarder.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/forwarder.go
-@@ -63,9 +63,16 @@
+@@ -63,9 +63,18 @@
  	hasRawICMPAccess   bool
  	hasRawICMPv6Access bool
  	pingSemaphore      chan struct{}
 +	// BirdSocks: how forwarded connections reach their destination
-+	// (birdsocks_vpn.go).
++	// (birdsocks_vpn.go), the host's dialer when nil.
 +	dial DialFunc
++	// direct: NewDirect's forwarder, whose dials never enter the overlay.
++	direct bool
  }
  
  func New(iface IFace, logger *nblog.Logger, flowLogger nftypes.FlowLogger, netstack bool, mtu uint16) (*Forwarder, error) {
@@ -169,7 +179,7 @@
  	s := stack.New(stack.Options{
  		NetworkProtocols: []stack.NetworkProtocolFactory{
  			ipv4.NewProtocol,
-@@ -83,7 +90,7 @@
+@@ -83,7 +92,7 @@
  	nicID := tcpip.NICID(1)
  	endpoint := &endpoint{
  		logger: logger,
@@ -178,7 +188,7 @@
  	}
  	endpoint.mtu.Store(uint32(mtu))
  
-@@ -94,8 +101,8 @@
+@@ -94,8 +103,8 @@
  	protoAddr := tcpip.ProtocolAddress{
  		Protocol: ipv4.ProtocolNumber,
  		AddressWithPrefix: tcpip.AddressWithPrefix{
@@ -189,7 +199,7 @@
  		},
  	}
  
-@@ -103,12 +110,12 @@
+@@ -103,12 +112,12 @@
  		return nil, fmt.Errorf("failed to add protocol address: %s", err)
  	}
  
@@ -204,7 +214,7 @@
  			},
  		}
  		if err := s.AddProtocolAddress(nicID, v6Addr, stack.AddressProperties{}); err != nil {
-@@ -154,9 +161,10 @@
+@@ -154,8 +163,8 @@
  		ctx:           ctx,
  		cancel:        cancel,
  		netstack:      netstack,
@@ -213,32 +223,51 @@
 +		ip:            tcpip.AddrFrom4(addr.IP.As4()),
 +		ipv6:          addrFromNetipAddr(addr.IPv6),
  		pingSemaphore: make(chan struct{}, 3),
-+		dial:          (&net.Dialer{}).DialContext,
  	}
  
- 	receiveWindow := defaultReceiveWindow
+@@ -409,7 +418,8 @@
+ // overlay address and be granted our access by the next routing peer instead of the original sender's.
+ func (f *Forwarder) egressesOverlay(dst netip.Addr) bool {
+ 	// Without a kernel interface the host routing table has no overlay routes.
+-	if f.netstack {
++	// BirdSocks: nor for the daemon's own sockets, which the app's VPN leaves out.
++	if f.netstack || f.direct {
+ 		return false
+ 	}
+ 
+@@ -431,6 +441,10 @@
+ 
+ // isOverlayAddr reports whether the local address of a connected host UDP socket is one of our overlay addresses.
+ func (f *Forwarder) isOverlayAddr(local net.Addr) bool {
++	// BirdSocks: the VPN's resolver answers in memory, from no host socket.
++	if f.direct {
++		return false
++	}
+ 	udpAddr, ok := local.(*net.UDPAddr)
+ 	if !ok {
+ 		return false
 --- netbird_orig/client/firewall/uspfilter/forwarder/endpoint.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/endpoint.go
-@@ -5,7 +5,6 @@
- 	"strconv"
- 	"sync/atomic"
- 
--	wgdevice "golang.zx2c4.com/wireguard/device"
- 	"gvisor.dev/gvisor/pkg/tcpip"
- 	"gvisor.dev/gvisor/pkg/tcpip/header"
+@@ -10,7 +10,6 @@
  	"gvisor.dev/gvisor/pkg/tcpip/stack"
+ 
+ 	nblog "github.com/netbirdio/netbird/client/firewall/uspfilter/log"
+-	"github.com/netbirdio/netbird/client/iface/wgbackend"
+ )
+ 
+ // PacketCapture captures raw packets for debugging. Implementations must be
 @@ -23,7 +22,7 @@
  type endpoint struct {
  	logger     *nblog.Logger
  	dispatcher stack.NetworkDispatcher
--	device     *wgdevice.Device
+-	device     *wgbackend.Device
 +	device     OutboundWriter
  	mtu        atomic.Uint32
  	capture    atomic.Pointer[PacketCapture]
  }
 --- netbird_orig/client/firewall/uspfilter/forwarder/icmp.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/icmp.go
-@@ -387,7 +387,8 @@
+@@ -418,7 +418,8 @@
  
  	switch runtime.GOOS {
  	case "linux", "android":
@@ -250,7 +279,7 @@
  		if isV6 {
 --- netbird_orig/client/firewall/uspfilter/forwarder/tcp.go
 +++ netbird_src/client/firewall/uspfilter/forwarder/tcp.go
-@@ -31,9 +31,15 @@
+@@ -31,6 +31,12 @@
  		}
  	}()
  
@@ -260,10 +289,15 @@
 +		return
 +	}
 +
- 	dialAddr := net.JoinHostPort(f.determineDialAddr(id.LocalAddress).String(), strconv.Itoa(int(id.LocalPort)))
+ 	dialIP := f.determineDialAddr(id.LocalAddress)
+ 	if f.egressesOverlay(dialIP) {
+ 		r.Complete(true)
+@@ -45,7 +51,7 @@
+ 
+ 	dialAddr := net.JoinHostPort(dialIP.String(), strconv.Itoa(int(id.LocalPort)))
  
 -	outConn, err := (&net.Dialer{}).DialContext(f.ctx, "tcp", dialAddr)
-+	outConn, err := f.dial(f.ctx, "tcp", dialAddr)
++	outConn, err := f.dialOut(f.ctx, "tcp", dialAddr)
  	if err != nil {
  		r.Complete(true)
  		if f.logger.Enabled(nblog.LevelTrace) {
@@ -286,7 +320,7 @@
  
  	dstAddr := net.JoinHostPort(f.determineDialAddr(id.LocalAddress).String(), strconv.Itoa(int(id.LocalPort)))
 -	outConn, err := (&net.Dialer{}).DialContext(f.ctx, "udp", dstAddr)
-+	outConn, err := f.dial(f.ctx, "udp", dstAddr)
++	outConn, err := f.dialOut(f.ctx, "udp", dstAddr)
  	if err != nil {
  		f.logger.Debug2("forwarder: UDP dial error for %v: %v", epID(id), err)
- 		// TODO: Send ICMP error message
+ 		// Connecting the socket is the route lookup. Like TCP, a destination the host can't look up

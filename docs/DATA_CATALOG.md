@@ -1,4 +1,4 @@
-# BirdSocks data catalog: what the NetBird v0.80.0 daemon gives, what the app parses and shows
+# BirdSocks data catalog: what the NetBird v0.83.1 daemon gives, what the app parses and shows
 
 **State:** app after commit `941a3af` and the per-profile / live-log-level fixes that follow it.
 
@@ -29,7 +29,7 @@ Byte counters, handshakes, latency and STUN/TURN probe results move without a pu
 |---|---|---|---|---|
 | status | daemon connection state: Idle, Connecting, Connected, NeedsLogin, LoginFailed, SessionExpired | `"Connected"` | yes `NbStatus.status` (+ `state` enum) | status card `ui/MainActivity.kt:126-137, 382-409`; notification `core/NetbirdService.kt:462-470`; QS tile `core/ProxyTileService.kt:73-77`; enables Logout `ui/SettingsActivity.kt:168` |
 | fullStatus | everything below; filled only with getFullPeerStatus | `{…}` | yes | see below |
-| daemonVersion | running daemon's NetBird version | `"0.80.0"` | yes | `ui/SettingsActivity.kt:332-333`; Details `ui/StatusDetailsActivity.kt:116` |
+| daemonVersion | running daemon's NetBird version | `"0.83.1"` | yes | `ui/SettingsActivity.kt:332-333`; Details `ui/StatusDetailsActivity.kt:116` |
 | sessionExpiresAt | when the server signs this SSO peer out; null for setup-key peers or when expiry is off | `"2026-10-04T21:17:02.07Z"` | yes | SessionRow `ui/MainActivity.kt:218, 787`; 10-minute warning notification `core/NetbirdService.kt:426-436` |
 
 ### FullStatus
@@ -110,7 +110,7 @@ STUN/TURN entries refresh only from the health probe, which runs on full Status 
 | error | why the group failed | `""` | yes | Details `:90, :94` |
 
 ### SystemEvent (`FullStatus.events`, `SubscribeEvents`)
-- `GetEvents` returns **Unimplemented** in v0.80.0.
+- `GetEvents` returns **Unimplemented** in v0.83.1.
 - The app builds an in-memory `EventLog` (`core/Features.kt:15-33`, newest 200, deduplicated by id). It is seeded from `FullStatus.events` (`core/NetbirdService.kt:247`) and fed by `SubscribeEvents` (`core/NetbirdService.kt:261-273`).
 - Screen: `ui/EventsActivity.kt`, newest first, with a category filter at `:46-47, 63-66`.
 - Notifications (`core/NetbirdService.kt:277-297`) go out for fresh WARNING/ERROR/CRITICAL events at most 2 minutes old, when "event notifications" is on (`ui/SettingsActivity.kt:314`, `ui/EventsActivity.kt:51-53`).
@@ -125,13 +125,14 @@ STUN/TURN entries refresh only from the health probe, which runs on full Status 
 | timestamp | when it happened | RFC 3339 | yes | `ui/EventsActivity.kt:96, 123-130`; notification freshness `core/NetbirdService.kt:284-285` |
 | metadata | key/value details (see below) | `{"upstreams":"192.0.2.53:53"}` | yes | on expand `ui/EventsActivity.kt:102-104` |
 
-Events v0.80.0 can emit on this phone:
+Events v0.83.1 can emit on this phone:
 
 | message | severity/category | userMessage | metadata | notifies? |
 |---|---|---|---|---|
 | Default route added | INFO/NETWORK | "Exit node connected." | id, peer, network | no (INFO) |
 | Default route disconnected due to peer unreachability | WARNING/NETWORK | "Exit node connection lost. Your internet access might be affected." | id, peer, network | yes |
 | Default route removed / updated / HA change / unknown | INFO or ERROR/NETWORK | some | id, peer, network | only the ERROR one |
+| Routing peer changed / No routing peer available | WARNING/NETWORK | – | network, id, previous_peer, peer, reason | yes, with the message as text |
 | Nameserver group unreachable / recovered | WARNING or INFO/DNS | yes | upstreams | unreachable only |
 | session expiry warning / final warning | CRITICAL/AUTHENTICATION | – | session_warning, session_final_warning, session_expires_at, lead_minutes (10 / 2) | yes, alongside the app's own 10-minute warning |
 | session deadline rejected | ERROR/AUTHENTICATION | – | session_deadline_rejected | yes |
@@ -159,8 +160,8 @@ Read by `Netbird.config()` (`core/Netbird.kt:109`) in Settings, LoginCard and Ac
 | field | meaning | example | parsed | shown | settable from app? |
 |---|---|---|---|---|---|
 | managementUrl | server this profile logs into | `"https://mgmt.example.com:443"` | yes | Server row `ui/SettingsActivity.kt:160`; LoginCard prefill `ui/MainActivity.kt:445`; account server/label `ui/AccountSheet.kt:39-40, 27, 89, 164` → top bar `ui/MainActivity.kt:173, 179` | via **Login** only (`ui/MainActivity.kt:536-545`) |
-| configFile | always `""` in v0.80.0 (handler never fills it) | `""` | no | no | no |
-| logFile | always `""` in v0.80.0 | `""` | no | no | no |
+| configFile | always `""` in v0.83.1 (handler never fills it) | `""` | no | no | no |
+| logFile | always `""` in v0.83.1 | `""` | no | no | no |
 | preSharedKey | `"**********"` when set, else `""` | `"**********"` | yes | masked `ui/SettingsActivity.kt:232` | yes `optionalPreSharedKey` `:234` |
 | adminURL | dashboard URL; the daemon defaults it to `https://app.netbird.io:443` for every profile | `"https://app.netbird.io:443"` | yes | not displayed. **Fixed:** `NbConfig.dashboardUrl` (`models/NetbirdModels.kt:213-218`) falls back to the management host for self-hosted servers; opened by the Server row `ui/SettingsActivity.kt:162` | no |
 | interfaceName | WG interface name; meaningless in netstack | `"wt0"` | no | no | no (kernel) |
@@ -297,7 +298,7 @@ The bridge (`appctr/rpc.go`) reaches every unary method by name and every stream
 | StartCapture (stream) | **yes** | `Netbird.capture` (Logs → CaptureDialog) | live pcap of overlay traffic |
 | StartBundleCapture / StopBundleCapture | no | – | capture into the next debug bundle |
 | SubscribeEvents (stream) | **yes** | `NetbirdService.followEvents` → `EventLog` | SystemEvent push |
-| GetEvents | no | – | **Unimplemented** in v0.80.0 |
+| GetEvents | no | – | **Unimplemented** in v0.83.1 |
 | RegisterUILog | no | – | desktop UI log path for bundles |
 | SwitchProfile | yes | `Netbird.switchProfile` | change the active profile |
 | SetConfig | yes | `Netbird.setConfig` | change profile settings (incl. dnsLabels) |

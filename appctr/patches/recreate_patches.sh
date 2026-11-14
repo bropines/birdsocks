@@ -90,7 +90,8 @@ make_patch 05-engine-android-hooks.patch \
 # Connecting fast and keeping the connections: no kernel-WireGuard probe in
 # netstack mode (on Android it closed Signal's or the relay's socket from a
 # GC finalizer), a connection attempt cut after 10 s, not 20, and a Signal
-# stream left unanswered dropped with its transport after 6 s, not 40.
+# stream left unanswered after 6 s, not 10, dropped with its transport, so
+# the retry dials anew instead of opening another stream on the silent one.
 # client/grpc/dialer_generic.go also routes its dials through patch 08's
 # control proxy; the file can sit in one patch only.
 make_patch 06-connect-faster.patch \
@@ -98,15 +99,17 @@ make_patch 06-connect-faster.patch \
     client/grpc/dialer.go \
     client/grpc/dialer_generic.go \
     shared/signal/client/grpc.go \
-    shared/signal/client/registration_test.go
+    shared/signal/client/registration_redial_test.go
 
 # Peers reaching the phone's own services: with netstack local forwarding on
 # (InboundAccess), a connection to the device's NetBird address goes on to
 # 127.0.0.1 at the same port — except the app's own proxies, which would
 # otherwise give every peer the ACLs let in a free exit through the phone.
 # The forwarder also takes another sink for its answers and another dialer,
-# so patch 09's VPN mode ends the apps' direct traffic in one (NewDirect);
-# on Android ping runs by its path, as searching PATH trips the seccomp filter.
+# so patch 09's VPN mode ends the apps' direct traffic in one (NewDirect),
+# which skips upstream's routed-back-into-the-overlay check: its dials leave
+# from the daemon, outside the VPN. On Android ping runs by its path, as
+# searching PATH trips the seccomp filter.
 make_patch 07-inbound-forwarding.patch \
     client/firewall/uspfilter/forwarder/birdsocks.go \
     client/firewall/uspfilter/forwarder/birdsocks_test.go \

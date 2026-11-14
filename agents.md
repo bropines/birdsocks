@@ -98,10 +98,15 @@ client as a **userspace node** and hands its network to apps through a
   `LoginFlow` runs it in the app's scope so the browser taking the screen does
   not cancel the wait. The tile and boot paths cannot sign in; they show
   "Sign-in needed".
-* **Accounts are NetBird profiles.** `default` is addressed without a username;
-  every other profile under the user the daemon runs as (`USER=birdsocks`,
-  `Netbird.USER`), stored in `files/netbird/birdsocks/`. Calls that take a
+* **Accounts are NetBird profiles.** Since NetBird 0.83 the daemon ignores the
+  requests' `username` (the app still sends `Netbird.USER`): new profiles go to
+  `files/netbird/profiles.v1/` under an ID, older ones stay readable in
+  `files/netbird/birdsocks/`, and backups take both. Calls that take a
   profile (GetConfig, SetConfig) address the active one.
+* **The daemon's authorization gate (`ipcauth.AuthzGate`) is chained in
+  `birdsocksd`.** It resolves the profile each request names, which the
+  handlers read from the context and fail without; the app, of the daemon's
+  own UID, passes it as privileged.
 
 ---
 

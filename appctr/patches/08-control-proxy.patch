@@ -441,7 +441,7 @@
 +}
 --- netbird_orig/shared/relay/client/dialer/ws/ws.go
 +++ netbird_src/shared/relay/client/dialer/ws/ws.go
-@@ -91,6 +91,8 @@
+@@ -112,6 +112,8 @@
  	}
  
  	customTransport := &http.Transport{

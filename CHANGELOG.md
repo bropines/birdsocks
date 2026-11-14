@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- NetBird v0.83.1.
 - Root mode lives beside another VPN: it routes only NetBird's addresses then, or the apps that VPN bypasses; "Take the device" overrides.
 
 ### Added
