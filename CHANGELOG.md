@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.5.0] - 2026-11-15
 
 ### Changed
 - Admin panel: lists read from the server are used for five minutes before an open asks again; the refresh button and a pull still ask at once.
