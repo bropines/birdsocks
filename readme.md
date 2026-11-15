@@ -112,7 +112,7 @@ It says what is actually going on:
 | **Links** | `birdsocks://` opens any screen. Action links ask before they act, and invite links open a filled-in new account. |
 | **Backups** | A settings file, or a full backup with NetBird's accounts and keys under a password. |
 | **40 app icons** | Pick one in Settings → Appearance & language, in BirdSocks' colours or NetBird's. |
-| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English and Russian; other languages on [Hosted Weblate](https://hosted.weblate.org/engage/birdsocks/) (being set up). |
+| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English, Russian and Japanese; other languages on [Hosted Weblate](https://hosted.weblate.org/engage/birdsocks/) (being set up). |
 
 ---
 

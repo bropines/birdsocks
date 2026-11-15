@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shared by the restructured screens: tile titles and common states. -->
+<resources>
+    <string name="nb_menu_dns">DNS</string>
+    <string name="nb_menu_diagnostics">診断</string>
+    <string name="state_stopped_title">BirdSocks は停止しています</string>
+</resources>

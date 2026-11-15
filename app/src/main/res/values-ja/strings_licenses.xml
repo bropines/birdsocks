@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Open-source licenses (ui/LicensesActivity.kt), from About. -->
+<resources>
+    <string name="licenses_title">オープンソースライセンス</string>
+    <string name="licenses_count">%d個のコンポーネント</string>
+    <string name="licenses_help">BirdSocks はここに挙げるオープンソースソフトウェアの上に作られており、それぞれ独自のライセンスに従います。コンポーネントをタップすると、ライセンス全文とプロジェクトページが開きます。</string>
+    <string name="licenses_section_app">このアプリ</string>
+    <string name="licenses_section_go">Go コア: NetBird デーモンとブリッジ</string>
+    <string name="licenses_section_android">Android ライブラリ</string>
+    <string name="licenses_section_native">ネイティブライブラリ</string>
+    <string name="licenses_section_other">上記に同梱</string>
+    <string name="licenses_parts">%d個のライブラリ</string>
+    <string name="licenses_includes">含まれるもの</string>
+    <string name="licenses_open_page">プロジェクトページ</string>
+    <string name="licenses_load_failed">ライセンス一覧を読み込めませんでした。</string>
+</resources>

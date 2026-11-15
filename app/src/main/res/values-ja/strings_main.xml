@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The main screen, the account sheet, Networks and Publish. -->
+<resources>
+    <string name="action_edit">編集</string>
+    <string name="accounts_done">完了</string>
+    <string name="accounts_not_connected">未接続</string>
+    <string name="nb_accounts_sheet_help">各アカウントには独自のキー、設定、セッションがあり、同時に接続されるのは 1 つだけです。切り替えると再接続され、離れたアカウントはサインインしたまま残ります。最初のアカウントは名前の変更も削除もできず、有効なアカウントは削除できません。</string>
+    <string name="nb_networks_off_title">ネットワークがオフです</string>
+    <string name="nb_networks_off_desc">設定 → アカウントの「ネットワークを使用」がオフです。このデバイスは、ピアがルーティングするネットワークや出口ノードに到達できません。</string>
+    <string name="nb_expose_inbound_in_settings">プロキシは NetBird 経由でスマートフォンに到達するため、ピアからのサービスへのアクセスを許可する必要があります。設定でオンにしてください。</string>
+    <string name="main_cd_dashboard">ダッシュボードを開く</string>
+    <string name="nb_main_root_shared">Root · 共有</string>
+    <string name="nb_main_root_yield">Root · NetBird のみ</string>
+    <!-- The main screen's editor (ui/MainCanvas.kt, ui/MainLayoutEditor.kt) -->
+    <string name="main_layout_title">メイン画面を編集</string>
+    <string name="main_layout_add">追加</string>
+    <string name="main_layout_done">完了</string>
+    <string name="main_layout_reset">リセット</string>
+    <string name="main_layout_reset_title">メイン画面をリセットしますか？</string>
+    <string name="main_layout_reset_text">ブロックとタイルが新規インストール時の位置に戻ります。それ以外は変わりません。</string>
+    <string name="main_layout_columns">列</string>
+    <string name="main_layout_columns_auto">自動</string>
+    <string name="main_layout_columns_cd">%1$d列</string>
+    <string name="main_layout_remove_cd">%1$s を削除</string>
+    <string name="main_layout_wide_cd">%1$s: 行全体を使う</string>
+    <string name="main_layout_narrow_cd">%1$s: 1マスに戻す</string>
+    <string name="main_layout_move_earlier">前へ移動</string>
+    <string name="main_layout_move_later">後ろへ移動</string>
+    <string name="main_layout_when_connected">接続中に表示</string>
+    <string name="main_layout_exit_when">接続中、ピアが出口ノードを提供しているときに表示</string>
+    <string name="main_layout_palette_title">メイン画面に追加</string>
+    <string name="main_layout_palette_empty">すべて画面に表示されています</string>
+    <string name="main_layout_group_blocks">ブロック</string>
+    <string name="main_layout_group_screens">画面</string>
+    <string name="main_layout_group_shortcuts">ショートカット</string>
+    <string name="main_layout_group_settings">設定ページ</string>
+
+    <!-- What the main screen can hold (ui/MainTiles.kt) -->
+    <string name="main_block_status">状態カード</string>
+    <string name="main_block_status_desc">メインのボタン: NetBird を起動・停止し、状態を表示します</string>
+    <string name="main_block_exit_node_desc">どの出口ノードが通信を運ぶか。タップで別のものを選べます</string>
+    <string name="main_block_proxy_desc">アプリに設定する SOCKS5 プロキシのアドレス。タップでコピーします</string>
+    <string name="main_proxy_copy_cd">アドレスをコピー</string>
+    <string name="tile_peers_desc">ネットワーク内のデバイスとこのデバイス</string>
+    <string name="tile_networks_desc">ピアが提供するネットワークとルート（出口ノードを含む）</string>
+    <string name="tile_dns_desc">NetBird の名前と、使用する DNS サーバー</string>
+    <string name="tile_publish_desc">ピアが到達できるこのスマートフォンのサービス</string>
+    <string name="tile_diagnostics_desc">接続、イベント、ログ、各種チェック</string>
+    <string name="tile_settings_desc">アプリのすべての設定</string>
+    <string name="tile_logs_desc">アプリと NetBird のログ</string>
+    <string name="tile_accounts_desc">NetBird アカウントの切り替え、追加、名前変更</string>
+    <string name="tile_vpn">VPN モード</string>
+    <string name="tile_vpn_desc">設定 → トンネルモードと同じように VPN モードを切り替えます</string>
+    <string name="tile_tunnel_desc">プロキシ、VPN、Root とトンネルの設定</string>
+    <string name="tile_app_split_desc">VPN モードをバイパスするアプリ</string>
+    <string name="tile_proxies_desc">SOCKS5 と DNS プロキシのアドレスとパスワード</string>
+    <string name="tile_dns_settings">DNS 設定</string>
+    <string name="tile_dns_settings_desc">DNS プロキシとアップストリーム</string>
+    <string name="tile_permissions_desc">通知、バッテリー、自動起動</string>
+
+    <!-- Settings → Appearance → Main screen (ui/MainHiddenItems.kt) -->
+    <string name="settings_main_screen">メイン画面</string>
+    <string name="settings_main_layout_title">メイン画面のレイアウト</string>
+    <string name="settings_main_layout_desc">状態カードとタイルの移動、追加・削除、列の選択。メイン画面の長押しでも同じ編集画面が開きます。</string>
+    <string name="main_hidden_title">メイン画面から非表示</string>
+    <string name="main_hidden_none">すべてメイン画面に表示されています</string>
+    <plurals name="main_hidden_count">
+        <item quantity="other">%1$d件</item>
+    </plurals>
+    <string name="main_hidden_sheet_desc">タップするとタイルと同じように開きます。ボタンでメイン画面に戻せます。</string>
+    <string name="main_hidden_open">開く</string>
+    <string name="main_hidden_restore">メイン画面に戻す</string>
+    <string name="main_cd_admin_panel">管理パネル</string>
+    <string name="tile_admin">管理パネル</string>
+    <string name="tile_admin_desc">このネットワークのピア、セットアップキー、グループ</string>
+</resources>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings search: the field, the lines above a list of results -->
+    <string name="search_settings_hint">設定を検索</string>
+    <string name="search_recent">最近見つけたもの</string>
+    <string name="search_suggested">よく使うもの</string>
+    <string name="search_none">「%1$s」に一致する項目はありません</string>
+    <string name="search_closest">完全一致はありません。近い項目:</string>
+    <string name="search_read_as">「%1$s」の結果を表示しています</string>
+
+    <!-- Why a found setting is not in its section right now. One line each; the result then opens the row that brings it. -->
+    <string name="search_need_daemon">NetBird の動作中に表示</string>
+    <string name="search_need_tun">VPN モードと Root モードで表示</string>
+    <string name="search_need_tun_vpn">VPN モードで表示</string>
+    <string name="search_need_tun_socks">VPN がプロキシ経由のときに表示</string>
+    <string name="search_need_control_proxy">サーバー接続がプロキシ経由のときに表示</string>
+    <string name="search_need_control_byedpi">サーバー接続が ByeDPI 経由のときに表示</string>
+    <string name="search_need_automation">自動化を許可すると表示</string>
+    <string name="search_need_static_colors">ダイナミックカラーがオフのときに表示</string>
+
+    <!-- A result's title, for a block whose own title says too little out of its section -->
+    <string name="search_title_tunnel_mode">プロキシ、VPN、Root</string>
+
+    <!-- One line of what a setting does, for the rows that say it nowhere in their section -->
+    <string name="search_sum_theme">ライト、ダーク、またはシステムと同じ</string>
+    <string name="search_sum_language">システムの言語、英語、ロシア語、日本語</string>
+    <string name="search_sum_palette">インターフェースのアクセントカラー</string>
+    <string name="search_sum_app_icon">ランチャーに表示される BirdSocks のアイコン</string>
+    <string name="search_sum_device_name">ピアの中でこのデバイスが持つ名前</string>
+    <string name="search_sum_management_server">このアカウントの NetBird サーバー。ダッシュボードを開きます</string>
+    <string name="search_sum_tunnel_mode">プロキシのみ、すべてのアプリを VPN、または VPN スロットを使わない Root</string>
+    <string name="search_sum_tun_engine">VPN のパケットを運ぶもの: NetBird 自身か SOCKS5 プロキシ</string>
+    <string name="search_sum_tun_excluded_apps">トンネルから外れるアプリ</string>
+    <string name="search_sum_socks_address">SOCKS5 プロキシが待ち受けるアドレスとポート</string>
+    <string name="search_sum_socks_username">SOCKS5 プロキシのログイン。パスワードと一緒に設定します</string>
+    <string name="search_sum_socks_password">SOCKS5 プロキシのパスワード。ユーザー名と一緒に設定します</string>
+    <string name="search_sum_socks_link">NekoBox や v2rayNG などで使う、このプロキシの socks5:// リンク</string>
+    <string name="search_sum_dns_proxy_address">NetBird の名前を解決するローカル DNS のアドレスとポート</string>
+    <string name="search_sum_control_mode">NetBird サーバーへ直接、プロキシ経由、または ByeDPI 経由で到達</string>
+    <string name="search_sum_control_proxy_host">NetBird サーバーへの接続に使うプロキシ</string>
+    <string name="search_sum_control_proxy_port">そのプロキシのポート</string>
+    <string name="search_sum_automation_token">他のアプリがすべてのコマンドに付ける必要がある秘密の値</string>
+    <string name="search_sum_log_level">デーモンがログに書く量: info、debug、trace</string>
+    <string name="search_sum_docs">NetBird 自身のドキュメント（docs.netbird.io）</string>
+    <string name="search_sum_source">GitHub 上の BirdSocks: コード、イシュー、リリース</string>
+    <string name="search_sum_donate">作者への寄付</string>
+    <string name="search_need_tun_root">Root モードで表示</string>
+    <string name="search_sum_main_hidden">メイン画面から外した項目。開き直すか戻せます</string>
+</resources>

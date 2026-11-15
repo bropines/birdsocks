@@ -19,7 +19,7 @@ object AppLanguages {
     /** `app_locale` for "follow the system". */
     const val SYSTEM = "sys"
 
-    val TAGS: List<String> = listOf("en", "ru")
+    val TAGS: List<String> = listOf("en", "ru", "ja")
 
     /**
      * [tag]'s name in its own language — what someone who reads only that language looks
