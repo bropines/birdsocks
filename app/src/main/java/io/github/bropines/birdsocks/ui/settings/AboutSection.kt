@@ -20,7 +20,7 @@ import io.github.bropines.birdsocks.core.UpdateChannel
 import io.github.bropines.birdsocks.core.Updater
 import io.github.bropines.birdsocks.ui.AboutDialog
 import io.github.bropines.birdsocks.ui.HelpText
-import io.github.bropines.birdsocks.ui.LicensesDialog
+import io.github.bropines.birdsocks.ui.LicensesActivity
 import io.github.bropines.birdsocks.ui.SettingsCard
 import io.github.bropines.birdsocks.ui.SettingsClickableItem
 import io.github.bropines.birdsocks.ui.SettingsSwitchItem
@@ -37,7 +37,6 @@ internal fun AboutSection(env: SettingsEnv) {
     val context = LocalContext.current
     val core = remember { runCatching { Appctr.coreVersion() }.getOrDefault("?") }
     var showAbout by remember { mutableStateOf(false) }
-    var showLicenses by remember { mutableStateOf(false) }
     SettingsCard(stringResource(R.string.nb_settings_about)) {
         Text("BirdSocks ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
         Text("NetBird $core", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -68,8 +67,7 @@ internal fun AboutSection(env: SettingsEnv) {
         SettingsClickableItem(stringResource(R.string.about_donate), "boosty.to/pinus", Icons.Default.Favorite) {
             openUrl(context, Updater.DONATE_URL)
         }
-        SettingsClickableItem(stringResource(R.string.nb_about_licenses), stringResource(R.string.nb_about_licenses_desc), Icons.Default.Gavel) { showLicenses = true }
+        SettingsClickableItem(stringResource(R.string.nb_about_licenses), stringResource(R.string.nb_about_licenses_desc), Icons.Default.Gavel) { context.startActivity(android.content.Intent(context, LicensesActivity::class.java)) }
     }
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
-    if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
 }

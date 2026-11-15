@@ -65,7 +65,17 @@ class NetbirdService : Service() {
             if (NetbirdState.daemonFlow.value == NetbirdState.Daemon.Stopped) {
                 NetbirdState.daemonFlow.value = NetbirdState.Daemon.Starting
             }
-            ContextCompat.startForegroundService(context, Intent(context, NetbirdService::class.java).setAction(ACTION_START))
+            try {
+                ContextCompat.startForegroundService(context, Intent(context, NetbirdService::class.java).setAction(ACTION_START))
+            } catch (e: Exception) {
+                // Refused (Android 12+ from the background): nothing is starting, so say so,
+                // or the screens and the tile wait on a start that never comes.
+                if (NetbirdState.daemonFlow.value == NetbirdState.Daemon.Starting) {
+                    NetbirdState.daemonFlow.value = NetbirdState.Daemon.Stopped
+                }
+                GlobalSettings.setWasRunning(context, false)
+                throw e
+            }
         }
 
         fun stop(context: Context) {
@@ -202,6 +212,10 @@ class NetbirdService : Service() {
         })
         EventLog.init(this)
         scope.launch { ExposeFlow.state.collect(::showExpose) }
+        // The admin panel opens with NetBird stopped on the account active last.
+        scope.launch {
+            NetbirdState.profileFlow.collect { if (it != null && NetbirdState.isRunning) runCatching { io.github.bropines.birdsocks.admin.AdminSession.remember(this@NetbirdService) } }
+        }
         // "· VPN" in the notification follows the tunnel.
         scope.launch {
             TunVpnService.running.collect {
@@ -266,7 +280,7 @@ class NetbirdService : Service() {
         logLevel = GlobalSettings.getLogLevel(this@NetbirdService)
         dnsProxy = if (GlobalSettings.isDnsProxyEnabled(this@NetbirdService)) GlobalSettings.getDnsProxyAddress(this@NetbirdService) else ""
         dnsUpstream = GlobalSettings.getDnsUpstream(this@NetbirdService)
-        tunDNS = TunRoutes.DNS_IP
+        tunDNS = TunRoutes.DNS_IP + "," + TunRoutes.DNS_IP6
         relayQUIC = GlobalSettings.isRelayQuic(this@NetbirdService)
         controlProxy = controlProxyUrl()
         lazyConn = GlobalSettings.getLazyConn(this@NetbirdService)
@@ -361,6 +375,9 @@ class NetbirdService : Service() {
         ensureChannel(EVENTS_CHANNEL_ID, getString(R.string.nb_events_channel), NotificationManager.IMPORTANCE_DEFAULT)
         for (e in fresh) {
             if (e.severity !in setOf("WARNING", "ERROR", "CRITICAL")) continue
+            // A switch between redundant routing peers is NetBird balancing latency, not trouble:
+            // it stays in Events, without a notification each time.
+            if (e.message == "Routing peer changed") continue
             val at = io.github.bropines.birdsocks.ui.parseRfc3339Millis(e.timestamp) ?: continue
             if (now - at > 2 * 60_000) continue
             val open = PendingIntent.getActivity(this, 4, DiagnosticsActivity.intent(this, DiagnosticsActivity.PAGE_EVENTS), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

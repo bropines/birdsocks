@@ -20,7 +20,8 @@ Copyright (c) 2026, Bropines. Компоненты, на которых он п�
 | [lwIP](https://savannah.nongnu.org/projects/lwip) | стек TCP/IP hev-socks5-tunnel | BSD-3-Clause |
 | [hev-task-system](https://github.com/heiher/hev-task-system) | задачи hev-socks5-tunnel | MIT |
 | [ByeDPI](https://github.com/hufrea/byedpi) | соединение с сервером в обход DPI | MIT |
-| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp) | приложение | Apache-2.0 |
+| [qrcodegen](https://github.com/nayuki/QR-Code-generator) (Project Nayuki) | QR-код ссылки-приглашения нового ключа установки в панели администратора | MIT |
+| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp), [AndroidX Biometric](https://developer.android.com/jetpack/androidx/releases/biometric) | приложение | Apache-2.0 |
 
 Всего демон собирает около 110 модулей Go (`go.mod` NetBird): Apache-2.0, MIT,
 BSD, ISC и CC0, и три неизменённых модуля HashiCorp под MPL-2.0 (`errwrap`,
@@ -34,11 +35,14 @@ BSD, ISC и CC0, и три неизменённых модуля HashiCorp по�
 
 ## В приложении
 
-Настройки → О приложении → **Лицензии** перечисляют компоненты; **Полные
-тексты** открывают каждую лицензию целиком, как MIT и BSD требуют от
-бинарной сборки. Тексты лежат в
-[`app/src/main/assets/third_party_licenses.txt`](../app/src/main/assets/third_party_licenses.txt);
-обновляйте его, когда добавляется компонент или меняется его лицензия.
+Настройки → О приложении → **Лицензии открытого ПО** (или
+`birdsocks://licenses`) показывают каждый компонент APK — Go-модули демона и
+моста, библиотеки Android, нативные C-библиотеки — с лицензией и полным
+текстом, как MIT и BSD требуют от бинарной сборки. Список лежит в
+[`app/src/main/assets/licenses.json`](../app/src/main/assets/licenses.json);
+его пишет `scripts/licenses/generate.py` по тому, что реально собрано, и он
+закоммичен. Запускайте скрипт после `appctr/build.sh` и сборки Gradle, когда
+меняется зависимость; `--check` в CI предупреждает, если список устарел.
 
 ## Товарный знак
 

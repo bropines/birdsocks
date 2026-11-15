@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Слова, по которым ищут настройку: список через запятую, не предложение. -->
+    <string name="search_stop_words">как, где, что, чем, зачем, почему, можно, нужно, надо, хочу, мне, я, в, во, на, и, или, для, не, с, со, по, из, от, до, это, этот, эта, эту, ли, же, бы, включить, включать, выключить, отключить, поменять, изменить, сменить, менять, настроить, настройка, настройки, сделать, поставить, убрать, найти, выбрать, задать, использовать, опция, параметр</string>
+
+    <!-- Разделы -->
+    <string name="search_kw_appearance">внешний вид, дизайн, стиль, интерфейс, оформление, персонализация</string>
+    <string name="search_kw_account">профиль, вход, войти, ключ установки, setup key, аккаунт netbird</string>
+    <string name="search_kw_tunnel">впн, vpn, tun, туннель, режим подключения, весь трафик, все приложения, для всего устройства</string>
+    <string name="search_kw_proxies">сокс, socks, socks5, локальный прокси, 127.0.0.1, localhost, nekobox, v2ray, sing-box, прокси для приложений</string>
+    <string name="search_kw_dns">днс, резолвер, сервер имён, разрешение имён, доменные имена, netbird.cloud</string>
+    <string name="search_kw_access">входящие, входящие подключения, файрвол, брандмауэр, открыть порт, доступ к телефону</string>
+    <string name="search_kw_connection">p2p, напрямую, релей, relay, nat, сеть, wireguard, соединение</string>
+    <string name="search_kw_background">фон, в фоне, убивает в фоне, держать подключение, отключается, батарея</string>
+    <string name="search_kw_backup">бэкап, бекап, резервная копия, перенос на новый телефон, экспорт, импорт, сохранить настройки</string>
+    <string name="search_kw_automation">автоматизация, таскер, tasker, интент, broadcast, скрипт, api, adb</string>
+    <string name="search_kw_diagnostics">отладка, дебаг, баг, проблема, не работает, для разработчиков</string>
+    <string name="search_kw_about">версия, обновление, лицензия, благодарности, что нового</string>
+
+    <!-- Оформление и язык -->
+    <string name="search_kw_theme_mode">тема, тёмная тема, темная тема, светлая тема, ночной режим, как в системе</string>
+    <string name="search_kw_language">язык, локаль, английский, русский, перевод, язык интерфейса</string>
+    <string name="search_kw_palette">акцент, цвета, цветовая схема, пресет, палитра</string>
+    <string name="search_kw_dynamic_color">material you, монет, цвета обоев, android 12, динамические</string>
+    <string name="search_kw_amoled">чёрный фон, черный фон, чёрная тема, oled, амолед, экономия батареи</string>
+    <string name="search_kw_app_icon">иконка, значок, логотип, сменить иконку, ярлык</string>
+
+    <!-- Аккаунт и устройство -->
+    <string name="search_kw_accounts">сменить аккаунт, добавить аккаунт, профили, несколько аккаунтов, удалить аккаунт, переименовать</string>
+    <string name="search_kw_device_name">имя хоста, hostname, название устройства, имя узла, имя телефона</string>
+    <string name="search_kw_management_server">свой сервер, селфхост, self-hosted, адрес сервера, панель, дашборд, админка, netbird cloud</string>
+    <string name="search_kw_logout">выход, выйти из аккаунта, разлогиниться, отвязать, забыть</string>
+    <string name="search_kw_client_routes">маршруты, сети, подсети, принимать маршруты, выходной узел</string>
+    <string name="search_kw_server_routes">маршрутизатор, раздавать сеть, свои подсети, routing peer</string>
+    <string name="search_kw_psk">psk, общий ключ, общий секрет, ключ wireguard</string>
+
+    <!-- Режим туннеля -->
+    <string name="search_kw_tunnel_mode">впн, vpn, tun, прокси, рут, root, magisk, kernelsu, режим, kill switch, постоянный vpn</string>
+    <string name="search_kw_tun_engine">нативный, hev, hev-socks5-tunnel, через прокси, tun2socks, движок</string>
+    <string name="search_kw_tun_route_all">весь трафик, полный туннель, маршрут по умолчанию, 0.0.0.0/0, всё через vpn</string>
+    <string name="search_kw_tun_ipv6">ipv6, айпи6, ::/0, утечка ipv6</string>
+    <string name="search_kw_tun_excluded_apps">раздельное туннелирование, исключения, приложения в обход, список приложений, мимо vpn</string>
+    <string name="search_kw_tun_excluded_cidrs">раздельное туннелирование, исключить подсети, диапазоны, cidr, локальная сеть мимо vpn</string>
+    <string name="search_kw_tun_address">адрес интерфейса, ip туннеля, 198.18.0.1, ip vpn</string>
+
+    <!-- Локальные прокси -->
+    <string name="search_kw_socks_address">порт socks, порт прокси, адрес прослушивания, 127.0.0.1, 1080, порт</string>
+    <string name="search_kw_socks_username">логин, пользователь, авторизация прокси, учётные данные</string>
+    <string name="search_kw_socks_password">пароль прокси, секрет, авторизация прокси, учётные данные</string>
+    <string name="search_kw_socks_link">ссылка, поделиться, nekobox, v2rayng, sagernet, импорт прокси, буфер обмена</string>
+    <string name="search_kw_socks_lan">вайфай, вай фай, wifi, точка доступа, хотспот, раздача, другие устройства, 0.0.0.0</string>
+
+    <!-- DNS -->
+    <string name="search_kw_netbird_dns">днс netbird, имена узлов, magic dns, netbird.cloud, серверы имён</string>
+    <string name="search_kw_dns_labels">метки dns, псевдонимы, алиасы, дополнительные имена хоста, cname</string>
+    <string name="search_kw_dns_proxy">днс прокси, локальный dns, dns сервер, dns для приложений</string>
+    <string name="search_kw_dns_proxy_address">порт dns, адрес dns прокси, 127.0.0.1, 53</string>
+    <string name="search_kw_dns_upstream">вышестоящий dns, апстрим, 1.1.1.1, 8.8.8.8, doh, запасной dns</string>
+    <string name="search_kw_dns_screen">проверка dns, nslookup, dig, тест dns, днс</string>
+
+    <!-- Доступ к телефону -->
+    <string name="search_kw_inbound_access">входящие, входящие подключения, ssh на телефон, доступ к телефону, сервисы телефона</string>
+    <string name="search_kw_block_inbound">файрвол, брандмауэр, запретить входящие, блокировка подключений, невидимость</string>
+    <string name="search_kw_publish">проброс порта, публичный адрес, опубликовать, обратный прокси, ngrok, выставить наружу</string>
+
+    <!-- Соединение -->
+    <string name="search_kw_lazy_connection">по требованию, простой, батарея, ленивые, подключаться по необходимости</string>
+    <string name="search_kw_relay_quic">квик, quic, udp, транспорт релея, websocket</string>
+    <string name="search_kw_force_relay">только релей, без p2p, запретить напрямую, за nat, релей</string>
+    <string name="search_kw_control_mode">блокировки, обход блокировок, цензура, ркн, дпи, dpi, обход, не подключается, не входит, прокси для сервера</string>
+    <string name="search_kw_control_proxy_host">адрес прокси, socks5 прокси, http прокси, вышестоящий прокси, прокси для сервера</string>
+    <string name="search_kw_control_proxy_port">порт, порт прокси, 1080, 8080</string>
+    <string name="search_kw_control_proxy_user">логин, пользователь, авторизация прокси, учётные данные</string>
+    <string name="search_kw_control_proxy_pass">пароль прокси, секрет, авторизация прокси, учётные данные</string>
+    <string name="search_kw_byedpi_flags">дпи, dpi, десинхронизация, zapret, запрет, byebyedpi, goodbyedpi, фейк</string>
+    <string name="search_kw_byedpi_ipv4">ipv6, v4, ipv4, дпи, без ipv6</string>
+    <string name="search_kw_ipv6">ipv6, айпи6, ipv6 в оверлее, двойной стек</string>
+    <string name="search_kw_mtu">мту, размер пакета, mss, фрагментация, 1280, большие пакеты</string>
+
+    <!-- Фоновая работа и разрешения -->
+    <string name="search_kw_event_notifications">уведомления, оповещения, предупреждения, события, пуши</string>
+    <string name="search_kw_autostart">автозапуск, автостарт, при включении, после перезагрузки, загрузка</string>
+    <string name="search_kw_hide_recents">недавние приложения, список задач, многозадачность, приватность, скрыть приложение</string>
+    <string name="search_kw_permissions">батарея, оптимизация батареи, энергосбережение, фоновые ограничения, xiaomi, miui, hyperos, сяоми</string>
+
+    <!-- Резервная копия -->
+    <string name="search_kw_backup_settings">экспорт настроек, json, сохранить настройки, бэкап настроек</string>
+    <string name="search_kw_backup_full">бэкап, бекап, зашифрованная копия, пароль, аккаунты, перенос</string>
+    <string name="search_kw_restore">восстановление, импорт, загрузить настройки, новый телефон, восстановить бэкап</string>
+
+    <!-- Автоматизация -->
+    <string name="search_kw_automation_enable">таскер, tasker, macrodroid, автоматизация, broadcast, интент, adb</string>
+    <string name="search_kw_automation_token">секрет, ключ api, сгенерировать токен, пароль, авторизация</string>
+    <string name="search_kw_automation_docs">документация, примеры, команды, как автоматизировать, ссылки</string>
+
+    <!-- Диагностика и разработчику -->
+    <string name="search_kw_log_level">уровень логов, подробные логи, отладка, debug, trace, логирование</string>
+    <string name="search_kw_extra_env">env, переменные среды, окружение, nb_, флаги</string>
+    <string name="search_kw_remote_jobs">отладочный пакет, удалённая отладка, поддержка, задания</string>
+    <string name="search_kw_diagnostics_screen">проверка подключения, события, захват пакетов, пинг, трассировка, проверка доступа</string>
+    <string name="search_kw_logs">лог, логи, logcat, журнал, ошибки, лог демона</string>
+
+    <!-- О приложении -->
+    <string name="search_kw_about_dialog">версия, что нового, список изменений, благодарности, о программе</string>
+    <string name="search_kw_update_on_launch">автообновление, обновления, новая версия, релиз, проверка при запуске</string>
+    <string name="search_kw_update_now">обновить, обновление, новая версия, скачать, релиз</string>
+    <string name="search_kw_docs">помощь, справка, руководство, документация, docs.netbird.io</string>
+    <string name="search_kw_source">гитхаб, github, репозиторий, код, открытый код, issues</string>
+    <string name="search_kw_donate">донат, пожертвовать, boosty, бусти, поддержать, деньги</string>
+    <string name="search_kw_licenses">лицензии открытого кода, сторонние, юридическое, bsd, gpl</string>
+    <string name="search_kw_main_layout">главный экран, плитки, раскладка, переставить, порядок, колонки, редактировать</string>
+    <string name="search_kw_main_hidden">скрытые плитки, убранные, вернуть, восстановить плитку</string>
+    <string name="search_kw_tun_root_lan">локальная сеть, домашняя сеть, роутер, nas, принтер, root</string>
+    <string name="search_kw_tun_root_take">другой vpn, соседство, конфликт, забрать, перехватить, root</string>
+    <string name="search_kw_admin_panel">админка, администрирование, управление узлами, ключ установки, приглашение, qr, группы, api, токен, управление сетью</string>
+</resources>

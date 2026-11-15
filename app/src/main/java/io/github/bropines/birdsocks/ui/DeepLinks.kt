@@ -8,11 +8,13 @@ import io.github.bropines.birdsocks.core.Automation
 /**
  * `birdsocks://` links. Screen links open a screen and nothing more:
  *
- *     birdsocks://peers | networks | dns | publish | permissions
+ *     birdsocks://peers | networks | dns | publish | permissions | licenses
  *     birdsocks://diagnostics | events            Diagnostics, on a page
  *     birdsocks://access-check?peer=<ip>          the access check
  *     birdsocks://logs?category=NETBIRD           Logs, on one category
  *     birdsocks://settings?section=<id>           Settings, on a section (SettingsSections)
+ *     birdsocks://settings?q=<words>              Settings, with the words typed into its search
+ *     birdsocks://admin?page=<area id>|overview|setup   the admin panel (AdminPanel, AdminAreas)
  *
  * Action links change something ([requestFor]):
  *
@@ -44,10 +46,29 @@ object DeepLinks {
             "events" -> DiagnosticsActivity.intent(context, DiagnosticsActivity.PAGE_EVENTS)
             "access-check" -> TraceActivity.intent(context, uri.getQueryParameter("peer"))
             "logs" -> LogsActivity.intent(context, uri.getQueryParameter("category")?.uppercase() ?: "ALL")
-            "settings" -> SettingsSections.intent(context, uri.getQueryParameter("section") ?: uri.pathSegments.firstOrNull())
+            "settings" -> SettingsSections.intent(context, uri.getQueryParameter("section") ?: uri.pathSegments.firstOrNull(), uri.getQueryParameter("q"))
             "permissions" -> Intent(context, PermissionsActivity::class.java)
+            "licenses" -> Intent(context, LicensesActivity::class.java)
+            "admin" -> io.github.bropines.birdsocks.admin.AdminPanel.intent(context, uri.getQueryParameter("page"))
             else -> null
         }
+    }
+
+    /**
+     * The invite [requestFor] reads: `birdsocks://add-account?server=…&key=…`.
+     * [server] is the management URL, left out for NetBird Cloud as the link
+     * expects; [name] is optional.
+     */
+    fun inviteLink(server: String, name: String, key: String): String {
+        fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
+        val cloud = server.isBlank() || runCatching { java.net.URI(normalizeServer(server)).host }.getOrNull()
+            ?.lowercase()?.let { it == "api.netbird.io" } == true
+        val params = buildList {
+            if (!cloud) add("server=" + enc(serverOrigin(server)))
+            if (name.isNotBlank()) add("name=" + enc(name.trim()))
+            add("key=" + enc(key.trim()))
+        }
+        return "$SCHEME://add-account?" + params.joinToString("&")
     }
 
     /** What an action link asks for. */

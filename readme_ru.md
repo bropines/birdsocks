@@ -19,13 +19,15 @@
     <th>Ядро NetBird</th>
     <th>Android</th>
     <th>Лицензия</th>
+    <th>Перевод</th>
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases/latest"><img src="https://img.shields.io/github/v/release/bropines/birdsocks?style=for-the-badge&logo=github&logoColor=white&label=&color=2ea44f" alt="Релиз" /></a></td>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases"><img src="https://img.shields.io/github/downloads/bropines/birdsocks/total?style=for-the-badge&logo=android&logoColor=white&label=&color=3ddc84" alt="Загрузки" /></a></td>
-    <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.80.0"><img src="https://img.shields.io/badge/v0.80.0-F68330?style=for-the-badge" alt="Ядро NetBird" /></a></td>
+    <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.83.1"><img src="https://img.shields.io/badge/v0.83.1-F68330?style=for-the-badge" alt="Ядро NetBird" /></a></td>
     <td align="center"><img src="https://img.shields.io/badge/7.0%2B-3ddc84?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+" /></td>
     <td align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/BSD_3--Clause-orange?style=for-the-badge" alt="Лицензия" /></a></td>
+    <td align="center"><a href="https://hosted.weblate.org/engage/birdsocks/"><img src="https://img.shields.io/weblate/progress/birdsocks?server=https%3A%2F%2Fhosted.weblate.org&style=for-the-badge&logo=weblate&logoColor=white&label=" alt="Перевод" /></a></td>
   </tr>
 </table>
 
@@ -76,7 +78,7 @@ BirdSocks запускает на телефоне настоящий клиен
 | **SOCKS5-прокси** | По умолчанию `127.0.0.1:48125`, можно любой адрес 127.x. Работает по TCP и UDP, может требовать логин и пароль; прежде чем открывать прокси в локальную сеть, их стоит задать. Узлы и их сети идут через NetBird, всё остальное — напрямую или через выходной узел. |
 | **DNS-прокси** | `127.0.0.1:48153`. Сначала отвечает именами NetBird, остальное спрашивает у резолверов сети или у ваших запасных, у всех сразу. Имя NetBird никогда не уходит в публичный DNS. |
 | **VPN-режим (TUN)** | Для приложений без настроек прокси. Нативный движок ставит туннель на NetBird-адрес телефона: работает ping, а узлы достают приложения на телефоне со своим адресом (KDE Connect). Движок через прокси отправляет тот же туннель в SOCKS5-прокси. По умолчанию в туннель идут только диапазоны NetBird; весь трафик — с выходным узлом, доменным маршрутом или одним переключателем. Приложения можно исключать. |
-| **Режим Root** | С root (Magisk, KernelSU, APatch): настоящий сетевой интерфейс на NetBird-адресе и маршрутизация по правилам вместо VPN-слота Android — BirdSocks работает рядом с AdGuard, Rethink или любым другим VPN. Помощник убирает все свои правила, когда BirdSocks или его демон останавливается. |
+| **Режим Root** | С root (Magisk, KernelSU, APatch): настоящий сетевой интерфейс на NetBird-адресе и маршрутизация по правилам вместо VPN-слота Android — BirdSocks работает рядом с AdGuard, Rethink или любым другим VPN; если такой VPN есть, через NetBird идут только его адреса. Имена NetBird попадают в `/etc/hosts` и резолвятся, какой бы DNS-сервер ни выбрал Android. Помощник убирает все свои правила, когда BirdSocks или его демон останавливается. Подробнее: [режим Root](docs/ROOT_RU.md). |
 | **Выходные узлы и сети** | Выбор сетей и выходного узла. Выходной узел проверяется через прокси; если он ничего не пропускает, это видно сразу, и предложен выход. |
 | **Подключение к серверу** | Управление, signal и relay через SOCKS5- или HTTP-прокси либо встроенный **ByeDPI**, если сервер заблокирован или его TLS-рукопожатие фильтруется. |
 | **Доступ к телефону** | Узлы заходят на сервисы самого телефона (adb, `sshd` из Termux, веб-сервер) по его адресу в NetBird, насколько разрешают ACL. Прокси BirdSocks для узлов закрыты. |
@@ -91,6 +93,7 @@ BirdSocks запускает на телефоне настоящий клиен
 | **Узлы** | Сначала это устройство, потом все узлы: путь (P2P или relay), задержка, трафик, сети, которые они маршрутизируют. Спящие при ленивых соединениях узлы помечены как спящие. |
 | **Экран DNS** | Проверка прокси, поиск имён, DNS-серверы и **все DNS-записи, которые сервер выдал этому устройству**, с фильтром. |
 | **Сессия** | Окончание сессии видно заранее, продление — в браузере, без переподключения. |
+| **Админ-панель** | Ваш аккаунт NetBird через его API, с токеном доступа, запечатанным на телефоне: узлы, группы, ключи установки, политики (визуальный редактор и JSON), проверки состояния, сети, маршруты, DNS, пользователи и токены, журнал аудита, настройки аккаунта. По умолчанию только чтение; каждое изменение показывает, что оно сделает, и просит блокировку экрана. |
 
 ### Диагностика
 
@@ -109,7 +112,7 @@ BirdSocks запускает на телефоне настоящий клиен
 | **Ссылки** | `birdsocks://` открывает любой экран. Ссылки-действия спрашивают подтверждение, ссылки-приглашения открывают заполненный новый аккаунт. |
 | **Резервные копии** | Файл настроек или полная копия с аккаунтами NetBird и ключами под паролем. |
 | **40 иконок** | Выбираются в «Настройки → Оформление и язык», в цветах BirdSocks или NetBird. |
-| **И ещё** | Плитка быстрых настроек, запуск при загрузке, ярлыки на иконке, Material 3 с динамическими цветами, две панели на планшетах, английский, русский и японский. |
+| **И ещё** | Плитка быстрых настроек, запуск при загрузке, ярлыки на иконке, Material 3 с динамическими цветами, две панели на планшетах, английский, русский и японский; другие языки — на [Hosted Weblate](https://hosted.weblate.org/engage/birdsocks/) (проект готовится). |
 
 ---
 
@@ -239,7 +242,7 @@ export ANDROID_HOME=~/android-sdk ANDROID_NDK_HOME=~/android-sdk/ndk/28.2.136763
 | [Сборка](docs/BUILDING_RU.md) | Демон NetBird, мост и APK |
 | [Выпуск](docs/RELEASING_RU.md) | От тега до подписанных APK; секреты подписи |
 | [Лицензии](docs/LICENSES_RU.md) | Лицензия BirdSocks и всех компонентов в приложении |
-| [Перевод](docs/TRANSLATING_RU.md) | Как добавить язык |
+| [Перевод](docs/TRANSLATING_RU.md) | Как добавить язык; проект на Hosted Weblate |
 | [Дорожная карта](docs/ROADMAP_RU.md) | Что дальше |
 | [Как помочь](CONTRIBUTING_RU.md) | Как прислать изменение |
 | [`agents.md`](agents.md) | Архитектура и правила для разработчиков — людей и ИИ |
@@ -284,7 +287,7 @@ adb shell am broadcast -n io.github.bropines.birdsocks/.core.AutomationReceiver 
 
 Issues и pull requests приветствуются. Сначала прочитайте [`CONTRIBUTING_RU.md`](CONTRIBUTING_RU.md) и [`agents.md`](agents.md). Коротко:
 - изменения демона оформляются патчами;
-- строки — на английском, русском и японском;
+- строки — на английском и русском;
 - на каждое изменение поведения — строка в CHANGELOG.
 
 К отчёту об ошибке лучше всего приложить отладочный архив из «Диагностика → Логи».

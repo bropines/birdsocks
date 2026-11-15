@@ -23,6 +23,8 @@ class BirdSocksApp : Application() {
     override fun onCreate() {
         super.onCreate()
         TaskRecents.watch(this)
+        // A Root helper that died without its teardown left rules routing into nothing.
+        RootTun.sweepIfStale(this)
         // The log ring, mirrored to a file anyone debugging can read with
         // `adb shell run-as <package> cat files/logs/birdsocks.log`.
         runCatching { Appctr.setLogFile(java.io.File(filesDir, "logs/birdsocks.log").absolutePath) }
@@ -34,6 +36,8 @@ class BirdSocksApp : Application() {
         }, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED))
         // STATUS_CHANGED for the app automation named, when it named one.
         Automation.watch(this)
+        // The home-screen widgets follow the daemon from here.
+        io.github.bropines.birdsocks.ui.WidgetUpdates.watch(this)
         // The enabled launcher alias, back in line with the picked icon should
         // they disagree: a restore, an update that dropped an icon, a crash
         // between writing the preference and switching.

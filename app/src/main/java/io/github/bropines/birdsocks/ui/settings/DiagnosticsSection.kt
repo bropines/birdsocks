@@ -1,5 +1,7 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -41,12 +43,14 @@ internal fun DiagnosticsSection(env: SettingsEnv) {
     SettingsCard(stringResource(R.string.settings_card_developer)) {
         var level by remember { mutableStateOf(GlobalSettings.getLogLevel(context)) }
         val levels = listOf("info", "debug", "trace")
-        Text(stringResource(R.string.nb_settings_log_level), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
-        SlidingSegmentedChips(levels, levels.indexOf(level).coerceAtLeast(0), { i ->
-            // Saved for the next start, and applied to the running daemon at once.
-            GlobalSettings.setLogLevel(context, levels[i]); level = levels[i]
-            if (env.running) scope.launch { runCatching { Netbird.setLogLevel(levels[i]) } }
-        }, Modifier.fillMaxWidth().padding(bottom = 8.dp))
+        Column(Modifier.settingAnchor(stringResource(R.string.nb_settings_log_level), outset = 6.dp)) {
+            Text(stringResource(R.string.nb_settings_log_level), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+            SlidingSegmentedChips(levels, levels.indexOf(level).coerceAtLeast(0), { i ->
+                // Saved for the next start, and applied to the running daemon at once.
+                GlobalSettings.setLogLevel(context, levels[i]); level = levels[i]
+                if (env.running) scope.launch { runCatching { Netbird.setLogLevel(levels[i]) } }
+            }, Modifier.fillMaxWidth().padding(bottom = 8.dp))
+        }
         var extraEnv by remember { mutableStateOf(GlobalSettings.getExtraEnv(context)) }
         SettingsEditItem(stringResource(R.string.nb_settings_env), extraEnv.lines().filter { it.isNotBlank() }.joinToString(", "), Icons.Default.Code,
             placeholder = "NB_RELAY_TRANSPORT=ws", description = stringResource(R.string.nb_settings_env_desc)

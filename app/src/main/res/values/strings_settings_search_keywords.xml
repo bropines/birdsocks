@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Settings search: the words people type to find a setting, one string per setting
+        (search_kw_<id>, the ids of ui/SettingsCatalog.kt).
+
+        For translators: this is a list, not a sentence. Separate the entries with commas; an
+        entry may be several words ("kill switch"). Write what a person would type in your
+        language when looking for the setting: other names for it, abbreviations, slang, the
+        problem it solves, typical values. Words of the setting's own title need not be
+        repeated, the order does not matter, and more is better. English and Russian are always
+        searched as well, whatever the language of the interface.
+    -->
+
+    <!-- The little words of a question, which a query is understood without: "how do I change the port" is "port". -->
+    <string name="search_stop_words">how, do, does, i, to, the, a, an, can, could, you, is, are, it, my, me, of, in, on, off, at, for, and, or, with, what, where, which, why, change, set, setup, configure, enable, disable, turn, switch, make, use, find, get, want, need, please, option, options, setting, settings</string>
+
+    <!-- The sections -->
+    <string name="search_kw_appearance">look, design, style, ui, visual, customize, personalization</string>
+    <string name="search_kw_account">profile, login, sign in, setup key, account settings, netbird account</string>
+    <string name="search_kw_tunnel">vpn, tun, connection mode, how to connect, how traffic is routed, whole device, all apps, system-wide</string>
+    <string name="search_kw_proxies">socks, socks5, local proxy, listener, 127.0.0.1, localhost, loopback, nekobox, v2ray, sing-box, proxy for apps</string>
+    <string name="search_kw_dns">resolver, nameserver, name resolution, domain names, netbird.cloud, hostnames</string>
+    <string name="search_kw_access">inbound, incoming, firewall, open port, reach this phone, peers connect to me</string>
+    <string name="search_kw_connection">p2p, peer to peer, relay, turn, nat, network, wireguard</string>
+    <string name="search_kw_background">background, keep alive, killed in background, stay connected, disconnects, battery</string>
+    <string name="search_kw_backup">save settings, transfer to a new phone, migrate, copy settings, export, import</string>
+    <string name="search_kw_automation">automate, intent, broadcast, script, external control, api, adb, tasker</string>
+    <string name="search_kw_diagnostics">debug, troubleshoot, bug report, problem, not working, developer options</string>
+    <string name="search_kw_about">version, update, license, credits, changelog, what\'s new</string>
+
+    <!-- Appearance & language -->
+    <string name="search_kw_theme_mode">dark mode, light mode, night mode, dark theme, follow system</string>
+    <string name="search_kw_language">locale, english, russian, translation, interface language</string>
+    <string name="search_kw_palette">accent, colors, colours, color scheme, preset, tokyo night</string>
+    <string name="search_kw_dynamic_color">material you, monet, wallpaper colors, android 12</string>
+    <string name="search_kw_amoled">pure black, black background, oled, true black, battery saving</string>
+    <string name="search_kw_app_icon">launcher icon, logo, change icon, home screen icon</string>
+
+    <!-- Account & device -->
+    <string name="search_kw_accounts">switch account, add account, profiles, multiple accounts, remove account, rename account</string>
+    <string name="search_kw_device_name">hostname, computer name, peer name, phone name</string>
+    <string name="search_kw_management_server">self-hosted, own server, my own server, management url, dashboard, admin panel, netbird cloud, control server</string>
+    <string name="search_kw_logout">sign out, log off, disconnect account, deregister, forget</string>
+    <string name="search_kw_client_routes">routes, networks, subnet, accept routes, network routes, exit node</string>
+    <string name="search_kw_server_routes">routing peer, advertise routes, share my network, subnet router</string>
+    <string name="search_kw_psk">psk, preshared key, shared secret, wireguard key</string>
+
+    <!-- Tunnel mode -->
+    <string name="search_kw_tunnel_mode">vpn, tun, proxy, root, magisk, kernelsu, kill switch, always-on, always on vpn</string>
+    <string name="search_kw_tun_engine">native, hev, hev-socks5-tunnel, through the proxy, tun2socks</string>
+    <string name="search_kw_tun_route_all">full tunnel, all traffic, default route, 0.0.0.0/0, everything through vpn</string>
+    <string name="search_kw_tun_ipv6">ipv6, v6, ::/0, ipv6 leak</string>
+    <string name="search_kw_tun_excluded_apps">split tunneling, bypass apps, app list, exclude apps, per-app vpn</string>
+    <string name="search_kw_tun_excluded_cidrs">split tunneling, bypass ranges, exclude subnets, cidr, lan ranges</string>
+    <string name="search_kw_tun_address">interface address, tun ip, 198.18.0.1, vpn ip</string>
+
+    <!-- Local proxies -->
+    <string name="search_kw_socks_address">socks port, listen address, 127.0.0.1, 1080, proxy port, port</string>
+    <string name="search_kw_socks_username">login, user, proxy auth, authentication, credentials</string>
+    <string name="search_kw_socks_password">pass, secret, proxy auth, authentication, credentials</string>
+    <string name="search_kw_socks_link">share link, nekobox, v2rayng, sagernet, import proxy, clipboard, url</string>
+    <string name="search_kw_socks_lan">wifi, wi-fi, hotspot, tethering, lan, other devices, 0.0.0.0, share proxy</string>
+
+    <!-- DNS -->
+    <string name="search_kw_netbird_dns">magic dns, resolve peers, peer names, netbird.cloud, nameservers</string>
+    <string name="search_kw_dns_labels">dns labels, aliases, extra hostnames, alias, cname</string>
+    <string name="search_kw_dns_proxy">local dns, dns server, resolver for apps, dns forwarder</string>
+    <string name="search_kw_dns_proxy_address">dns port, listen address, 127.0.0.1, 53, dns proxy port</string>
+    <string name="search_kw_dns_upstream">upstream, fallback dns, 1.1.1.1, 8.8.8.8, doh, forward dns</string>
+    <string name="search_kw_dns_screen">dns lookup, nslookup, dig, test dns, resolver check</string>
+
+    <!-- Access to this phone -->
+    <string name="search_kw_inbound_access">inbound, incoming connections, ssh to phone, reach phone, host services</string>
+    <string name="search_kw_block_inbound">firewall, deny incoming, block connections, shields up, stealth</string>
+    <string name="search_kw_publish">expose, port forwarding, public address, reverse proxy, ngrok, funnel, serve</string>
+
+    <!-- Connection -->
+    <string name="search_kw_lazy_connection">on demand, idle, battery, inactivity, connect when needed</string>
+    <string name="search_kw_relay_quic">quic, udp, relay transport, websocket</string>
+    <string name="search_kw_force_relay">relay only, turn, no p2p, disable direct, behind nat</string>
+    <string name="search_kw_control_mode">censorship, blocking, blocked, bypass, unblock, rkn, dpi, cannot connect, cannot log in, management proxy</string>
+    <string name="search_kw_control_proxy_host">proxy address, socks5 proxy, http proxy, upstream proxy, management proxy</string>
+    <string name="search_kw_control_proxy_port">port, proxy port, 1080, 8080</string>
+    <string name="search_kw_control_proxy_user">login, user, proxy auth, credentials</string>
+    <string name="search_kw_control_proxy_pass">pass, secret, proxy auth, credentials</string>
+    <string name="search_kw_byedpi_flags">dpi, desync, zapret, byebyedpi, goodbyedpi, split, fake</string>
+    <string name="search_kw_byedpi_ipv4">ipv6, v4, ipv4, dpi, no ipv6</string>
+    <string name="search_kw_ipv6">ipv6, v6, overlay ipv6, dual stack</string>
+    <string name="search_kw_mtu">packet size, mss, fragmentation, 1280, large packets</string>
+
+    <!-- Background & permissions -->
+    <string name="search_kw_event_notifications">notifications, alerts, warnings, events, push</string>
+    <string name="search_kw_autostart">start on boot, autostart, boot, launch at startup, reboot</string>
+    <string name="search_kw_hide_recents">recent apps, task switcher, overview, privacy, hide app</string>
+    <string name="search_kw_permissions">battery, battery optimization, doze, background restrictions, xiaomi, miui, hyperos, notifications permission</string>
+
+    <!-- Backup -->
+    <string name="search_kw_backup_settings">export settings, json, save settings, copy settings</string>
+    <string name="search_kw_backup_full">full backup, encrypted, password, accounts, transfer, migrate</string>
+    <string name="search_kw_restore">import, restore backup, load settings, new phone</string>
+
+    <!-- Automation -->
+    <string name="search_kw_automation_enable">tasker, macrodroid, automate, broadcast, intent, adb</string>
+    <string name="search_kw_automation_token">secret, api key, generate token, password, auth</string>
+    <string name="search_kw_automation_docs">documentation, examples, commands, how to automate, links</string>
+
+    <!-- Diagnostics & developer -->
+    <string name="search_kw_log_level">verbose, debug, trace, log level, logging</string>
+    <string name="search_kw_extra_env">env, environment variables, nb_, flags, advanced</string>
+    <string name="search_kw_remote_jobs">debug bundle, remote debug, support, jobs</string>
+    <string name="search_kw_diagnostics_screen">connection check, events, packet capture, ping, trace, access check</string>
+    <string name="search_kw_logs">log, logcat, daemon log, journal, errors</string>
+
+    <!-- About -->
+    <string name="search_kw_about_dialog">version, what\'s new, changelog, credits, about</string>
+    <string name="search_kw_update_on_launch">auto update, updates, new version, release, check on start</string>
+    <string name="search_kw_update_now">update, upgrade, new version, download, release</string>
+    <string name="search_kw_docs">help, manual, guide, documentation, docs.netbird.io</string>
+    <string name="search_kw_source">github, repository, code, open source, issues</string>
+    <string name="search_kw_donate">donate, boosty, sponsor, money, tip</string>
+    <string name="search_kw_licenses">open source licenses, third party, legal, bsd, gpl</string>
+    <string name="search_kw_main_layout">main screen, home, dashboard, tiles, layout, arrange, reorder, columns, edit</string>
+    <string name="search_kw_main_hidden">hidden tiles, removed, put back, restore tile</string>
+    <string name="search_kw_tun_root_lan">lan, local network, home network, router, nas, printer, root</string>
+    <string name="search_kw_tun_root_take">other vpn, coexistence, override, take over, conflict, root</string>
+    <string name="search_kw_admin_panel">admin, administration, manage peers, setup key, invite, qr, groups, api, token, pat, management</string>
+</resources>

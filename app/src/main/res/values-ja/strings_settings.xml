@@ -76,4 +76,5 @@
     <string name="settings_link_publish_desc">このスマートフォンのポートに公開アドレスを付与</string>
     <string name="settings_link_diagnostics_desc">接続、イベント、アクセス確認、パケットキャプチャ</string>
     <string name="settings_link_logs_desc">デーモンのログ（フィルターと書き出し付き）</string>
+    <string name="settings_suggested">おすすめ</string>
 </resources>

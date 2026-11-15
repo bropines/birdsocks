@@ -1,0 +1,2 @@
+Admin panel: your NetBird account from the phone through its API — peers, groups, keys, policies with a visual and JSON editor, networks, routes, DNS, users, the audit log, settings.
+Root mode lives beside another VPN and puts NetBird's names in /etc/hosts. Settings search, an arrangeable main screen, widgets, licenses screen. NetBird v0.83.1.

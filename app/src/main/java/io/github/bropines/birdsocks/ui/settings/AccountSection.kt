@@ -1,5 +1,6 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.bropines.birdsocks.R
+import io.github.bropines.birdsocks.admin.AdminPanel
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.ui.AccountSheet
@@ -57,7 +59,9 @@ internal fun AccountSection(env: SettingsEnv) {
         SettingsClickableItem(
             title = label,
             subtitle = listOf(who, stringResource(R.string.settings_account_hint)).filter { it.isNotEmpty() }.joinToString("\n"),
-            icon = Icons.Default.AccountCircle
+            icon = Icons.Default.AccountCircle,
+            // Titled with the account's name: the search finds it as Accounts.
+            modifier = Modifier.settingAnchor(stringResource(R.string.nb_accounts_title))
         ) { showAccounts = true }
 
         var deviceName by remember { mutableStateOf(GlobalSettings.getDeviceName(context)) }
@@ -76,6 +80,14 @@ internal fun AccountSection(env: SettingsEnv) {
                 subtitle = it.managementUrl,
                 icon = Icons.Default.Dns
             ) { openUrl(context, it.dashboardUrl) }
+            // The same server's peers, keys and groups in the app: the token
+            // setup until this account has a credential, the panel after.
+            val hasCredential = remember(env.profile, it.managementUrl) { AdminPanel.hasCredential(context, env.profile, it.managementUrl) }
+            SettingsClickableItem(
+                title = stringResource(R.string.admin_settings_row),
+                subtitle = stringResource(if (hasCredential) R.string.admin_settings_row_open else R.string.admin_settings_row_setup),
+                icon = Icons.Default.AdminPanelSettings
+            ) { AdminPanel.open(context) }
         }
         env.status?.sessionExpiresAt?.let { Box(Modifier.padding(vertical = 4.dp)) { SessionRow(it) } }
 
@@ -111,15 +123,15 @@ internal fun AccountSection(env: SettingsEnv) {
     if (confirmLogout) {
         AlertDialog(
             onDismissRequest = { confirmLogout = false },
-            title = { Text(stringResource(R.string.nb_settings_logout)) },
-            text = { Text(stringResource(R.string.nb_settings_logout_confirm)) },
+            title = { Text(context.getString(R.string.nb_settings_logout)) },
+            text = { Text(context.getString(R.string.nb_settings_logout_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmLogout = false
                     scope.launch { runCatching { Netbird.logout() }.onFailure { Toast.makeText(context, it.message, Toast.LENGTH_LONG).show() } }
-                }) { Text(stringResource(R.string.nb_settings_logout)) }
+                }) { Text(context.getString(R.string.nb_settings_logout)) }
             },
-            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text(stringResource(R.string.action_cancel)) } }
+            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text(context.getString(R.string.action_cancel)) } }
         )
     }
 }

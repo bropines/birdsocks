@@ -172,6 +172,12 @@ jobs:
       - name: Assemble debug, unit tests and lint (NewApi)
         run: ./gradlew assembleDebug testDebugUnitTest lintDebug -PlintNewApiOnly -PtargetAbi=arm64-v8a --stacktrace
 
+      # The Open-source licenses screen lists what ships (scripts/licenses/generate.py).
+      # A dependency that changed without a regenerated list is flagged, not fatal.
+      - name: Check the license list
+        run: |
+          python3 scripts/licenses/generate.py --check || echo "::warning::app/src/main/assets/licenses.json no longer matches what ships: run scripts/licenses/generate.py"
+
       - name: Name the debug APK
         run: |
           version=$(sed -n 's/^VERSION_NAME=//p' version.properties)

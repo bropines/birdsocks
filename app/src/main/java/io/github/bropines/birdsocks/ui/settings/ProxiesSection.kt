@@ -1,5 +1,6 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -96,7 +97,7 @@ internal fun ProxiesSection(env: SettingsEnv) {
         }
         Spacer(Modifier.height(12.dp))
         if (!lan) {
-            OutlinedButton(onClick = { copyLink(null) }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+            OutlinedButton(onClick = { copyLink(null) }, modifier = Modifier.fillMaxWidth().settingAnchor(stringResource(R.string.settings_sagernet_copy)), shape = MaterialTheme.shapes.medium) {
                 Icon(Icons.Default.Share, null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.settings_sagernet_copy))
@@ -110,7 +111,8 @@ internal fun ProxiesSection(env: SettingsEnv) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The same action, for the search, as the single button above.
+            Row(Modifier.fillMaxWidth().settingAnchor(stringResource(R.string.settings_sagernet_copy)), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { copyLink(null) }, modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.medium) {
                     Text(stringResource(R.string.settings_sagernet_copy_local), maxLines = 1, style = MaterialTheme.typography.labelLarge)
                 }

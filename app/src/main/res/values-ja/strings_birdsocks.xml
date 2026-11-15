@@ -162,8 +162,6 @@
     <string name="nb_about_source">ソースコード</string>
     <string name="nb_about_licenses">ライセンス</string>
     <string name="nb_about_licenses_desc">BirdSocks とその基盤となるコード</string>
-    <string name="nb_about_licenses_full">全文</string>
-    <string name="nb_about_licenses_text">BirdSocks — BSD 3-Clause ライセンス。\n\nNetBird クライアント — BSD 3-Clause ライセンス、Copyright (c) 2022 NetBird GmbH &amp; AUTHORS。\n\nwireguard-go — MIT ライセンス、Copyright (C) 2017-2023 WireGuard LLC。\n\ngVisor — Apache License 2.0。\n\ngRPC-Go — Apache License 2.0。\n\nGo、Go protobuf — BSD 3-Clause ライセンス、Copyright The Go Authors。\n\nanet — BSD 3-Clause ライセンス、Copyright (c) 2023 wlynxg。\n\ngo-socks5 — MIT ライセンス。\n\nPion ICE、STUN、TURN — MIT ライセンス。\n\nhev-socks5-tunnel、hev-task-system — MIT ライセンス、Copyright (c) 2022 hev。\n\nlwIP — BSD 3-Clause ライセンス、Copyright (c) 2001, 2002 Swedish Institute of Computer Science。\n\nByeDPI — MIT ライセンス、Copyright (c) 2024 hufrea。\n\nAndroidX、Jetpack Compose、Material Components、Kotlin、OkHttp — Apache License 2.0。\n\nNetBird は NetBird GmbH の商標です。BirdSocks は同社と提携していません。</string>
     <string name="nb_exit_node_via">%1$s 経由</string>
     <string name="nb_exit_node_dead">この出口ノード経由ではインターネットが応答しないため、プロキシ背後のアプリは応答しなくなります。ピアは引き続き動作します。オフにするか、別の出口ノードを選ぶか、ネットワーク管理者に伝えてください。</string>
     <string name="nb_exit_node_off">オフにする</string>

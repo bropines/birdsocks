@@ -19,13 +19,15 @@
     <th>NetBird core</th>
     <th>Android</th>
     <th>License</th>
+    <th>Translated</th>
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases/latest"><img src="https://img.shields.io/github/v/release/bropines/birdsocks?style=for-the-badge&logo=github&logoColor=white&label=&color=2ea44f" alt="Release" /></a></td>
     <td align="center"><a href="https://github.com/bropines/birdsocks/releases"><img src="https://img.shields.io/github/downloads/bropines/birdsocks/total?style=for-the-badge&logo=android&logoColor=white&label=&color=3ddc84" alt="Downloads" /></a></td>
-    <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.80.0"><img src="https://img.shields.io/badge/v0.80.0-F68330?style=for-the-badge" alt="NetBird core" /></a></td>
+    <td align="center"><a href="https://github.com/netbirdio/netbird/releases/tag/v0.83.1"><img src="https://img.shields.io/badge/v0.83.1-F68330?style=for-the-badge" alt="NetBird core" /></a></td>
     <td align="center"><img src="https://img.shields.io/badge/7.0%2B-3ddc84?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+" /></td>
     <td align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/BSD_3--Clause-orange?style=for-the-badge" alt="License" /></a></td>
+    <td align="center"><a href="https://hosted.weblate.org/engage/birdsocks/"><img src="https://img.shields.io/weblate/progress/birdsocks?server=https%3A%2F%2Fhosted.weblate.org&style=for-the-badge&logo=weblate&logoColor=white&label=" alt="Translated" /></a></td>
   </tr>
 </table>
 
@@ -76,7 +78,7 @@ It says what is actually going on:
 | **SOCKS5 proxy** | `127.0.0.1:48125` by default, or any 127.x address. It carries TCP and UDP and can ask for a username and password, which you need before you open it to the LAN. Peers and the networks they route go through NetBird; everything else goes out directly or through the exit node. |
 | **DNS proxy** | `127.0.0.1:48153`. It answers NetBird names first and asks the network's resolvers, or your own fallbacks, for the rest, all at once. A NetBird name never goes to a public resolver. |
 | **VPN mode (TUN)** | For apps with no proxy setting. The native engine puts the tunnel on the phone's NetBird address: ping works, and peers reach apps on the phone with their own address (KDE Connect). The engine through the proxy feeds the same tunnel into the SOCKS5 proxy. Only NetBird's ranges go in by default; all traffic goes in with an exit node, a domain route or one switch. Apps can be excluded. |
-| **Root mode** | With root (Magisk, KernelSU, APatch): a real network interface on the NetBird address and policy routing instead of Android's VPN slot, so BirdSocks runs beside AdGuard, Rethink or any other VPN. Its helper removes every rule when BirdSocks or its daemon stops. |
+| **Root mode** | With root (Magisk, KernelSU, APatch): a real network interface on the NetBird address and policy routing instead of Android's VPN slot, so BirdSocks runs beside AdGuard, Rethink or any other VPN; with one present it routes only NetBird's addresses. NetBird's names go into `/etc/hosts`, so they resolve whatever DNS server Android picks. Its helper removes every rule when BirdSocks or its daemon stops. See [Root mode](docs/ROOT.md). |
 | **Exit nodes and networks** | Choose networks and an exit node. The exit node is checked through the proxy, and one that forwards nothing is flagged with a way out. |
 | **Server connection** | Reach management, signal and the relay through a SOCKS5 or HTTP proxy, or through the built-in **ByeDPI**, where the server is blocked or its TLS handshake is filtered. |
 | **Access to the phone** | Peers reach the phone's own services (adb, Termux's `sshd`, a web server) on its NetBird address, as your ACLs allow. BirdSocks' own proxies stay closed to peers. |
@@ -91,6 +93,7 @@ It says what is actually going on:
 | **Peers** | This device first, then every peer: its path (P2P or relay), latency, traffic and the networks it routes. Peers that are idle under lazy connections are shown as idle. |
 | **DNS screen** | The proxy test, lookups, nameservers, and **every DNS record the server gave this device**, with a filter. |
 | **Session** | Expiry is shown ahead of time, and the session is extended in the browser without reconnecting. |
+| **Admin panel** | Your NetBird account through its API, with an access token sealed on the phone: peers, groups, setup keys, policies (a visual editor and JSON), posture checks, networks, routes, DNS, users and tokens, the audit log, account settings. Read-only by default; every change shows what it does and asks for the screen lock. |
 
 ### Diagnostics
 
@@ -109,7 +112,7 @@ It says what is actually going on:
 | **Links** | `birdsocks://` opens any screen. Action links ask before they act, and invite links open a filled-in new account. |
 | **Backups** | A settings file, or a full backup with NetBird's accounts and keys under a password. |
 | **40 app icons** | Pick one in Settings → Appearance & language, in BirdSocks' colours or NetBird's. |
-| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English, Russian and Japanese. |
+| **The rest** | A Quick Settings tile, start on boot, launcher shortcuts, Material 3 with dynamic colour, two panes on tablets, English, Russian and Japanese; other languages on [Hosted Weblate](https://hosted.weblate.org/engage/birdsocks/) (being set up). |
 
 ---
 
@@ -239,7 +242,7 @@ Releases are built by GitHub Actions from a `v*` tag: all four ABIs, signed, wit
 | [Building](docs/BUILDING.md) | The NetBird daemon, the bridge and the APK |
 | [Releasing](docs/RELEASING.md) | From a tag to signed APKs; the signing secrets |
 | [Licenses](docs/LICENSES.md) | BirdSocks' licence and every component it ships |
-| [Translating](docs/TRANSLATING.md) | Adding a language |
+| [Translating](docs/TRANSLATING.md) | Adding a language; the Hosted Weblate project |
 | [Roadmap](docs/ROADMAP.md) | What comes next |
 | [Contributing](CONTRIBUTING.md) | How to send a change |
 | [`agents.md`](agents.md) | Architecture and rules for contributors, human or AI |
@@ -284,7 +287,7 @@ The actions are `CONNECT`, `DISCONNECT`, `TOGGLE`, `RESTART`, `GET_STATUS`, `SET
 
 Issues and pull requests are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`agents.md`](agents.md) first. In short:
 - daemon changes are patches;
-- strings go in English, Russian and Japanese;
+- strings go in English and Russian;
 - every change in behaviour gets a line in the changelog.
 
 Bug reports are most useful with the debug bundle from Diagnostics → Logs.

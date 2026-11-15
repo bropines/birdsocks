@@ -58,9 +58,6 @@
     <string name="settings_theme_title">テーマ</string>
     <string name="settings_lang_title">アプリの言語</string>
     <string name="settings_lang_sys">システム</string>
-    <string name="settings_lang_en">English</string>
-    <string name="settings_lang_ru">Русский</string>
-    <string name="settings_lang_ja">日本語</string>
     <string name="settings_preset_default">デフォルト</string>
     <string name="settings_preset_lavender">ラベンダー</string>
     <string name="settings_preset_emerald">エメラルド</string>

@@ -37,9 +37,9 @@
 +
 +	log "github.com/sirupsen/logrus"
 +	"golang.org/x/sys/unix"
-+	"golang.zx2c4.com/wireguard/tun"
 +
 +	"github.com/netbirdio/netbird/client/iface/wgaddr"
++	"github.com/netbirdio/netbird/client/iface/wgbackend"
 +)
 +
 +const (
@@ -88,7 +88,7 @@
 +
 +// WrapForVPN is the engine's netstack device, made able to share the
 +// device with the VPN when the daemon serves one; dev itself otherwise.
-+func WrapForVPN(dev tun.Device, local []netip.Addr) tun.Device {
++func WrapForVPN(dev wgbackend.TUN, local []netip.Addr) wgbackend.TUN {
 +	if !vpnServing.Load() {
 +		return dev
 +	}
@@ -183,7 +183,7 @@
 +		return
 +	}
 +	dst := pi.dst.Unmap()
-+	if dns, ok := tunDNSAddress(); ok && dst == dns {
++	if isTunDNSAddress(dst) {
 +		k.inject(p)
 +		return
 +	}
@@ -435,7 +435,7 @@
 +	"sync"
 +	"time"
 +
-+	"golang.zx2c4.com/wireguard/tun"
++	"github.com/netbirdio/netbird/client/iface/wgbackend"
 +)
 +
 +const (
@@ -621,7 +621,7 @@
 +// splitTUN is the engine's tun device with the VPN beside the netstack.
 +// Without a VPN attached it passes everything to and from the netstack.
 +type splitTUN struct {
-+	ns    tun.Device
++	ns    wgbackend.TUN
 +	local []netip.Addr
 +
 +	in     chan []byte
@@ -636,7 +636,7 @@
 +	kernelUDP flowTable
 +}
 +
-+func newSplitTUN(ns tun.Device, local []netip.Addr) *splitTUN {
++func newSplitTUN(ns wgbackend.TUN, local []netip.Addr) *splitTUN {
 +	s := &splitTUN{
 +		ns:     ns,
 +		local:  local,
@@ -810,11 +810,11 @@
 +	return s.ns.Close()
 +}
 +
-+func (s *splitTUN) File() *os.File           { return nil }
-+func (s *splitTUN) MTU() (int, error)        { return s.ns.MTU() }
-+func (s *splitTUN) Name() (string, error)    { return s.ns.Name() }
-+func (s *splitTUN) Events() <-chan tun.Event { return s.ns.Events() }
-+func (s *splitTUN) BatchSize() int           { return 1 }
++func (s *splitTUN) File() *os.File                    { return nil }
++func (s *splitTUN) MTU() (int, error)                 { return s.ns.MTU() }
++func (s *splitTUN) Name() (string, error)             { return s.ns.Name() }
++func (s *splitTUN) Events() <-chan wgbackend.TUNEvent { return s.ns.Events() }
++func (s *splitTUN) BatchSize() int                    { return 1 }
 --- netbird_orig/client/iface/netstack/vpn_other.go
 +++ netbird_src/client/iface/netstack/vpn_other.go
 @@ -0,0 +1,25 @@
@@ -826,7 +826,7 @@
 +	"errors"
 +	"net/netip"
 +
-+	"golang.zx2c4.com/wireguard/tun"
++	"github.com/netbirdio/netbird/client/iface/wgbackend"
 +)
 +
 +// VPNAttached reports whether an Android VPN interface carries the
@@ -834,7 +834,7 @@
 +func VPNAttached() bool { return false }
 +
 +// WrapForVPN returns dev: only the Linux daemon takes a VPN interface.
-+func WrapForVPN(dev tun.Device, _ []netip.Addr) tun.Device { return dev }
++func WrapForVPN(dev wgbackend.TUN, _ []netip.Addr) wgbackend.TUN { return dev }
 +
 +// DirectEgressFactory is the Linux daemon's (vpn.go).
 +type DirectEgressFactory any
@@ -864,13 +864,13 @@
 +	"github.com/stretchr/testify/assert"
 +	"github.com/stretchr/testify/require"
 +	"golang.org/x/sys/unix"
-+	"golang.zx2c4.com/wireguard/tun"
 +	"gvisor.dev/gvisor/pkg/tcpip"
 +	"gvisor.dev/gvisor/pkg/tcpip/checksum"
 +	"gvisor.dev/gvisor/pkg/tcpip/header"
 +
 +	"github.com/netbirdio/netbird/client/firewall/uspfilter/forwarder"
 +	"github.com/netbirdio/netbird/client/iface/wgaddr"
++	"github.com/netbirdio/netbird/client/iface/wgbackend"
 +)
 +
 +var (
@@ -883,12 +883,12 @@
 +type fakeNS struct {
 +	out    chan []byte
 +	got    chan []byte
-+	events chan tun.Event
++	events chan wgbackend.TUNEvent
 +	closed chan struct{}
 +}
 +
 +func newFakeNS() *fakeNS {
-+	return &fakeNS{out: make(chan []byte, 8), got: make(chan []byte, 8), events: make(chan tun.Event), closed: make(chan struct{})}
++	return &fakeNS{out: make(chan []byte, 8), got: make(chan []byte, 8), events: make(chan wgbackend.TUNEvent), closed: make(chan struct{})}
 +}
 +
 +func (f *fakeNS) Read(bufs [][]byte, sizes []int, offset int) (int, error) {
@@ -908,11 +908,11 @@
 +	return len(bufs), nil
 +}
 +
-+func (f *fakeNS) File() *os.File           { return nil }
-+func (f *fakeNS) MTU() (int, error)        { return 1280, nil }
-+func (f *fakeNS) Name() (string, error)    { return "fake", nil }
-+func (f *fakeNS) Events() <-chan tun.Event { return f.events }
-+func (f *fakeNS) BatchSize() int           { return 1 }
++func (f *fakeNS) File() *os.File                    { return nil }
++func (f *fakeNS) MTU() (int, error)                 { return 1280, nil }
++func (f *fakeNS) Name() (string, error)             { return "fake", nil }
++func (f *fakeNS) Events() <-chan wgbackend.TUNEvent { return f.events }
++func (f *fakeNS) BatchSize() int                    { return 1 }
 +func (f *fakeNS) Close() error {
 +	select {
 +	case <-f.closed:
@@ -1280,16 +1280,16 @@
 +}
 --- netbird_orig/client/firewall/uspfilter/filter.go
 +++ netbird_src/client/firewall/uspfilter/filter.go
-@@ -1939,6 +1939,12 @@
- 		return false
- 	}
- 
-+	// BirdSocks: with the app's VPN attached the device has a native
-+	// interface after all; packets for it go there, with the peer's address.
-+	if m.netstack && netstack.VPNAttached() {
+@@ -1930,6 +1930,12 @@
+ func (m *Manager) shouldForward(d *decoder, dstIP netip.Addr) bool {
+ 	// not enabled, never forward
+ 	if !m.localForwarding {
 +		return false
 +	}
 +
- 	// netstack always needs to forward because it's lacking a native interface
- 	// exception for registered netstack services, those should go to netstack listeners
- 	if m.netstack {
++	// BirdSocks: with the app's VPN attached the device has a native
++	// interface after all; packets for it go there, with the peer's address.
++	if m.netstack && netstack.VPNAttached() {
+ 		return false
+ 	}
+ 

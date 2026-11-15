@@ -58,4 +58,17 @@
     <string name="nb_tun_tile_active">有効 · VPN</string>
     <string name="nb_tun_notif_text_root">%1$s · Root</string>
     <string name="nb_tun_tile_active_root">有効 · Root</string>
+    <string name="nb_tun_root_shared">別の VPN がデバイスを占有しています。それがバイパスするアプリは NetBird の出口ノードとネットワークに従い、その VPN 自身のアプリは自前のトンネルと DNS を使います。</string>
+    <string name="nb_tun_root_yield">別の VPN がすべてのアプリを扱っています。ここでは NetBird のアドレスのみがルーティングされます。出口ノード、ネットワーク、デバイス全体の DNS は、それが停止するまで待つか、SOCKS5 プロキシを使ってください。</string>
+    <string name="nb_tun_root_override">別の VPN が動作中で、そのアプリはこのデバイスの選択によって引き継がれています。</string>
+    <string name="nb_tun_root_dns_hold">DNS リダイレクトは Android がネットワークを検証するまで待機します。</string>
+    <string name="nb_tun_root_dns_unhealthy">NetBird のリゾルバーが応答していません。応答するまで、端末は独自に名前解決します。</string>
+    <string name="nb_tun_root_lan_title">ローカルネットワークを維持</string>
+    <string name="nb_tun_root_lan_desc">トンネルがすべての通信を扱う間も、このスマートフォンが接続しているネットワークはローカルのままです。ピアがそれらをルーティングしている場合も同様です。</string>
+    <string name="nb_tun_root_take_title">それでもデバイスを引き継ぐ</string>
+    <string name="nb_tun_root_take_desc">オフ: 別の VPN と並んで動作し、BirdSocks は NetBird のアドレスと、その VPN がバイパスするアプリのみをルーティングします。オン: すべてのアプリに出口ノードと DNS を適用します。</string>
+    <string name="nb_tun_root_take_confirm_title">すべてのアプリを引き継ぎますか？</string>
+    <string name="nb_tun_root_take_confirm_body">BirdSocks の動作中、別の VPN のアプリはトンネルと DNS を失い、通信は NetBird 経由になります。このスマートフォン内だけの設定で、バックアップには含まれません。</string>
+    <string name="nb_tun_root_take_confirm">引き継ぐ</string>
+    <string name="nb_tun_engine_title">エンジン</string>
 </resources>

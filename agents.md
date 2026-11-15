@@ -57,13 +57,26 @@ client as a **userspace node** and hands its network to apps through a
   WireGuard's packets to the netstack when they answer its connections, to
   Android otherwise — so peers reach the apps with their own address. New
   connections from peers pass only with InboundAccess, never to the app's
-  own proxy ports. **Root** (`core/RootTun`, `birdsocksd/roottun.go`): no
+  own proxy ports. **Root** (`core/RootTun`, `birdsocksd/roottun.go`, `roottun_plan.go`): no
   VpnService; the daemon's binary runs as `-root-tun` through `su`, makes a
-  TUN on the NetBird address, hands it over the same socket and routes into
-  it (table 25203, rule priority 90, the app's and excluded UIDs skip to
-  netd's rules, port 53 DNAT to 198.18.0.2). Its stdin is the app's: EOF,
-  a signal or the interface vanishing removes every rule it made — keep
-  that invariant, or a dead daemon leaves the device routing into nothing.
+  TUN on the NetBird address and hands it over the same socket. Routing comes
+  in tiers, because every rule below netd's band (10000+) runs before any
+  other VPN app's: T1 the overlay (table 25203, `to <overlay> iif lo` at 90,
+  the resolver's /32 with it, throw routes for foreign prefixes inside the
+  overlay — the CGNAT guard), T2 the catch-all (table 25204,
+  `fwmark 0x0/0x20000 iif lo` at 201, the device's own LAN back to netd at
+  151, excluded apps at 191), T3 the port-53 DNAT to 198.18.0.2. The app's
+  own UIDs skip everything at 89 (the daemon runs as the app). Hand-backs
+  are a `goto` to netd's first rule, read back for `[detached]`. T2 and T3
+  have one owner: beside another VPN (a foreign `tun*` with netd uid-range
+  rules into it, or Android reporting one) they are yielded, or narrowed to
+  the uids that VPN bypasses and its netId's DNS left alone; "take the
+  device" overrides. The helper re-probes every 5 s; rp_filter is loose only
+  while T2 is in. Priorities 89/90/151/191/201 are ours alone — never reuse
+  100/150/190/200, which another root app on the same phone owns. Its stdin
+  is the app's: EOF, a signal or the interface vanishing removes every rule
+  it made, and a new helper sweeps what a killed one left — keep that
+  invariant, or a dead daemon leaves the device routing into nothing.
   **Through the proxy**: hev-socks5-tunnel feeds the VPN
   into the SOCKS5 proxy. Both announce exactly one DNS server, 198.18.0.2,
   which the proxy answers itself (patch 01, `tundns.go`); never announce
@@ -85,10 +98,15 @@ client as a **userspace node** and hands its network to apps through a
   `LoginFlow` runs it in the app's scope so the browser taking the screen does
   not cancel the wait. The tile and boot paths cannot sign in; they show
   "Sign-in needed".
-* **Accounts are NetBird profiles.** `default` is addressed without a username;
-  every other profile under the user the daemon runs as (`USER=birdsocks`,
-  `Netbird.USER`), stored in `files/netbird/birdsocks/`. Calls that take a
+* **Accounts are NetBird profiles.** Since NetBird 0.83 the daemon ignores the
+  requests' `username` (the app still sends `Netbird.USER`): new profiles go to
+  `files/netbird/profiles.v1/` under an ID, older ones stay readable in
+  `files/netbird/birdsocks/`, and backups take both. Calls that take a
   profile (GetConfig, SetConfig) address the active one.
+* **The daemon's authorization gate (`ipcauth.AuthzGate`) is chained in
+  `birdsocksd`.** It resolves the profile each request names, which the
+  handlers read from the context and fail without; the app, of the daemon's
+  own UID, passes it as privileged.
 
 ---
 
@@ -124,8 +142,10 @@ repository. Its `management/`, `signal/`, `relay/`, `combined/`, `proxy/` and
 (check with `go list -deps ./client/birdsocksd` after a new import). The official NetBird Android app
 (`netbirdio/android-client`) is **GPLv3: a reference, never a source** — read it to
 learn behaviour, write our own code. `client/internal/anet` carries anet's
-BSD-3 license (patch 03), and `assets/third_party_licenses.txt` the full texts
-the APK ships; regenerate it when a component changes.
+BSD-3 license (patch 03). `assets/licenses.json` is the Open-source licenses
+screen: every component the APK ships with its full text, written by
+`scripts/licenses/generate.py` from what the build links. Rerun it after
+`appctr/build.sh` and a Gradle build whenever a dependency changes, and commit it.
 
 ---
 
@@ -137,20 +157,105 @@ Binding:
 * Every screen uses `AppTopBar`. Explanations fold through `HelpText` (two lines,
   ⓘ, unfold on tap or long press); long text belongs in dialogs. No ⋮ menus on
   cards.
-* Every new string goes in English to `values/`, Russian to `values-ru/` and Japanese to `values-ja/`.
+* Every new string goes in English to `values/` and in Russian to `values-ru/`;
+  Russian is kept by hand, every other language comes from Hosted Weblate
+  (`docs/TRANSLATING.md`). A language is offered once its tag is in
+  `core/AppLanguages.kt` `TAGS` and `res/xml/locales_config.xml`;
+  `AppLanguagesTest` fails until both match `res/values-*`.
+* **Dialogs resolve their strings in the parent composition.** A dialog or sheet
+  is a window of its own where `stringResource()` can follow the system language,
+  not the app's: read strings before the call, or through the parent's
+  `LocalContext.current` (`context.getString`) inside it — also in the blocks a
+  dialog calls. See `wrapContextWithLocale()`. The app's language is read and
+  set through `core/AppLocale`, which keeps it in step with Android 13+'s
+  per-app language.
 * Never block the main thread on the bridge: `Netbird.*` calls are suspend
   functions on `Dispatchers.IO`.
 * The structure: the main screen is the status card, banners
   only when something needs the user, the exit-node row and six tiles (Peers,
-  Networks, DNS, Publish, Diagnostics, Settings). This device lives in Peers as
+  Networks, DNS, Publish, Diagnostics, Settings) — by default. It is the
+  user's to arrange: a long press on it, or Settings → Appearance → Main
+  screen, turns it into its own editor (`core/MainLayout.kt`, one JSON string
+  in `main_layout`, carried by backups; `ui/MainCanvas.kt`,
+  `ui/MainLayoutEditor.kt`, `ui/MainTiles.kt`, `ui/MainHiddenItems.kt`). The
+  status card and Settings cannot be taken off; the banners follow the card.
+  A new main-screen item is a `MainItem` with a stable id, a `spec()` and,
+  if it opens a screen, a `screen()`. This device lives in Peers as
   its first row. Settings is a hub of sections (`SettingsSections` ids, opened by
   `EXTRA_OPEN_SECTION` and `birdsocks://settings?section=`); each setting lives in
   one place. Accounts are managed only in the account sheet.
 * Chip selectors are `SlidingSegmentedChips` (draggable) or the scrollable
   variant; when they switch content they drive a `HorizontalPager` through
   `positionOffset`.
+* Peers has no pull-to-refresh: a pull at the top of its list brings out the
+  search, and reload is the top bar's button.
 * New strings of a screen group go in that group's own file (`strings_peers`,
   `strings_settings`, `strings_diagnostics`, `strings_main`, `strings_tun`, …).
+
+---
+
+## Admin panel (`admin/`)
+
+An in-app client of NetBird's **management HTTP API** for the active account:
+a home screen (what waits for an admin, the account, the areas) and one screen
+per area. Entered only through `AdminPanel.open()` (the main screen's shield,
+Settings → Account, `birdsocks://admin?page=<area id>`). The developer note for
+adding an area is [`admin/README.md`](app/src/main/java/io/github/bropines/birdsocks/admin/README.md).
+
+* **The API, not the dashboard.** Calling management's HTTP API is fine;
+  NetBird's dashboard is **AGPLv3** and its Android app GPLv3: read them to
+  learn behaviour, never copy code, strings or layouts. Models in
+  `admin/api/ApiModels*.kt` are written by hand from
+  `shared/management/http/api/openapi.yml`; never import its generated Go types.
+  Optional request fields are nullable (left out of a PUT); a PUT that rebuilds
+  an object the model may not fully know goes through a fresh read
+  (`patchAccountSettings`).
+* **Base URL:** the profile's management URL with its port, plus `/api`
+  (`AdminUrls.apiBase`). https only; plain http only to loopback; no user info.
+* **Route:** the control plane's own (`AdminSession.controlRoute`): the user's
+  proxy or ByeDPI, as the daemon gets `NB_BIRDSOCKS_CONTROL_PROXY`. A route that
+  cannot be taken fails the request — never fall back to direct. SOCKS5 with a
+  password is refused until the Go bridge carries these requests.
+* **Secrets.** A per-account PAT, sealed by `secure/KeystoreSecretBox`
+  (AES-GCM, Keystore key, AAD bound to the account) in `admin_vault.xml`,
+  which is excluded from backups and device transfer and is not in
+  `core/Backup`. The account id is a hash of profile and normalized URL: a
+  changed server is another credential. Never log a token, never put one in an
+  exception message, a `toString()` or a URL. This device's sign-in (the
+  daemon's `RequestJWTAuth`, experimental) lives in memory only and is dropped
+  on the first 401.
+* **Areas.** `areas/AdminAreas.kt` is the registry: an area is one file
+  (`areas/<name>/<Name>Area.kt`, an `AdminArea` with id, title, icon, the
+  permission module that shows it, its screen) and one line there. Area
+  screens get an `AdminHost` (the AdminViewModel; `PreviewAdminHost` in
+  previews) and nothing else; area-only state goes in an `AreaState` holder
+  (`host.areaState`), so the ViewModel does not grow per area.
+* **Writes.** Every change is a `safety/PlannedChange` (title, effect sentence,
+  before → after, warnings, apply, verify, undo) built in an area's
+  `*Changes.kt` and proposed with `host.propose()`; screens never call a write
+  method, and `AdminPanelStructureTest` fails the build when one does.
+  `SafeChangeRunner` refuses before sending on: the per-account **read-only**
+  switch (on by default) or a role that cannot write, no screen lock, a role
+  without the permission (`users/current` → `permissions.modules`, narrowed by
+  a 403), this device's own peer, your own user, the token in use, a missing
+  confirm, a wrong typed name, a missing or used unlock. Classes: LOW (the
+  control was the confirm), MEDIUM (review), HIGH (review with the diff and the
+  name typed back), POLICY (HIGH plus the area's own checks); all ask for the
+  screen lock through `secure/AdminWriteGate` (a `WriteGrant`, one use within a
+  minute). Every attempt is recorded in a sealed local log
+  (`files/admin/audit.jsonl`).
+* **Data.** Shared lists are `state/AdminKeys` (`DataKey`s), read when an area
+  needs them, refreshed in place. The sealed per-account cache
+  (`files/admin/cache/`, out of backups and device transfer) opens the panel on
+  the last good lists; invites, tokens, event-streaming configs and audit
+  events are never cached, and secrets in cached objects are stripped.
+* **Decoding.** Lists decode element by element into `Listing<T>`; one bad
+  element costs that element. Reads retry on 429/502–504/no answer; writes only
+  on 429.
+* **UI.** The kit in `admin/ui` (list with search, AND-ed filter chips and
+  sort; detail sheet; member picker; confirm and type-back dialogs; error card;
+  JSON editor; line diff) re-provides the parent's locals inside its sheets and
+  dialogs. New strings go in `strings_admin.xml`, English and Russian together.
 
 ---
 
@@ -162,7 +267,11 @@ Binding:
   anything.
 * Code, comments, commits and docs in English; the author is answered in his
   language (Russian). Documentation is bilingual (`X.md` / `X_RU.md`).
-* `CHANGELOG.md`: one terse line per change; the why goes in commit bodies.
+* `CHANGELOG.md` and `CHANGELOG_RU.md` are extended together: one terse line per
+  change in each, the same groups and as many bullets (`ChangelogTest` checks
+  `[Unreleased]` and the newest release); the why goes in commit bodies. A release
+  renames `[Unreleased]` in both. "What's new" shows the Russian file in a Russian
+  interface and opens by itself once after an update.
 * **Never `adb uninstall` without explicit permission**, and then with `-k`.
 * HyperOS asks on screen before an `adb install`: a locked phone means the author
   has to be there.

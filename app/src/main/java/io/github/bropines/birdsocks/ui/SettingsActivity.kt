@@ -76,6 +76,8 @@ class SettingsActivity : ComponentActivity() {
     companion object {
         /** Open on this section instead of the hub: one of [SettingsSections]. */
         const val EXTRA_OPEN_SECTION = "open_section"
+        /** Open on the hub with this typed into the settings search (birdsocks://settings?q=). */
+        const val EXTRA_SEARCH = "search"
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -85,6 +87,7 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val initialSection = intent?.getStringExtra(EXTRA_OPEN_SECTION)
+        val initialSearch = intent?.getStringExtra(EXTRA_SEARCH)
         setContent {
             val context = LocalContext.current
             var appTheme by remember { mutableStateOf(GlobalSettings.getAppTheme(context)) }
@@ -95,6 +98,7 @@ class SettingsActivity : ComponentActivity() {
                 SettingsScreen(
                     onBack = { finish() },
                     initialSection = initialSection,
+                    initialSearch = initialSearch,
                     appearance = Appearance(
                         theme = appTheme, onTheme = { appTheme = it; GlobalSettings.setAppTheme(context, it) },
                         preset = themePreset, onPreset = { themePreset = it; GlobalSettings.setThemePreset(context, it) },
@@ -124,7 +128,7 @@ private class ScrollAnchor(var index: Int = 0, var offset: Int = 0)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: String? = null) {
+fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: String? = null, initialSearch: String? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // A preview hands in the daemon's side; see LocalDemo.
@@ -146,6 +150,12 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
     // a fresh LazyColumn at the top, and so is the one the pop lands on.
     val hubAnchor = remember { ScrollAnchor() }
     val sectionAnchors = remember { mutableMapOf<String, Int>() }
+
+    // The search of the settings (SettingsSearch.kt): its field stands over the list of sections, and
+    // a result opens a section on its row.
+    val search = rememberSettingsSearch(initialSearch) { id ->
+        if (settingsCategories.any { it.id == id }) openSection = id
+    }
 
     // App settings the daemon reads when it starts: changing one while it runs
     // takes a restart, which the banner offers.
@@ -197,19 +207,25 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
     // hub, as the right pane of the wide layout, there is nothing to return to.
     // banner: whether this copy carries the restart banner; in the wide layout only
     // the right pane does, so it is not shown twice.
-    val settingsSurface: @Composable (String?, Boolean, Boolean) -> Unit = { section, backable, banner ->
+    // live: whether this copy is the one in use, not one fading out or lying under a
+    // back gesture. Only that one takes Back for the search and marks a searched row.
+    val settingsSurface: @Composable (String?, Boolean, Boolean, Boolean) -> Unit = { section, backable, banner, live ->
         val openCategory = settingsCategories.firstOrNull { it.id == section }
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                AppTopBar(
-                    title = stringResource(openCategory?.titleRes ?: R.string.menu_settings),
-                    onBack = if (section == null || backable) {
-                        { if (section != null) popSection() else onBack() }
-                    } else null
-                )
+                SettingsSearchBar(search, shown = section == null, live = live) {
+                    AppTopBar(
+                        title = stringResource(openCategory?.titleRes ?: R.string.menu_settings),
+                        onBack = if (section == null || backable) {
+                            { if (section != null) popSection() else onBack() }
+                        } else null
+                    )
+                }
             }
         ) { padding ->
+            // While the search is in use its results stand where the list of sections does.
+            if (section == null && search.active) SettingsSearchResults(search, Modifier.padding(padding)) else
             if (section == null) {
                 val hubState = rememberLazyListState(hubAnchor.index, hubAnchor.offset)
                 // Every hub instance starts where the last one was left and writes back
@@ -258,6 +274,8 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (banner && restartNeeded) RestartBanner { restartNeeded = false }
+                        // The row a search result was opened on is found by the rows of this section (settingAnchor).
+                        SettingsRowTarget(search, section, live) {
                         when (section) {
                             SettingsSections.APPEARANCE -> AppearanceSection(appearance)
                             SettingsSections.ACCOUNT -> AccountSection(env)
@@ -272,6 +290,7 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
                             SettingsSections.AUTOMATION -> AutomationSection()
                             SettingsSections.DIAGNOSTICS -> DiagnosticsSection(env)
                             SettingsSections.ABOUT -> AboutSection(env)
+                        }
                         }
                         Spacer(Modifier.height(20.dp))
                     }
@@ -296,13 +315,13 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
             val shown = openSection ?: settingsCategories.first().id
             Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 if (fold is Fold.Vertical) {
-                    Box(modifier = Modifier.width(fold.start).fillMaxHeight()) { settingsSurface(null, true, false) }
+                    Box(modifier = Modifier.width(fold.start).fillMaxHeight()) { settingsSurface(null, true, false, true) }
                     Spacer(modifier = Modifier.width(fold.end - fold.start))
                 } else {
-                    Box(modifier = Modifier.width(340.dp).fillMaxHeight()) { settingsSurface(null, true, false) }
+                    Box(modifier = Modifier.width(340.dp).fillMaxHeight()) { settingsSurface(null, true, false, true) }
                     VerticalDivider()
                 }
-                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { settingsSurface(shown, false, true) }
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { settingsSurface(shown, false, true, true) }
             }
         } else {
             // The crossfade sits outside the back container, so that opening a section
@@ -342,10 +361,10 @@ fun SettingsScreen(onBack: () -> Unit, appearance: Appearance, initialSection: S
                     // second live copy of every row, and a screen reader reaches the hub
                     // through the one that lands.
                     previousContent = {
-                        Box(Modifier.fillMaxSize().clearAndSetSemantics { }) { settingsSurface(null, true, true) }
+                        Box(Modifier.fillMaxSize().clearAndSetSemantics { }) { settingsSurface(null, true, true, false) }
                     }
                 ) {
-                    settingsSurface(section, true, true)
+                    settingsSurface(section, true, true, section == openSection)
                 }
             }
         }

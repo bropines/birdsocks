@@ -8,4 +8,7 @@
 
     <!-- Permissions: the folded note under a row whose state the system does not report. -->
     <string name="perm_unknown_note">Android はアプリに許可状態を通知しないため、システムの画面で確認してください。</string>
+
+    <!-- The exit-node sheet's search, shown once it lists more than a handful. -->
+    <string name="nb_exit_node_search">出口ノードまたはピア</string>
 </resources>

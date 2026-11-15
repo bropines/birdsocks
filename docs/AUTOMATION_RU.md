@@ -45,7 +45,7 @@ Extras:
 
 - **Подтверждение:** ссылку может открыть любое приложение или веб-страница, поэтому BirdSocks сначала спрашивает.
 - **Без вопроса:** с `&secret=<токен>`, при включённой автоматизации, ссылка выполняется сразу. Используйте это только в своих ярлыках: URL может попасть в историю браузера.
-- **Ссылки на экраны:** `birdsocks://peers`, `networks`, `dns`, `publish`, `diagnostics`, `events`, `permissions`, `settings?section=<id>`, `logs?category=NETBIRD`.
+- **Ссылки на экраны:** `birdsocks://peers`, `networks`, `dns`, `publish`, `diagnostics`, `events`, `permissions`, `licenses`, `settings?section=<id>`, `settings?q=<слова>` (поиск по настройкам с уже введёнными словами), `logs?category=NETBIRD`, `admin?page=<раздел>` (панель администратора: `overview` или ничего — её главный экран, `setup` — токен доступа, или раздел — `peers`, `groups`, `setup_keys` (или `keys`), `policies`, `posture_checks`, `networks`, `routes`, `dns`, `users`, `service_users`, `events`, `account_settings`, `event_streaming`, `identity_providers`, `reverse_proxy`; каждое изменение в ней всё равно спрашивает блокировку экрана).
 
 ## Примеры
 

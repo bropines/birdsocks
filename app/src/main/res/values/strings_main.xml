@@ -9,4 +9,69 @@
     <string name="nb_networks_off_desc">\"Use networks\" is off in Settings → Account: this device reaches none of the networks and exit nodes that peers route for.</string>
     <string name="nb_expose_inbound_in_settings">The proxy reaches the phone through NetBird, so peers must be allowed to reach its services. Turn it on in Settings.</string>
     <string name="main_cd_dashboard">Open dashboard</string>
+    <string name="nb_main_root_shared">Root · shared</string>
+    <string name="nb_main_root_yield">Root · NetBird only</string>
+    <!-- The main screen's editor (ui/MainCanvas.kt, ui/MainLayoutEditor.kt) -->
+    <string name="main_layout_title">Edit main screen</string>
+    <string name="main_layout_add">Add</string>
+    <string name="main_layout_done">Done</string>
+    <string name="main_layout_reset">Reset</string>
+    <string name="main_layout_reset_title">Reset the main screen?</string>
+    <string name="main_layout_reset_text">The blocks and tiles go back to where a new install has them. Nothing else changes.</string>
+    <string name="main_layout_columns">Columns</string>
+    <string name="main_layout_columns_auto">Auto</string>
+    <string name="main_layout_columns_cd">%1$d columns</string>
+    <string name="main_layout_remove_cd">Remove %1$s</string>
+    <string name="main_layout_wide_cd">%1$s: take the full row</string>
+    <string name="main_layout_narrow_cd">%1$s: back to one cell</string>
+    <string name="main_layout_move_earlier">Move earlier</string>
+    <string name="main_layout_move_later">Move later</string>
+    <string name="main_layout_when_connected">Shown while connected</string>
+    <string name="main_layout_exit_when">Shown while connected, when a peer offers an exit node</string>
+    <string name="main_layout_palette_title">Add to the main screen</string>
+    <string name="main_layout_palette_empty">Everything is already on the screen</string>
+    <string name="main_layout_group_blocks">Blocks</string>
+    <string name="main_layout_group_screens">Screens</string>
+    <string name="main_layout_group_shortcuts">Shortcuts</string>
+    <string name="main_layout_group_settings">Settings pages</string>
+
+    <!-- What the main screen can hold (ui/MainTiles.kt) -->
+    <string name="main_block_status">Status card</string>
+    <string name="main_block_status_desc">The main button: starts and stops NetBird and says how it is doing</string>
+    <string name="main_block_exit_node_desc">Which exit node carries the traffic; a tap chooses another</string>
+    <string name="main_block_proxy_desc">The SOCKS5 proxy\'s address, to set in apps; a tap copies it</string>
+    <string name="main_proxy_copy_cd">Copy the address</string>
+    <string name="tile_peers_desc">The devices of your network and this one</string>
+    <string name="tile_networks_desc">Networks and routes peers offer, exit nodes included</string>
+    <string name="tile_dns_desc">NetBird\'s names and the DNS servers it uses</string>
+    <string name="tile_publish_desc">Services of this phone that peers can reach</string>
+    <string name="tile_diagnostics_desc">The connection, events, logs and checks</string>
+    <string name="tile_settings_desc">Every setting of the app</string>
+    <string name="tile_logs_desc">The app\'s and NetBird\'s logs</string>
+    <string name="tile_accounts_desc">Switch, add or rename NetBird accounts</string>
+    <string name="tile_vpn">VPN mode</string>
+    <string name="tile_vpn_desc">Turns VPN mode on and off, as Settings → Tunnel mode does</string>
+    <string name="tile_tunnel_desc">Proxy, VPN or Root, and the tunnel\'s settings</string>
+    <string name="tile_app_split_desc">Apps that bypass VPN mode</string>
+    <string name="tile_proxies_desc">The SOCKS5 and DNS proxies\' addresses and passwords</string>
+    <string name="tile_dns_settings">DNS settings</string>
+    <string name="tile_dns_settings_desc">The DNS proxy and its upstream</string>
+    <string name="tile_permissions_desc">Notifications, battery and autostart</string>
+
+    <!-- Settings → Appearance → Main screen (ui/MainHiddenItems.kt) -->
+    <string name="settings_main_screen">Main screen</string>
+    <string name="settings_main_layout_title">Main screen layout</string>
+    <string name="settings_main_layout_desc">Move the status card and the tiles, add or remove them, choose the columns. A long press on the main screen opens the same editor.</string>
+    <string name="main_hidden_title">Hidden from the main screen</string>
+    <string name="main_hidden_none">Everything is on the main screen</string>
+    <plurals name="main_hidden_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <string name="main_hidden_sheet_desc">A tap opens it as its tile would. The button puts it back on the main screen.</string>
+    <string name="main_hidden_open">Open</string>
+    <string name="main_hidden_restore">Put back on the main screen</string>
+    <string name="main_cd_admin_panel">Admin panel</string>
+    <string name="tile_admin">Admin panel</string>
+    <string name="tile_admin_desc">Peers, setup keys and groups of this network</string>
 </resources>

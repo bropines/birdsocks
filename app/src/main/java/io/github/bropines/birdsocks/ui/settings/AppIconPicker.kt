@@ -1,5 +1,6 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -84,7 +85,7 @@ internal fun AppIconRow() {
     Surface(
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        modifier = Modifier.padding(vertical = 4.dp).clip(MaterialTheme.shapes.medium).combinedClickable(
+        modifier = Modifier.padding(vertical = 4.dp).settingAnchor(stringResource(R.string.icon_title)).clip(MaterialTheme.shapes.medium).combinedClickable(
             onClick = { open = true },
             onLongClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); help.value = !help.value }
         )

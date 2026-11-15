@@ -58,4 +58,17 @@
     <string name="nb_tun_tile_active">Active · VPN</string>
     <string name="nb_tun_notif_text_root">%1$s · Root</string>
     <string name="nb_tun_tile_active_root">Active · Root</string>
+    <string name="nb_tun_root_shared">Another VPN holds the device: the apps it bypasses follow NetBird\'s exit node and networks; its own apps keep their tunnel and their DNS.</string>
+    <string name="nb_tun_root_yield">Another VPN takes every app: only NetBird\'s addresses are routed here. Exit node, networks and device-wide DNS wait until it stops — or use the SOCKS5 proxy.</string>
+    <string name="nb_tun_root_override">Another VPN is running and its apps were taken by this device\'s choice.</string>
+    <string name="nb_tun_root_dns_hold">DNS redirect waits for Android to validate the network.</string>
+    <string name="nb_tun_root_dns_unhealthy">NetBird\'s resolver is not answering: the phone resolves on its own until it does.</string>
+    <string name="nb_tun_root_lan_title">Keep the local network</string>
+    <string name="nb_tun_root_lan_desc">The networks this phone is on stay local while the tunnel takes all traffic, even when a peer routes them.</string>
+    <string name="nb_tun_root_take_title">Take the device anyway</string>
+    <string name="nb_tun_root_take_desc">Off: beside another VPN, BirdSocks routes only NetBird\'s addresses and the apps that VPN bypasses. On: the exit node and DNS for every app.</string>
+    <string name="nb_tun_root_take_confirm_title">Take every app?</string>
+    <string name="nb_tun_root_take_confirm_body">While BirdSocks runs, the other VPN\'s apps lose their tunnel and its DNS — their traffic goes to NetBird instead. Stays on this phone only, not in backups.</string>
+    <string name="nb_tun_root_take_confirm">Take</string>
+    <string name="nb_tun_engine_title">Engine</string>
 </resources>

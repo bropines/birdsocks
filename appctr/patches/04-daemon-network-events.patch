@@ -1,6 +1,6 @@
 --- netbird_orig/client/server/server.go
 +++ netbird_src/client/server/server.go
-@@ -38,6 +38,7 @@
+@@ -39,6 +39,7 @@
  	"github.com/netbirdio/netbird/client/internal/peer"
  	"github.com/netbirdio/netbird/client/internal/statemanager"
  	"github.com/netbirdio/netbird/client/internal/updater"
@@ -8,7 +8,7 @@
  	"github.com/netbirdio/netbird/client/proto"
  	"github.com/netbirdio/netbird/util"
  	"github.com/netbirdio/netbird/util/capture"
-@@ -68,6 +69,10 @@
+@@ -78,6 +79,10 @@
  
  // Server for service control.
  type Server struct {
@@ -19,7 +19,7 @@
  	rootCtx   context.Context
  	actCancel context.CancelFunc
  
-@@ -176,11 +181,13 @@
+@@ -200,11 +205,13 @@
  
  // New server instance constructor.
  func New(ctx context.Context, logFile string, configFile string, profilesDisabled bool, updateSettingsDisabled bool, captureEnabled bool, networksDisabled bool) *Server {
@@ -34,21 +34,22 @@
  		profileManager:         profilemanager.NewServiceManager(configFile),
  		profilesDisabled:       profilesDisabled,
  		updateSettingsDisabled: updateSettingsDisabled,
-@@ -2517,7 +2524,9 @@
+@@ -2835,7 +2842,9 @@
  
  func (s *Server) connect(ctx context.Context, config *profilemanager.Config, statusRecorder *peer.Status, runningChan chan struct{}) error {
  	log.Tracef("running client connection")
--	client := internal.NewConnectClient(ctx, config, statusRecorder)
+-	client := internal.NewConnectClient(ctx, config, statusRecorder, profileOwnerOption(config))
 +	// BirdSocks: the OS network events the mobile bindings feed; the app
 +	// reports them to this daemon (NotifyNetworkChange, SetNetworkAvailable).
-+	client := internal.NewConnectClient(ctx, config, statusRecorder, internal.WithNetEvents(s.netEvents))
++	client := internal.NewConnectClient(ctx, config, statusRecorder, profileOwnerOption(config), internal.WithNetEvents(s.netEvents))
  	client.SetUpdateManager(s.updateManager)
  	client.SetSyncResponsePersistence(s.persistSyncResponse)
  
-@@ -2772,3 +2781,18 @@
+@@ -3281,4 +3290,19 @@
+ 		}
  	}
  	return found
- }
++}
 +
 +// NotifyNetworkChange tells the client that the OS switched networks: the
 +// management, signal and relay connections are marked stale and redial on
@@ -57,7 +58,7 @@
 +func (s *Server) NotifyNetworkChange() {
 +	s.netEvents.SetNetworkAvailable(true)
 +	s.netEvents.NotifyNetworkChange()
-+}
+ }
 +
 +// SetNetworkAvailable records whether the OS has any network: while it has
 +// none, the reconnection loops wait instead of burning their backoff.

@@ -161,7 +161,8 @@ object BackupFormat {
      *  - `tun_ula` — the VPN's IPv6 address, made once per install at random;
      *  - `autostart_ask_never`, `autostart_ask_pending` — about this phone's
      *    own autostart permission prompt;
-     *  - `automation_status_to` — the app on this phone that asked for status.
+     *  - `automation_status_to` — the app on this phone that asked for status;
+     *  - `tun_root_take_device` — consent about this phone's other VPN app.
      * A new setting is backed up once it is added here.
      */
     private val KEYS: Map<String, KeySpec> = buildMap {
@@ -169,6 +170,8 @@ object BackupFormat {
         // Appearance and language
         add(Scope.SETTING, Type.STRING, "app_theme", "theme_preset", "app_locale", "app_icon")
         add(Scope.SETTING, Type.BOOLEAN, "dynamic_color", "amoled_mode")
+        // The main screen's arrangement (MainLayoutStore), as its JSON string
+        add(Scope.SETTING, Type.STRING, MainLayoutStore.KEY)
         // The SOCKS5 proxy; before addresses there was only a port
         add(Scope.SETTING, Type.STRING, "socks_address")
         add(Scope.SETTING, Type.INT, "socks_port")
@@ -189,7 +192,7 @@ object BackupFormat {
         // Automation: the switch; its token is a secret, and the app status goes to is this phone's
         add(Scope.SETTING, Type.BOOLEAN, "automation_enabled")
         // VPN mode
-        add(Scope.SETTING, Type.BOOLEAN, "tun_mode_enabled", "tun_route_all", "tun_ipv6_enabled")
+        add(Scope.SETTING, Type.BOOLEAN, "tun_mode_enabled", "tun_route_all", "tun_ipv6_enabled", "tun_root_keep_lan")
         add(Scope.SETTING, Type.STRING, "tun_excluded_apps", "tun_excluded_cidrs", "tun_address", "tun_engine")
         // Secrets
         add(Scope.SECRET, Type.STRING, "socks_user", "socks_pass", "cp_user", "cp_pass", "automation_token")
@@ -251,26 +254,30 @@ object BackupFormat {
 
     // --- NetBird's files ---
 
-    /** Where the daemon files every profile but the default: its USER (Netbird.USER). */
-    const val PROFILE_DIR = "birdsocks"
+    /**
+     * Where the daemon files every profile but the default: under its USER
+     * (Netbird.USER) up to NetBird 0.82, in one shared directory since 0.83,
+     * which still reads the old one.
+     */
+    val PROFILE_DIRS = listOf("birdsocks", "profiles.v1")
     /** A profile file's stem as NetBird takes it (IsValidProfileFilenameStem): letters, digits, _ and -. */
     private const val STEM = "[\\p{L}\\p{Nd}_-]{1,64}"
     private val TOP_FILES = Regex("(?:default|default\\.prefs|state|active_profile)\\.json")
-    private val PROFILE_FILES = Regex("$PROFILE_DIR/$STEM(?:\\.state|\\.prefs)?\\.json")
+    private val PROFILE_FILES = Regex("(?:${PROFILE_DIRS.joinToString("|") { Regex.escape(it) }})/$STEM(?:\\.state|\\.prefs)?\\.json")
 
     /**
      * Whether [path], relative to files/netbird/, is one of NetBird's profile
      * files: the default profile's config (default.json) and preferences, its
      * state (state.json: the networks and exit node chosen), the active-profile
      * pointer, and every other profile's config, state and preferences under
-     * birdsocks/. Not the log, and nothing else — no separators beyond that one
+     * birdsocks/ or profiles.v1/. Not the log, and nothing else — no separators beyond that one
      * level, no dots outside the suffixes, so no way out of the directory.
      */
     fun isNetbirdFile(path: String): Boolean = TOP_FILES.matches(path) || PROFILE_FILES.matches(path)
 
     /** A NetBird account's config, as opposed to its state or preferences. */
     fun isProfileConfig(path: String): Boolean =
-        path == "default.json" || (path.startsWith("$PROFILE_DIR/") && !path.endsWith(".state.json") && !path.endsWith(".prefs.json"))
+        path == "default.json" || (PROFILE_DIRS.any { path.startsWith("$it/") } && !path.endsWith(".state.json") && !path.endsWith(".prefs.json"))
 
     fun isJson(data: ByteArray): Boolean = runCatching { Json.parseToJsonElement(data.decodeToString()) }.isSuccess
 

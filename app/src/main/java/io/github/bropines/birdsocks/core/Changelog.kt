@@ -10,17 +10,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 
 /**
- * Reader for the bundled `assets/CHANGELOG.md` (Keep a Changelog format).
+ * Reader for the bundled `assets/CHANGELOG.md` (Keep a Changelog format), and for its
+ * Russian twin `assets/CHANGELOG_RU.md`, which "What's new" shows in a Russian interface.
  *
- * The file is copied from the repository root at build time (see
+ * Both files are copied from the repository root at build time (see
  * `copyChangelogAsset` in app/build.gradle.kts), so the app always ships the
  * changelog of the commit it was built from. Only the structure the app needs
  * is parsed: `## [version] - date` sections, `### Group` sub-headings and
- * `- bullet` items (nested bullets are indented by two spaces per level).
+ * `- bullet` items (nested bullets are indented by two spaces per level). The
+ * Russian file has the same structure, so the same parser reads it; English decides
+ * which version is the newest, and a version the Russian file lacks is shown in English.
  */
 object Changelog {
     const val ASSET_NAME = "CHANGELOG.md"
+    const val ASSET_NAME_RU = "CHANGELOG_RU.md"
     const val FULL_CHANGELOG_URL = "https://github.com/bropines/birdsocks/blob/main/CHANGELOG.md"
+    const val FULL_CHANGELOG_URL_RU = "https://github.com/bropines/birdsocks/blob/main/CHANGELOG_RU.md"
 
     data class Item(val text: String, val level: Int)
     data class Group(val title: String, val items: List<Item>)
@@ -30,25 +35,46 @@ object Changelog {
     private val groupHeading = Regex("""^###\s+(.+?)\s*$""")
     private val bullet = Regex("""^(\s*)[-*+]\s+(.*)$""")
 
-    @Volatile
-    private var cached: List<Section>? = null
+    private val cached = java.util.concurrent.ConcurrentHashMap<String, List<Section>>()
 
-    /** All sections, newest first (file order). Never throws; missing asset yields an empty list. */
-    fun load(context: Context): List<Section> {
-        cached?.let { return it }
-        val parsed = try {
-            context.assets.open(ASSET_NAME).bufferedReader().use { parse(it.readText()) }
+    /** All sections of [asset], newest first (file order). Never throws; a missing asset yields an empty list. */
+    fun load(context: Context, asset: String = ASSET_NAME): List<Section> = cached.getOrPut(asset) {
+        try {
+            context.assets.open(asset).bufferedReader().use { parse(it.readText()) }
         } catch (e: Exception) {
-            android.util.Log.w("Changelog", "Cannot read $ASSET_NAME asset: ${e.message}")
+            android.util.Log.w("Changelog", "Cannot read $asset asset: ${e.message}")
             emptyList()
         }
-        cached = parsed
-        return parsed
     }
 
-    /** The newest released section (an `[Unreleased]` block, if present, is skipped). */
-    fun latest(context: Context): Section? =
-        load(context).firstOrNull { !it.version.equals("unreleased", ignoreCase = true) }
+    /**
+     * The newest released section (an `[Unreleased]` block is skipped), in [language] where
+     * the translated file has text for that version: Russian only, for now.
+     */
+    fun latest(context: Context, language: String = java.util.Locale.getDefault().language): Section? {
+        val translated = if (language == "ru") load(context, ASSET_NAME_RU) else emptyList()
+        return pick(load(context), translated)
+    }
+
+    /**
+     * The newest released section of [english], or the section of [translated] with the same
+     * version when that one has any text of its own: a version not translated yet stays English.
+     */
+    fun pick(english: List<Section>, translated: List<Section>): Section? {
+        val shown = english.firstOrNull { !it.isUnreleased } ?: return null
+        return translated.firstOrNull { it.version.equals(shown.version, ignoreCase = true) && it.hasText } ?: shown
+    }
+
+    private val Section.isUnreleased: Boolean get() = version.equals("unreleased", ignoreCase = true)
+    private val Section.hasText: Boolean get() = groups.any { it.items.isNotEmpty() }
+
+    /**
+     * A build's version as the "already seen" key of "What's new": `0.4.0`, also for a debug
+     * build's `0.4.0-dev`, so a suffix never shows the dialog again.
+     */
+    fun seenKey(versionName: String): String = versionName.removePrefix("v").substringBefore('-')
+
+    fun currentVersion(): String = seenKey(io.github.bropines.birdsocks.BuildConfig.VERSION_NAME)
 
     /**
      * A GitHub release's notes as a section. The release workflow publishes

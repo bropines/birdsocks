@@ -77,8 +77,11 @@ git clone --recursive https://github.com/bropines/birdsocks.git && cd birdsocks
   major·1000000 + minor·10000 + patch·100 (0.1.0 → 10000).
 - `CHANGELOG.md`: `## [0.1.0] - Unreleased` становится `## [0.1.0] - ГГГГ-ММ-ДД`,
   днём выпуска. Раздел без даты сборка не примет.
+- `CHANGELOG_RU.md`: тот же заголовок; в разделе те же группы и столько же
+  пунктов (`ChangelogTest`).
 - `fastlane/metadata/android/{en-US,ru}/changelogs/<VERSION_CODE>.txt`: выжимка
   раздела в две-три строки, не больше 500 символов.
+- `docs/releases/<VERSION_NAME>.md`: главное о релизе, которое открывает его описание над секцией CHANGELOG, — несколько пунктов с заголовками на английском, затем русский текст в блоке `<details><summary><b>🇷🇺 Что нового</b></summary>`. Картинки, если нужны, из ветки `media`. Необязательно: без файла описание — только секция. `python3 scripts/release_notes.py <версия>` печатает итог.
 - `readme.md`, `readme_ru.md`: убрать пометку «не выпущен».
 - Коммит `chore: release 0.1.0`; тег `v0.1.0`.
 

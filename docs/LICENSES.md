@@ -20,7 +20,8 @@ their own licenses:
 | [lwIP](https://savannah.nongnu.org/projects/lwip) | hev-socks5-tunnel's TCP/IP stack | BSD-3-Clause |
 | [hev-task-system](https://github.com/heiher/hev-task-system) | hev-socks5-tunnel's task runtime | MIT |
 | [ByeDPI](https://github.com/hufrea/byedpi) | the server connection against DPI | MIT |
-| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp) | the app | Apache-2.0 |
+| [qrcodegen](https://github.com/nayuki/QR-Code-generator) (Project Nayuki) | the QR code of a new setup key's invite link in the admin panel | MIT |
+| [AndroidX, Jetpack Compose](https://developer.android.com/jetpack/androidx), [Material Components](https://github.com/material-components/material-components-android), [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [OkHttp](https://github.com/square/okhttp), [AndroidX Biometric](https://developer.android.com/jetpack/androidx/releases/biometric) | the app | Apache-2.0 |
 
 The daemon links about 110 Go modules in all (NetBird's `go.mod`): Apache-2.0,
 MIT, BSD, ISC and CC0, and three unmodified MPL-2.0 HashiCorp modules
@@ -34,10 +35,14 @@ any code taken from NetBird's official Android app, which is GPLv3.
 
 ## In the app
 
-Settings → About → **Licenses** lists the components; **Full texts** opens
-every license in full, as MIT and BSD ask a binary to carry them. The texts
-live in [`app/src/main/assets/third_party_licenses.txt`](../app/src/main/assets/third_party_licenses.txt);
-update it when a component is added or changes its license.
+Settings → About → **Open-source licenses** (or `birdsocks://licenses`) lists
+every component in the APK — the Go modules in the daemon and the bridge, the
+Android libraries, the native C libraries — with its license and full text, as
+MIT and BSD ask a binary to carry them. The list is
+[`app/src/main/assets/licenses.json`](../app/src/main/assets/licenses.json),
+written by `scripts/licenses/generate.py` from what the build links and
+committed. Run it after `appctr/build.sh` and a Gradle build whenever a
+dependency changes; CI's `--check` warns when it is out of date.
 
 ## Trademark
 

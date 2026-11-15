@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Settings search: the words people type to find a setting, one string per setting
+        (search_kw_<id>, the ids of ui/SettingsCatalog.kt).
+
+        For translators: this is a list, not a sentence. Separate the entries with commas; an
+        entry may be several words ("kill switch"). Write what a person would type in your
+        language when looking for the setting: other names for it, abbreviations, slang, the
+        problem it solves, typical values. Words of the setting's own title need not be
+        repeated, the order does not matter, and more is better. English and Russian are always
+        searched as well, whatever the language of the interface.
+    -->
+
+    <!-- The little words of a question, which a query is understood without: "how do I change the port" is "port". -->
+    <string name="search_stop_words">どう, 方法, やり方, 設定, 変更, 有効, 無効, 切り替え, 使う, 探す, したい, 教えて, オプション, 項目</string>
+
+    <!-- The sections -->
+    <string name="search_kw_appearance">見た目, デザイン, スタイル, UI, 外観, カスタマイズ, パーソナライズ</string>
+    <string name="search_kw_account">プロフィール, ログイン, サインイン, セットアップキー, アカウント設定, netbird アカウント</string>
+    <string name="search_kw_tunnel">vpn, tun, 接続モード, 接続方法, 通信経路, 端末全体, すべてのアプリ, システム全体</string>
+    <string name="search_kw_proxies">socks, socks5, ローカルプロキシ, 待ち受け, 127.0.0.1, localhost, ループバック, nekobox, v2ray, sing-box, アプリ用プロキシ</string>
+    <string name="search_kw_dns">リゾルバー, ネームサーバー, 名前解決, ドメイン名, netbird.cloud, ホスト名</string>
+    <string name="search_kw_access">受信, 着信, ファイアウォール, ポート開放, この端末への接続, ピアからの接続</string>
+    <string name="search_kw_connection">p2p, ピアツーピア, リレー, turn, nat, ネットワーク, wireguard</string>
+    <string name="search_kw_background">バックグラウンド, 常時接続, バックグラウンドで終了, 切断される, バッテリー</string>
+    <string name="search_kw_backup">設定の保存, 新しい端末へ移行, 移行, 設定のコピー, エクスポート, インポート</string>
+    <string name="search_kw_automation">自動化, インテント, ブロードキャスト, スクリプト, 外部制御, api, adb, tasker</string>
+    <string name="search_kw_diagnostics">デバッグ, トラブルシュート, バグ報告, 問題, 動かない, 開発者向けオプション</string>
+    <string name="search_kw_about">バージョン, アップデート, ライセンス, クレジット, 変更履歴, 新機能</string>
+
+    <!-- Appearance & language -->
+    <string name="search_kw_theme_mode">ダークモード, ライトモード, ナイトモード, ダークテーマ, システムに合わせる</string>
+    <string name="search_kw_language">ロケール, 言語, 英語, ロシア語, 日本語, 翻訳, 表示言語</string>
+    <string name="search_kw_palette">アクセント, 色, カラー, 配色, プリセット, tokyo night</string>
+    <string name="search_kw_dynamic_color">material you, monet, 壁紙の色, android 12</string>
+    <string name="search_kw_amoled">純黒, 黒背景, oled, 真っ黒, 省電力</string>
+    <string name="search_kw_app_icon">ランチャーアイコン, ロゴ, アイコン変更, ホーム画面のアイコン</string>
+
+    <!-- Account & device -->
+    <string name="search_kw_accounts">アカウント切替, アカウント追加, プロフィール, 複数アカウント, アカウント削除, 名前変更</string>
+    <string name="search_kw_device_name">ホスト名, コンピューター名, ピア名, 端末名</string>
+    <string name="search_kw_management_server">セルフホスト, 自前のサーバー, 自分のサーバー, 管理 URL, ダッシュボード, 管理パネル, netbird cloud, 管理サーバー</string>
+    <string name="search_kw_logout">サインアウト, ログオフ, アカウント切断, 登録解除, 忘れる</string>
+    <string name="search_kw_client_routes">ルート, ネットワーク, サブネット, ルートを受け入れる, ネットワークルート, 出口ノード</string>
+    <string name="search_kw_server_routes">ルーティングピア, ルートの広告, 自分のネットワークを共有, サブネットルーター</string>
+    <string name="search_kw_psk">psk, 事前共有キー, 共有シークレット, wireguard キー</string>
+
+    <!-- Tunnel mode -->
+    <string name="search_kw_tunnel_mode">vpn, tun, プロキシ, root, magisk, kernelsu, キルスイッチ, 常時接続, 常時 VPN</string>
+    <string name="search_kw_tun_engine">ネイティブ, hev, hev-socks5-tunnel, プロキシ経由, tun2socks</string>
+    <string name="search_kw_tun_route_all">全トラフィック, すべての通信, デフォルトルート, 0.0.0.0/0, すべて VPN 経由</string>
+    <string name="search_kw_tun_ipv6">ipv6, v6, ::/0, ipv6 リーク</string>
+    <string name="search_kw_tun_excluded_apps">スプリットトンネリング, アプリを除外, アプリ一覧, 除外アプリ, アプリごとの VPN</string>
+    <string name="search_kw_tun_excluded_cidrs">スプリットトンネリング, 範囲を除外, サブネットを除外, cidr, lan 範囲</string>
+    <string name="search_kw_tun_address">インターフェースアドレス, tun の IP, 198.18.0.1, vpn の IP</string>
+
+    <!-- Local proxies -->
+    <string name="search_kw_socks_address">socks ポート, 待ち受けアドレス, 127.0.0.1, 1080, プロキシポート, ポート</string>
+    <string name="search_kw_socks_username">ログイン, ユーザー, プロキシ認証, 認証, 資格情報</string>
+    <string name="search_kw_socks_password">パスワード, シークレット, プロキシ認証, 認証, 資格情報</string>
+    <string name="search_kw_socks_link">共有リンク, nekobox, v2rayng, sagernet, プロキシをインポート, クリップボード, url</string>
+    <string name="search_kw_socks_lan">wifi, wi-fi, ホットスポット, テザリング, lan, 他の端末, 0.0.0.0, プロキシを共有</string>
+
+    <!-- DNS -->
+    <string name="search_kw_netbird_dns">magic dns, ピア名の解決, ピア名, netbird.cloud, ネームサーバー</string>
+    <string name="search_kw_dns_labels">dns ラベル, 別名, 追加のホスト名, エイリアス, cname</string>
+    <string name="search_kw_dns_proxy">ローカル dns, dns サーバー, アプリ用リゾルバー, dns フォワーダー</string>
+    <string name="search_kw_dns_proxy_address">dns ポート, 待ち受けアドレス, 127.0.0.1, 53, dns プロキシポート</string>
+    <string name="search_kw_dns_upstream">アップストリーム, フォールバック dns, 1.1.1.1, 8.8.8.8, doh, dns 転送</string>
+    <string name="search_kw_dns_screen">dns 問い合わせ, nslookup, dig, dns テスト, リゾルバー確認</string>
+
+    <!-- Access to this phone -->
+    <string name="search_kw_inbound_access">受信, 着信接続, スマートフォンへの ssh, 端末への接続, ローカルサービス</string>
+    <string name="search_kw_block_inbound">ファイアウォール, 着信を拒否, 接続をブロック, シールド, ステルス</string>
+    <string name="search_kw_publish">公開, ポート転送, 公開アドレス, リバースプロキシ, ngrok, funnel, 配信</string>
+
+    <!-- Connection -->
+    <string name="search_kw_lazy_connection">オンデマンド, アイドル, バッテリー, 無通信, 必要時に接続</string>
+    <string name="search_kw_relay_quic">quic, udp, リレー転送, websocket</string>
+    <string name="search_kw_force_relay">リレーのみ, turn, p2p なし, 直接接続を無効, nat の内側</string>
+    <string name="search_kw_control_mode">検閲, ブロック, 遮断, 回避, 解除, rkn, dpi, 接続できない, ログインできない, 管理プロキシ</string>
+    <string name="search_kw_control_proxy_host">プロキシアドレス, socks5 プロキシ, http プロキシ, アップストリームプロキシ, 管理プロキシ</string>
+    <string name="search_kw_control_proxy_port">ポート, プロキシポート, 1080, 8080</string>
+    <string name="search_kw_control_proxy_user">ログイン, ユーザー, プロキシ認証, 資格情報</string>
+    <string name="search_kw_control_proxy_pass">パスワード, シークレット, プロキシ認証, 資格情報</string>
+    <string name="search_kw_byedpi_flags">dpi, デシンク, zapret, byebyedpi, goodbyedpi, 分割, フェイク</string>
+    <string name="search_kw_byedpi_ipv4">ipv6, v4, ipv4, dpi, ipv6 なし</string>
+    <string name="search_kw_ipv6">ipv6, v6, オーバーレイ ipv6, デュアルスタック</string>
+    <string name="search_kw_mtu">パケットサイズ, mss, フラグメンテーション, 1280, 大きなパケット</string>
+
+    <!-- Background & permissions -->
+    <string name="search_kw_event_notifications">通知, アラート, 警告, イベント, プッシュ</string>
+    <string name="search_kw_autostart">起動時に開始, 自動起動, ブート, 再起動</string>
+    <string name="search_kw_hide_recents">最近のアプリ, タスク切り替え, 概要, プライバシー, アプリを隠す</string>
+    <string name="search_kw_permissions">バッテリー, バッテリー最適化, ドーズ, バックグラウンド制限, xiaomi, miui, hyperos, 通知の許可</string>
+
+    <!-- Backup -->
+    <string name="search_kw_backup_settings">設定のエクスポート, json, 設定の保存, 設定のコピー</string>
+    <string name="search_kw_backup_full">完全バックアップ, 暗号化, パスワード, アカウント, 移行</string>
+    <string name="search_kw_restore">インポート, バックアップから復元, 設定の読み込み, 新しい端末</string>
+
+    <!-- Automation -->
+    <string name="search_kw_automation_enable">tasker, macrodroid, automate, ブロードキャスト, インテント, adb</string>
+    <string name="search_kw_automation_token">シークレット, api キー, トークン生成, パスワード, 認証</string>
+    <string name="search_kw_automation_docs">ドキュメント, 例, コマンド, 自動化の方法, リンク</string>
+
+    <!-- Diagnostics & developer -->
+    <string name="search_kw_log_level">詳細, デバッグ, trace, ログレベル, ログ出力</string>
+    <string name="search_kw_extra_env">env, 環境変数, nb_, フラグ, 詳細設定</string>
+    <string name="search_kw_remote_jobs">デバッグバンドル, リモートデバッグ, サポート, ジョブ</string>
+    <string name="search_kw_diagnostics_screen">接続確認, イベント, パケットキャプチャ, ping, trace, アクセス確認</string>
+    <string name="search_kw_logs">ログ, logcat, デーモンのログ, ジャーナル, エラー</string>
+
+    <!-- About -->
+    <string name="search_kw_about_dialog">バージョン, 新機能, 変更履歴, クレジット, アプリについて</string>
+    <string name="search_kw_update_on_launch">自動更新, アップデート, 新バージョン, リリース, 起動時に確認</string>
+    <string name="search_kw_update_now">更新, アップグレード, 新バージョン, ダウンロード, リリース</string>
+    <string name="search_kw_docs">ヘルプ, マニュアル, ガイド, ドキュメント, docs.netbird.io</string>
+    <string name="search_kw_source">github, リポジトリ, コード, オープンソース, イシュー</string>
+    <string name="search_kw_donate">寄付, boosty, スポンサー, 支援, チップ</string>
+    <string name="search_kw_licenses">オープンソースライセンス, サードパーティ, 法的情報, bsd, gpl</string>
+    <string name="search_kw_main_layout">メイン画面, ホーム, ダッシュボード, タイル, レイアウト, 並べ替え, 列, 編集</string>
+    <string name="search_kw_main_hidden">非表示のタイル, 削除した項目, 戻す, タイルを復元</string>
+    <string name="search_kw_tun_root_lan">lan, ローカルネットワーク, 家庭内ネットワーク, ルーター, nas, プリンター, root</string>
+    <string name="search_kw_tun_root_take">他の VPN, 共存, 上書き, 引き継ぎ, 競合, root</string>
+    <string name="search_kw_admin_panel">管理, 管理者, ピアの管理, セットアップキー, 招待, qr, グループ, api, トークン, pat, 管理サーバー</string>
+</resources>

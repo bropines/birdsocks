@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The home-screen widgets (ui/Widgets.kt, ui/WidgetUpdates.kt) and their entries in the widget picker. -->
+<resources>
+    <!-- The widget picker -->
+    <string name="widget_name_service">BirdSocks スイッチ</string>
+    <string name="widget_name_exit">BirdSocks 出口ノード</string>
+    <string name="widget_desc_service">BirdSocks の起動・停止と、接続状態の確認</string>
+    <string name="widget_desc_exit">出口ノードを選ぶ、または使わない</string>
+
+    <!-- The switch -->
+    <string name="widget_refresh">更新</string>
+    <string name="widget_copy_ip">NetBird アドレスをコピー</string>
+
+    <!-- The exit node -->
+    <string name="widget_exit_inactive">未使用</string>
+    <string name="widget_exit_format">出口: %1$s</string>
+    <string name="widget_exit_direct">直接</string>
+    <string name="widget_exit_none">このネットワークに出口ノードはありません</string>
+    <string name="widget_exit_stopped">出口ノードを選ぶには BirdSocks を起動してください</string>
+    <string name="widget_offline">未接続</string>
+    <string name="widget_toast_exit_off">出口ノードをオフにしました</string>
+    <string name="widget_toast_exit_on">%1$s 経由で接続します</string>
+</resources>

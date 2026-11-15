@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.animate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,15 +12,28 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -35,8 +49,12 @@ import io.github.bropines.birdsocks.core.wrapContextWithLocale
 import io.github.bropines.birdsocks.models.NbLocalPeer
 import io.github.bropines.birdsocks.models.NbPeer
 import io.github.bropines.birdsocks.ui.theme.BirdSocksTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class PeersActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context) {
@@ -62,6 +80,14 @@ private enum class PeerFilter {
         Connecting -> peer.connecting
         Idle -> !peer.connected && !peer.connecting
     }
+}
+
+/** The filter last settled on, for the next visit. A per-device preference, like the theme. */
+private const val PEERS_FILTER_PREF = "peers_filter"
+
+private fun storedPeerFilter(context: Context): PeerFilter {
+    val name = GlobalSettings.getString(context, PEERS_FILTER_PREF, PeerFilter.All.name)
+    return PeerFilter.entries.firstOrNull { it.name == name } ?: PeerFilter.All
 }
 
 private fun NbLocalPeer.matches(query: String) =
@@ -113,8 +139,31 @@ fun PeersScreen(onBack: () -> Unit) {
     }
 
     var query by rememberSaveable { mutableStateOf("") }
-    val pager = rememberPagerState { PeerFilter.entries.size }
+    val pager = rememberPagerState(initialPage = remember { storedPeerFilter(context).ordinal }) { PeerFilter.entries.size }
+    LaunchedEffect(pager) {
+        // Where a swipe or a tap settles is kept for the next visit; the first value is only
+        // where the pager opened.
+        snapshotFlow { pager.settledPage }.drop(1).collect { page ->
+            GlobalSettings.setString(context, PEERS_FILTER_PREF, PeerFilter.entries[page].name)
+        }
+    }
     var openKey by rememberSaveable { mutableStateOf(demo?.openPeer) }
+    // The peer whose "Copy as…" is open, from a long press on its row: its name and forms.
+    var copyAs by remember { mutableStateOf<Pair<String, List<PeerCopyForm>>?>(null) }
+
+    // The search field, folded away until a pull at the top of the list or the top bar's
+    // button brings it out. A pull no longer reloads: the top bar's button does.
+    val searchShown = rememberSaveable { mutableFloatStateOf(if (query.isNotEmpty()) 1f else 0f) }
+    val searchSlotPx = with(LocalDensity.current) { SEARCH_SLOT_HEIGHT.toPx() }
+    val reveal = remember { SearchReveal(searchShown, scope, searchSlotPx) { query.isNotEmpty() } }
+    val searchOut by remember { derivedStateOf { reveal.fraction > 0f } }
+    val searchFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    // Set by the top bar's button: the field takes the keyboard once it is there to take it.
+    var focusSearchOnOpen by remember { mutableStateOf(false) }
+    // Text typed into a field let go of half-way opens it the rest of the way.
+    val searchPinned = query.isNotEmpty()
+    LaunchedEffect(searchPinned) { if (searchPinned && reveal.fraction < 1f) reveal.animateTo(1f) }
 
     val status = latest
     val fs = status?.fullStatus
@@ -149,15 +198,69 @@ fun PeersScreen(onBack: () -> Unit) {
     ) {
         Scaffold(topBar = {
             Column {
-                AppTopBar(title = stringResource(R.string.nb_menu_peers), onBack = onBack)
-                // Nothing to search while the daemon is stopped.
-                if (running) {
-                    CompactSearchBar(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholderText = stringResource(R.string.nb_peers_search),
-                        modifier = Modifier.readableWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                AppTopBar(
+                    title = stringResource(R.string.nb_menu_peers),
+                    onBack = onBack,
+                    actions = {
+                        if (running) {
+                            // The search without the pull, for whoever does not know the pull;
+                            // once it is out, the one tap that empties and folds it.
+                            IconButton(onClick = {
+                                if (searchOut) {
+                                    query = ""
+                                    focusManager.clearFocus()
+                                    reveal.animateTo(0f)
+                                } else {
+                                    focusSearchOnOpen = true
+                                    reveal.animateTo(1f)
+                                }
+                            }) {
+                                if (searchOut) Icon(Icons.Default.SearchOff, stringResource(R.string.nb_peers_search_close))
+                                else Icon(Icons.Default.Search, stringResource(R.string.nb_peers_search_open))
+                            }
+                            // The one way to reload, and the sign that a reload is running.
+                            IconButton(onClick = { refresh() }, enabled = !refreshing) {
+                                if (refreshing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                else Icon(Icons.Default.Refresh, stringResource(R.string.nb_peers_refresh))
+                            }
+                        }
+                    }
+                )
+                // Nothing to search while the daemon is stopped. Out of the composition while
+                // folded, so neither a screen reader nor the keyboard finds a hidden field.
+                if (running && searchOut) {
+                    Box(
+                        Modifier
+                            .clipToBounds()
+                            .layout { measurable, constraints ->
+                                // Measured whole, shown as far as it is out: it slides down from
+                                // under the top bar with the finger, fading in as it comes.
+                                val placeable = measurable.measure(constraints)
+                                reveal.heightPx = placeable.height.toFloat()
+                                val height = (placeable.height * reveal.fraction).roundToInt()
+                                layout(placeable.width, height) {
+                                    placeable.placeWithLayer(0, height - placeable.height) { alpha = reveal.fraction }
+                                }
+                            }
+                    ) {
+                        CompactSearchBar(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholderText = stringResource(R.string.nb_peers_search),
+                            modifier = Modifier
+                                .readableWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .focusRequester(searchFocus)
+                                // A tap on a field let go of half-way opens it the rest of the way.
+                                .onFocusChanged { if (it.isFocused) reveal.animateTo(1f) }
+                        )
+                    }
+                    LaunchedEffect(Unit) {
+                        if (focusSearchOnOpen) {
+                            focusSearchOnOpen = false
+                            searchFocus.requestFocus()
+                        }
+                    }
                 }
             }
         }) { padding ->
@@ -182,23 +285,29 @@ fun PeersScreen(onBack: () -> Unit) {
                             positionOffset = pager.currentPage + pager.currentPageOffsetFraction,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                         )
-                        PullToRefreshBox(
-                            isRefreshing = refreshing,
-                            onRefresh = { refresh() },
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { index ->
+                        // A pull at the top of a list brings out the search, from whichever page is
+                        // under the finger.
+                        Box(Modifier.fillMaxSize()) {
+                            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize().nestedScroll(reveal.connection)) { index ->
                                 val filter = PeerFilter.entries[index]
                                 val list = matching.filter(filter::admits)
                                 val self = selfShown?.takeIf { filter == PeerFilter.All }
                                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp)) {
                                     if (self != null) {
                                         item(key = SELF_PAGE_KEY) {
-                                            SelfPeerItem(self, selfConnOf(status)) { openKey = SELF_PAGE_KEY }
+                                            SelfPeerItem(
+                                                self,
+                                                selfConnOf(status),
+                                                onLongClick = { copyAs = self.shortName to peerCopyForms(self.shortName, self.fqdn, self.address, self.ipv6Address) }
+                                            ) { openKey = SELF_PAGE_KEY }
                                         }
                                     }
                                     items(list, key = { it.pubKey }) { peer ->
-                                        PeerItem(peer, nowMillis) { openKey = peer.pubKey }
+                                        PeerItem(
+                                            peer,
+                                            nowMillis,
+                                            onLongClick = { copyAs = peer.shortName to peerCopyForms(peer.shortName, peer.fqdn, peer.address, peer.ipv6Address) }
+                                        ) { openKey = peer.pubKey }
                                     }
                                     when {
                                         // Running, but no status has come back yet.
@@ -241,6 +350,10 @@ fun PeersScreen(onBack: () -> Unit) {
             }
         }
 
+        copyAs?.let { (title, forms) ->
+            PeerCopyAsSheet(title = title, forms = forms, onDismiss = { copyAs = null })
+        }
+
         openKey?.let { key ->
             // The sheet pages through the list on screen, so the list stays here and the
             // sheet borrows a window onto it. By key, not by object: every refresh replaces
@@ -267,6 +380,63 @@ fun PeersScreen(onBack: () -> Unit) {
                     onSelectPage = { openKey = it.key }
                 )
             }
+        }
+    }
+}
+
+/** The search field's slot until a layout measures it: CompactSearchBar's 40 dp and the
+ *  8 dp above and below. */
+private val SEARCH_SLOT_HEIGHT = 56.dp
+
+/**
+ * How far the peers list's search field is out, from 0 to 1, and the scrolling that moves it.
+ *
+ * A pull down at the top of the list draws it out under the finger; let go, it settles open
+ * past half its height and folds back short of that. Empty, it folds again as soon as the
+ * list is scrolled on, before the list itself moves, the way a collapsing top bar goes;
+ * while [pinned], with text in it, it stays. [shown] is a saveable state, so a rotation
+ * leaves the field as it was.
+ */
+@Stable
+private class SearchReveal(
+    shown: MutableFloatState,
+    private val scope: CoroutineScope,
+    /** The field's full height in pixels; the screen's layout keeps it measured. */
+    var heightPx: Float,
+    private val pinned: () -> Boolean
+) {
+    var fraction by shown
+        private set
+    private var settling: Job? = null
+
+    fun animateTo(target: Float) {
+        settling?.cancel()
+        settling = scope.launch { animate(fraction, target) { value, _ -> fraction = value } }
+    }
+
+    /** Moves the field by [delta] pixels, as far as it goes; returns the pixels that took. */
+    private fun drag(delta: Float): Float {
+        if (heightPx <= 0f) return 0f
+        settling?.cancel()
+        val before = fraction
+        fraction = (before + delta / heightPx).coerceIn(0f, 1f)
+        return (fraction - before) * heightPx
+    }
+
+    val connection = object : NestedScrollConnection {
+        // The list moving on folds the field first.
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+            if (available.y < 0f && fraction > 0f && !pinned()) Offset(0f, drag(available.y)) else Offset.Zero
+
+        // The pull is what the list could not take at its top. A finger's only: a fling that
+        // runs into the top was not asking for the search.
+        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+            if (available.y > 0f && source == NestedScrollSource.UserInput && fraction < 1f) Offset(0f, drag(available.y))
+            else Offset.Zero
+
+        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            if (fraction > 0f && fraction < 1f) animateTo(if (fraction >= 0.5f || pinned()) 1f else 0f)
+            return Velocity.Zero
         }
     }
 }

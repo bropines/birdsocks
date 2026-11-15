@@ -62,4 +62,19 @@
     <string name="peer_session_never">無期限</string>
     <string name="peer_dns_labels">追加の DNS 名</string>
     <string name="peer_dns_labels_edit">設定で変更</string>
+
+    <!-- The top bar: the search a pull at the top of the list also brings out, and reload. -->
+    <string name="nb_peers_search_open">検索</string>
+    <string name="nb_peers_search_close">検索を閉じる</string>
+    <string name="nb_peers_refresh">更新</string>
+
+    <!-- "Copy as…", from a long press on a row. -->
+    <string name="peer_copy_as">形式を選んでコピー…</string>
+    <string name="peer_copy_as_title">%1$s を形式を選んでコピー</string>
+    <string name="peer_copy_name">名前</string>
+    <string name="peer_copy_fqdn">完全修飾名（FQDN）</string>
+    <string name="peer_copy_ipv4">IPv4 アドレス</string>
+    <string name="peer_copy_ipv6">IPv6 アドレス</string>
+    <string name="peer_copy_ssh">SSH コマンド</string>
+    <string name="peer_copy_ping">ping コマンド</string>
 </resources>

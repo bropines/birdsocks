@@ -45,7 +45,7 @@ Extras:
 
 - **Confirmation:** any app or web page can open a link, so BirdSocks asks first.
 - **Skipping it:** with `&secret=<token>`, and automation on, the link runs at once. Use this only in your own shortcuts: a URL can end up in browser history.
-- **Screen links:** `birdsocks://peers`, `networks`, `dns`, `publish`, `diagnostics`, `events`, `permissions`, `settings?section=<id>`, `logs?category=NETBIRD`.
+- **Screen links:** `birdsocks://peers`, `networks`, `dns`, `publish`, `diagnostics`, `events`, `permissions`, `licenses`, `settings?section=<id>`, `settings?q=<words>` (the settings search, with the words typed in), `logs?category=NETBIRD`, `admin?page=<area>` (the admin panel: `overview` or none for its home, `setup` for the access token, or an area — `peers`, `groups`, `setup_keys` (also `keys`), `policies`, `posture_checks`, `networks`, `routes`, `dns`, `users`, `service_users`, `events`, `account_settings`, `event_streaming`, `identity_providers`, `reverse_proxy`; every change in it still asks for the screen lock).
 
 ## Examples
 

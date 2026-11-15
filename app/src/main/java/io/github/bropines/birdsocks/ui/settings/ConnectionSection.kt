@@ -1,6 +1,8 @@
 package io.github.bropines.birdsocks.ui.settings
 
+import io.github.bropines.birdsocks.ui.settingAnchor
 import android.widget.Toast
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -34,14 +36,16 @@ internal fun ConnectionSection(env: SettingsEnv) {
     SettingsCard(stringResource(R.string.settings_card_peers), note = stringResource(R.string.settings_note_restart)) {
         var lazy by remember { mutableStateOf(GlobalSettings.getLazyConn(context)) }
         val lazyValues = listOf("", "on", "off")
-        Text(stringResource(R.string.nb_settings_lazy), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
-        HelpText(stringResource(R.string.nb_settings_lazy_desc), Modifier.padding(bottom = 8.dp))
-        SlidingSegmentedChips(
-            listOf(stringResource(R.string.nb_settings_lazy_server), stringResource(R.string.nb_settings_lazy_on), stringResource(R.string.nb_settings_lazy_off)),
-            lazyValues.indexOf(lazy).coerceAtLeast(0), { i ->
-                env.startSetting { GlobalSettings.setLazyConn(context, lazyValues[i]); lazy = lazyValues[i] }
-            }, Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        )
+        Column(Modifier.settingAnchor(stringResource(R.string.nb_settings_lazy), outset = 6.dp)) {
+            Text(stringResource(R.string.nb_settings_lazy), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+            HelpText(stringResource(R.string.nb_settings_lazy_desc), Modifier.padding(bottom = 8.dp))
+            SlidingSegmentedChips(
+                listOf(stringResource(R.string.nb_settings_lazy_server), stringResource(R.string.nb_settings_lazy_on), stringResource(R.string.nb_settings_lazy_off)),
+                lazyValues.indexOf(lazy).coerceAtLeast(0), { i ->
+                    env.startSetting { GlobalSettings.setLazyConn(context, lazyValues[i]); lazy = lazyValues[i] }
+                }, Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            )
+        }
         var quic by remember { mutableStateOf(GlobalSettings.isRelayQuic(context)) }
         SettingsSwitchItem(stringResource(R.string.nb_settings_quic), stringResource(R.string.nb_settings_quic_desc), Icons.Default.Speed, quic) {
             env.startSetting { GlobalSettings.setRelayQuic(context, it); quic = it }
@@ -61,7 +65,7 @@ internal fun ConnectionSection(env: SettingsEnv) {
             SettingsSwitchItem(stringResource(R.string.nb_settings_ipv6), stringResource(R.string.nb_settings_ipv6_desc), Icons.Default.Language, !cfg.disableIpv6) {
                 env.setConfig { put("disableIpv6", !it) }
             }
-            SettingsEditItem("MTU", if (cfg.mtu > 0) cfg.mtu.toString() else "", Icons.Default.Straighten,
+            SettingsEditItem(stringResource(R.string.nb_settings_mtu), if (cfg.mtu > 0) cfg.mtu.toString() else "", Icons.Default.Straighten,
                 placeholder = "1280", description = stringResource(R.string.nb_settings_mtu_desc)
             ) { v ->
                 val mtu = v.trim().toIntOrNull()
@@ -84,13 +88,15 @@ private fun ServerConnectionCard(env: SettingsEnv) {
     val modes = listOf(GlobalSettings.CONTROL_DIRECT, GlobalSettings.CONTROL_PROXY, GlobalSettings.CONTROL_BYEDPI)
     var mode by remember { mutableStateOf(GlobalSettings.getControlMode(context)) }
     SettingsCard(stringResource(R.string.settings_card_server_connection), note = stringResource(R.string.settings_note_restart)) {
-        HelpText(stringResource(R.string.cp_desc), Modifier.padding(top = 4.dp, bottom = 8.dp))
-        SlidingSegmentedChips(
-            listOf(stringResource(R.string.cp_mode_direct), stringResource(R.string.cp_mode_proxy), "ByeDPI"),
-            modes.indexOf(mode).coerceAtLeast(0), { i ->
-                env.startSetting { GlobalSettings.setControlMode(context, modes[i]); mode = modes[i] }
-            }, Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        )
+        Column(Modifier.settingAnchor(stringResource(R.string.settings_card_server_connection), outset = 6.dp)) {
+            HelpText(stringResource(R.string.cp_desc), Modifier.padding(top = 4.dp, bottom = 8.dp))
+            SlidingSegmentedChips(
+                listOf(stringResource(R.string.cp_mode_direct), stringResource(R.string.cp_mode_proxy), "ByeDPI"),
+                modes.indexOf(mode).coerceAtLeast(0), { i ->
+                    env.startSetting { GlobalSettings.setControlMode(context, modes[i]); mode = modes[i] }
+                }, Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            )
+        }
         when (mode) {
             GlobalSettings.CONTROL_PROXY -> {
                 var type by remember { mutableStateOf(GlobalSettings.getControlProxyType(context)) }

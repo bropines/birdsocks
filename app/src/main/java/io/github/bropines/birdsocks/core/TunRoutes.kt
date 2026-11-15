@@ -19,6 +19,8 @@ import java.net.InetAddress
 object TunRoutes {
     /** The one DNS server the VPN announces, answered inside the proxy (netstack/tundns.go). */
     const val DNS_IP = "198.18.0.2"
+    /** The same resolver over IPv6, for the root engine (a ULA nothing else uses). */
+    const val DNS_IP6 = "fd00:bd:53::2"
     /** The overlay when nothing better is known: NetBird's default range, which CGNAT shares. */
     const val FALLBACK_OVERLAY = "100.64.0.0/10"
 

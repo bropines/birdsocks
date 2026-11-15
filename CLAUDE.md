@@ -6,8 +6,9 @@ pointer; the substance lives in the files it names.
 1. **Read [`agents.md`](agents.md) first.** It is the project mandate: how the
    app runs NetBird, the build and patch pipeline, UI standards and the working
    agreements — including *never* `git push` without the author's explicit «пушь».
-2. Unreleased work is at the top of [`CHANGELOG.md`](CHANGELOG.md). Extend that
-   section in its own style whenever you change behaviour.
+2. Unreleased work is at the top of [`CHANGELOG.md`](CHANGELOG.md) and its Russian
+   twin [`CHANGELOG_RU.md`](CHANGELOG_RU.md). Extend that section of both, in their
+   style, whenever you change behaviour.
 3. Plans and leftovers: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 4. Building: [`docs/BUILDING.md`](docs/BUILDING.md). Run `appctr/build.sh` after
    any Go or patch change, or the APK will not contain it.

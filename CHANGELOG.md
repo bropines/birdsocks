@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.5.1] - 2026-11-15
+
+### Changed
+- Admin panel: no longer needs NetBird running. It opens with BirdSocks stopped, on the active account, read from NetBird's own files when it was never seen running; only signing in as this device still needs NetBird.
+- Release notes open with the release's highlights, in English and Russian, above the changelog.
+
+## [0.5.0] - 2026-11-15
+
+### Changed
+- Admin panel: lists read from the server are used for five minutes before an open asks again; the refresh button and a pull still ask at once.
+- NetBird v0.83.1.
+- Root mode lives beside another VPN: it routes only NetBird's addresses then, or the apps that VPN bypasses; "Take the device" overrides.
+- Peers: a pull at the top of the list brings out the search; refresh moved to the top bar, beside a search button. The filter is remembered between visits.
+
+### Added
+- Root mode puts NetBird's names into /etc/hosts, so they resolve whichever DNS server Android picks.
+- Root mode runs one helper at a time: a new one waits for the old one's teardown (after a reinstall or a killed app) instead of the two taking each other's rules.
+- Root mode keeps the local network local and stays off carrier addresses inside NetBird's range.
+- Root mode waits for Android to validate the network before redirecting DNS, and steps aside while NetBird's resolver is silent.
+- The app language is picked from every translated language; on Android 13+ BirdSocks appears in the system's per-app language settings, and the two choices agree.
+- What's new opens once after an update, in Russian from CHANGELOG_RU.md.
+- An arrangeable main screen: hold it, or open Settings → Appearance → Main screen, to move, remove, add and widen tiles (Logs, accounts, VPN mode, the proxy address, settings pages) and pick the columns; hidden items stay reachable there, and backups carry the layout.
+- Settings search: a field over the sections finds any setting by its name or other words for it, in English or Russian, and opens its section on the row; `birdsocks://settings?q=` opens it with the words typed in.
+- Home-screen widgets: a switch that resizes from a 1×1 round toggle to a card with the state, exit node and address, and an exit-node list to pick from or go direct.
+- Exit-node sheet: a search by exit node or routing peer once it lists more than six.
+- Peers: a long press on a row opens "Copy as…" — name, FQDN, IPv4, IPv6, an ssh or ping command.
+- An admin panel for the active account, from the shield on the main screen, a tile, Settings → Account or `birdsocks://admin`: overview, peers (search, rename, login expiration, delete), setup keys (create with an invite QR, revoke) and groups, through the server's API with an access token sealed on the phone; changes ask for the screen lock, read-only by default.
+- Admin panel: a home screen with what needs you (peers and users awaiting approval, setup keys about to expire) and its actions inline, and a grid of areas; every change shows what it does and what it changes before the screen lock, and a risky one asks for the name typed back. The panel opens on the last lists it saw while it refreshes.
+- Admin panel, Peers: chips for online, offline, awaiting approval, login expiration on, expired, SSH, each group and each system, AND-ed, with sort and search; a peer's sheet edits its groups, SSH server, login and inactivity expiration, shows connection, version, location and which peers it can reach; a long press selects peers to add to or remove from groups at once. A change that may cut this device off says so and asks for the name.
+- Admin panel, Groups: create, rename, edit peers and network resources, delete with where the group is used (policies, routes, DNS, setup keys, users' groups); All stays read-only.
+- Admin panel, Setup keys: valid, expired and revoked chips; a key's sheet edits the groups new peers join, revokes or deletes it; a new key may allow extra DNS labels.
+- Admin panel: networks (resources, routing peers, and which policies let whom reach each resource), routes with exit nodes marked, and DNS (nameserver groups, private zones and records where the server has them, groups with DNS management off); every object also opens as JSON, fields the app does not know kept. Removing a route or nameservers this device uses asks for the name typed back.
+- Admin panel: policies and posture checks. Policies list in plain words ("Admins → Servers, TCP 22") with the peers each covers, and switch on and off; a visual editor (rules, protocols, ports as chips, groups or one resource per side, NetBird SSH users, posture checks) and a JSON mode that keep fields the app does not know; all policies as one JSON document saved as a plan of creates, updates and deletes; templates (SSH for admins, web, DNS, monitoring, deny by default); "Who can reach…" for a peer or group. Every save is validated on the phone, re-read against the server, diffed, checked for what it opens and for cutting this device off. Posture checks: an editor per check type, JSON mode, the policies that use each.
+- Open-source licenses as a screen of their own: every component in the APK with its license and full text, from About or `birdsocks://licenses`.
+- Admin panel: users (roles, block, auto-groups, approve or reject, delete; never your own user or the last owner, making someone owner warned) and link invites, shown once and out of screenshots.
+- Admin panel: service users and personal access tokens — expiry and last use, new tokens shown once, a flag on tokens expiring soon and on the one the panel signs in with, which is deleted only after a warning.
+- Admin panel: the audit log by day, filtered by activity and by who, each entry's changes as before → after; network traffic events, page by page, where the server keeps them.
+- Admin panel: every account setting, each saved on its own and described by what it does; changing the network range or turning approval off goes through the high-risk review.
+- Admin panel: event streaming (cloud), identity providers with secrets never shown, and the reverse proxy's services and domains with validation, next to a link to the Publish screen.
+
+### Fixed
+- Root mode no longer takes DNS away when Android keeps to the router's IPv6 resolver; the admin panel and every app resolve again.
+- Root mode no longer leaves the device without DNS when BirdSocks is killed or updated while it runs; rules a helper left are swept on the next start.
+- A switch between redundant routing peers no longer raises a notification each time.
+- Dialogs (About, What's new, logout, the VPN warning, debug bundle, packet capture) follow the app's language, not the system's.
+- Quick Settings tile: shows the state a tap asked for until the service catches up, says "Stopping…" while it stops, and no longer sticks at "Starting…" when Android refuses a start from the panel.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added
