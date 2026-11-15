@@ -1,8 +1,8 @@
 name: Release
 
-# A pushed tag v<VERSION_NAME> builds the signed APKs and opens a draft GitHub
-# release with them, SHA256SUMS and the CHANGELOG section as its notes. The
-# draft is published by hand. Setup and secrets: docs/RELEASING.md.
+# A pushed tag v<VERSION_NAME> builds the signed APKs and publishes a GitHub
+# release with them, SHA256SUMS and its notes (scripts/release_notes.py).
+# Setup and secrets: docs/RELEASING.md.
 
 on:
   push:
@@ -344,8 +344,9 @@ jobs:
           cat SHA256SUMS
           test "$(wc -l < SHA256SUMS)" -eq 5 || { echo "::error::expected five release APKs"; exit 1; }
 
-      - name: Release notes from CHANGELOG.md
-        run: python3 scripts/changelog_section.py "${{ needs.preflight.outputs.version }}" > "$RUNNER_TEMP/notes.md"
+      # docs/releases/<version>.md (highlights, English and Russian), then the CHANGELOG section.
+      - name: Release notes from docs/releases and CHANGELOG.md
+        run: python3 scripts/release_notes.py "${{ needs.preflight.outputs.version }}" > "$RUNNER_TEMP/notes.md"
 
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:

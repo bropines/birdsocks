@@ -16,6 +16,9 @@ import io.github.bropines.birdsocks.core.Netbird
 import io.github.bropines.birdsocks.core.NetbirdState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.util.concurrent.ConcurrentHashMap
 
@@ -57,7 +60,7 @@ object AdminSession {
      */
     suspend fun activeAccount(context: Context): AdminAccount {
         val known = if (NetbirdState.isRunning) runCatching { remember(context) }.getOrNull() else null
-        val saved = known ?: recalled(context) ?: throw IllegalStateException("NetBird is stopped and no account is remembered")
+        val saved = known ?: recalled(context) ?: fromDisk(context) ?: throw IllegalStateException("NetBird is stopped and no account is known")
         val url = saved.managementUrl
         return AdminAccount(saved.profile, url, vault(context).accountId(saved.profile, url), AdminUrls.apiBase(url), saved.dashboardUrl)
     }
@@ -67,6 +70,7 @@ object AdminSession {
     data class KnownAccount(val profile: String, val managementUrl: String, val dashboardUrl: String? = null)
 
     private const val KNOWN_PREFS = "admin_known_account"
+    private const val DEFAULT_PROFILE = "default"
     private const val KNOWN_KEY = "account"
 
     /** Reads the active account from the running daemon and remembers it. */
@@ -79,6 +83,41 @@ object AdminSession {
         context.applicationContext.getSharedPreferences(KNOWN_PREFS, Context.MODE_PRIVATE).edit()
             .putString(KNOWN_KEY, AppJson.encodeToString(KnownAccount.serializer(), known)).apply()
         return known
+    }
+
+    /**
+     * The active account from the daemon's own files, for when it is stopped
+     * and nothing was remembered (the first open after an update): the active
+     * profile's id in active_profile.json, its file beside it or in a
+     * per-user folder, and the server in its ManagementURL. Never the keys.
+     */
+    internal fun fromDisk(context: Context): KnownAccount? = runCatching {
+        val dir = java.io.File(context.filesDir, "netbird")
+        val active = AppJson.parseToJsonElement(java.io.File(dir, "active_profile.json").readText()).jsonObject
+        val id = active["name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: DEFAULT_PROFILE
+        if (id.contains('/') || id.contains("..")) return null
+        val user = active["username"]?.jsonPrimitive?.contentOrNull.orEmpty().takeIf { it.isNotBlank() && !it.contains('/') && !it.contains("..") }
+        val file = listOfNotNull(
+            java.io.File(dir, "$id.json"),
+            user?.let { java.io.File(java.io.File(dir, it), "$id.json") },
+        ).firstOrNull { it.isFile }
+            ?: dir.listFiles()?.filter { it.isDirectory }?.map { java.io.File(it, "$id.json") }?.firstOrNull { it.isFile }
+            ?: return null
+        knownFromProfile(id, file.readText())
+    }.getOrNull()
+
+    /** A profile file's display name and servers; the id names a profile whose file has no name. */
+    internal fun knownFromProfile(id: String, json: String): KnownAccount? {
+        val o = AppJson.parseToJsonElement(json).jsonObject
+        fun url(key: String): String? {
+            val u = o[key] as? kotlinx.serialization.json.JsonObject ?: return null
+            val scheme = u["Scheme"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val host = u["Host"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            return if (scheme.isEmpty() || host.isEmpty()) null else "$scheme://$host"
+        }
+        val name = o["Name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: id
+        val management = url("ManagementURL") ?: GlobalSettings.CLOUD_MANAGEMENT_URL
+        return KnownAccount(name, management, null)
     }
 
     private fun recalled(context: Context): KnownAccount? =

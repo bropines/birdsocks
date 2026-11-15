@@ -1,9 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [0.5.1] - 2026-11-15
 
 ### Changed
-- Admin panel: opens with BirdSocks stopped, on the account that was active last; only signing in as this device still needs NetBird running.
+- Admin panel: no longer needs NetBird running. It opens with BirdSocks stopped, on the active account, read from NetBird's own files when it was never seen running; only signing in as this device still needs NetBird.
+- Release notes open with the release's highlights, in English and Russian, above the changelog.
 
 ## [0.5.0] - 2026-11-15
 

@@ -1,0 +1,1 @@
+The admin panel no longer needs NetBird running: it opens with BirdSocks stopped, on the active account.
