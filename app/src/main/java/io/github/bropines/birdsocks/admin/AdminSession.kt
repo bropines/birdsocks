@@ -13,6 +13,7 @@ import io.github.bropines.birdsocks.core.AppJson
 import io.github.bropines.birdsocks.core.ByeDpiProxy
 import io.github.bropines.birdsocks.core.GlobalSettings
 import io.github.bropines.birdsocks.core.Netbird
+import io.github.bropines.birdsocks.core.NetbirdState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -47,14 +48,42 @@ object AdminSession {
         ).also { vaultInstance = it }
     }
 
-    /** The active profile and its server; needs the daemon running. */
+    /**
+     * The active profile and its server. The daemon knows them; while it runs
+     * they are read from it and remembered, so the panel also opens with
+     * BirdSocks stopped — on the account that was active last. The API is
+     * reached over the network, not through NetBird. Throws when the daemon
+     * is stopped and nothing was remembered yet.
+     */
     suspend fun activeAccount(context: Context): AdminAccount {
+        val known = if (NetbirdState.isRunning) runCatching { remember(context) }.getOrNull() else null
+        val saved = known ?: recalled(context) ?: throw IllegalStateException("NetBird is stopped and no account is remembered")
+        val url = saved.managementUrl
+        return AdminAccount(saved.profile, url, vault(context).accountId(saved.profile, url), AdminUrls.apiBase(url), saved.dashboardUrl)
+    }
+
+    /** What the panel needs of the active account, kept for when the daemon is stopped. */
+    @Serializable
+    data class KnownAccount(val profile: String, val managementUrl: String, val dashboardUrl: String? = null)
+
+    private const val KNOWN_PREFS = "admin_known_account"
+    private const val KNOWN_KEY = "account"
+
+    /** Reads the active account from the running daemon and remembers it. */
+    suspend fun remember(context: Context): KnownAccount {
         val profile = Netbird.activeProfile()
         val config = Netbird.config(profile)
         val url = config.managementUrl.ifEmpty { GlobalSettings.CLOUD_MANAGEMENT_URL }
         val dashboard = runCatching { config.dashboardUrl }.getOrNull()?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
-        return AdminAccount(profile, url, vault(context).accountId(profile, url), AdminUrls.apiBase(url), dashboard)
+        val known = KnownAccount(profile, url, dashboard)
+        context.applicationContext.getSharedPreferences(KNOWN_PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KNOWN_KEY, AppJson.encodeToString(KnownAccount.serializer(), known)).apply()
+        return known
     }
+
+    private fun recalled(context: Context): KnownAccount? =
+        context.applicationContext.getSharedPreferences(KNOWN_PREFS, Context.MODE_PRIVATE).getString(KNOWN_KEY, null)
+            ?.let { runCatching { AppJson.decodeFromString(KnownAccount.serializer(), it) }.getOrNull() }
 
     /**
      * The control plane's way to the server, the one the daemon is handed as

@@ -212,6 +212,10 @@ class NetbirdService : Service() {
         })
         EventLog.init(this)
         scope.launch { ExposeFlow.state.collect(::showExpose) }
+        // The admin panel opens with NetBird stopped on the account active last.
+        scope.launch {
+            NetbirdState.profileFlow.collect { if (it != null && NetbirdState.isRunning) runCatching { io.github.bropines.birdsocks.admin.AdminSession.remember(this@NetbirdService) } }
+        }
         // "· VPN" in the notification follows the tunnel.
         scope.launch {
             TunVpnService.running.collect {

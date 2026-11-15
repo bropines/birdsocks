@@ -137,7 +137,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app), AdminHost {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             phase = Phase.LOADING
-            if (!NetbirdState.isRunning) { phase = Phase.NO_DAEMON; return@launch }
             val acc = runCatching { AdminSession.activeAccount(context) }.getOrElse { phase = Phase.NO_DAEMON; return@launch }
             if (account?.id != acc.id) resetAccountState()
             account = acc
